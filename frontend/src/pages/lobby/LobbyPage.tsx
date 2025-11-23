@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useLogout, useAuthStore } from '@/features/auth';
 import { RoomList } from '@/features/room';
 import { useCurrentUser } from '@/entities/user';
+import { roomApi } from '@/entities/room';
 import { Button, Card, Spinner } from '@/shared/ui';
 import { ROUTES, TEXTS } from '@/shared/config';
+import { useErrorStore } from '@/shared/lib/error-store';
 import './LobbyPage.css';
 
 export const LobbyPage = () => {
   const navigate = useNavigate();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
+  const setError = useErrorStore((state) => state.setError);
   
   const logoutMutation = useLogout({
     onSuccess: () => {
@@ -20,10 +23,28 @@ export const LobbyPage = () => {
   });
 
   const [roomCode, setRoomCode] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleJoinByCode = () => {
-    if (roomCode.trim()) {
-      navigate(ROUTES.JOIN_BY_CODE(roomCode.trim().toUpperCase()));
+  const handleJoinByCode = async () => {
+    const code = roomCode.trim().toUpperCase();
+    if (!code) return;
+
+    setIsSearching(true);
+    try {
+      // Проверяем существование комнаты
+      const room = await roomApi.getRoomByCode(code);
+      
+      // Если комната найдена, переходим к ней
+      navigate(ROUTES.ROOM(room.id));
+    } catch (error: any) {
+      // Если комната не найдена, показываем ошибку
+      const errorMessage = error?.response?.status === 404
+        ? `Комната с кодом "${code}" не найдена`
+        : 'Не удалось найти комнату. Проверьте код и попробуйте снова';
+      
+      setError(errorMessage, error?.response?.status?.toString());
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -76,15 +97,17 @@ export const LobbyPage = () => {
                   placeholder={TEXTS.LOBBY.ROOM_CODE_PLACEHOLDER}
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && handleJoinByCode()}
+                  onKeyDown={(e) => e.key === 'Enter' && !isSearching && handleJoinByCode()}
                   className="lobby-page__code-input"
                   maxLength={6}
+                  disabled={isSearching}
                 />
                 <Button
                   variant="secondary"
                   fullWidth
                   onClick={handleJoinByCode}
-                  disabled={!roomCode.trim()}
+                  disabled={!roomCode.trim() || isSearching}
+                  isLoading={isSearching}
                 >
                   {TEXTS.LOBBY.JOIN_BY_CODE}
                 </Button>
