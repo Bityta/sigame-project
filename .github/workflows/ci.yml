@@ -136,7 +136,7 @@ jobs:
         if: always()
 
       - name: 🏗️ Build
-        run: gradle build -x test
+        run: gradle build -x test -x generateProto
 
   # ==========================================
   # 4. СБОРКА И ТЕСТЫ - Game Service (Go)
