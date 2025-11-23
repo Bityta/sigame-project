@@ -4,6 +4,8 @@ import com.sigame.lobby.grpc.AuthServiceClient
 import kotlinx.coroutines.reactor.mono
 import mu.KotlinLogging
 import org.slf4j.MDC
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
@@ -18,8 +20,10 @@ private val logger = KotlinLogging.logger {}
 /**
  * Фильтр для аутентификации пользователей через JWT токены
  * Использует Auth Service для валидации токенов
+ * Order = 0 (выполняется после CorsWebFilter с HIGHEST_PRECEDENCE)
  */
 @Component
+@Order(0)
 class AuthenticationFilter(
     private val authServiceClient: AuthServiceClient
 ) : WebFilter {
@@ -103,21 +107,11 @@ class AuthenticationFilter(
     }
     
     /**
-     * Возвращает 401 Unauthorized ответ с CORS заголовками
+     * Возвращает 401 Unauthorized ответ
+     * CORS заголовки добавляются автоматически через CorsWebFilter
      */
     private fun unauthorized(exchange: ServerWebExchange): Mono<Void> {
         exchange.response.statusCode = HttpStatus.UNAUTHORIZED
-        
-        // Add CORS headers to error response
-        val headers = exchange.response.headers
-        val origin = exchange.request.headers.getFirst(HttpHeaders.ORIGIN)
-        if (origin != null) {
-            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin)
-            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
-            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET,POST,PUT,DELETE,PATCH,OPTIONS")
-            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "*")
-        }
-        
         return exchange.response.setComplete()
     }
 }
