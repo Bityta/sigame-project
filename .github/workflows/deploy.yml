@@ -21,6 +21,8 @@ on:
         required: false
         type: boolean
         default: false
+  push:
+    branches: [ main ]  # Автодеплой при пуше в main
 
 env:
   SSH_USER: ubuntu
