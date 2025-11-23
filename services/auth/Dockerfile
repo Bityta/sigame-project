@@ -14,7 +14,7 @@ COPY . .
 RUN go mod tidy && go mod download
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server/main.go
 
 # Runtime stage
 FROM alpine:latest
