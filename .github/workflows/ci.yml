@@ -123,10 +123,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: 🔍 Lint & Check
-        run: gradle ktlintCheck || true
+        run: ./gradlew ktlintCheck || true
 
       - name: 🧪 Run tests
-        run: gradle test || echo "⚠️ Tests not configured yet"
+        run: ./gradlew test || echo "⚠️ Tests not configured yet"
 
       - name: 📊 Upload test results
         uses: actions/upload-artifact@v4
@@ -136,7 +136,7 @@ jobs:
         if: always()
 
       - name: 🏗️ Build
-        run: gradle build -x test -x generateProto
+        run: ./gradlew build -x test -x generateProto
 
   # ==========================================
   # 4. СБОРКА И ТЕСТЫ - Game Service (Go)
