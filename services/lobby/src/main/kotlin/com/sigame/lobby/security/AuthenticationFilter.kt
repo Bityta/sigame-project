@@ -103,10 +103,21 @@ class AuthenticationFilter(
     }
     
     /**
-     * Возвращает 401 Unauthorized ответ
+     * Возвращает 401 Unauthorized ответ с CORS заголовками
      */
     private fun unauthorized(exchange: ServerWebExchange): Mono<Void> {
         exchange.response.statusCode = HttpStatus.UNAUTHORIZED
+        
+        // Add CORS headers to error response
+        val headers = exchange.response.headers
+        val origin = exchange.request.headers.getFirst(HttpHeaders.ORIGIN)
+        if (origin != null) {
+            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin)
+            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET,POST,PUT,DELETE,PATCH,OPTIONS")
+            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "*")
+        }
+        
         return exchange.response.setComplete()
     }
 }
