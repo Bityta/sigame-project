@@ -241,6 +241,7 @@ services:
     container_name: sigame-unified-agent
     volumes:
       - ./infrastructure/unified-agent/config.yml:/etc/yandex/unified_agent/config.yml
+      - ./infrastructure/unified-agent/sa-key.json:/etc/yandex/unified_agent/sa-key.json:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:

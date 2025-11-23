@@ -22,6 +22,9 @@ channels:
           message_queue_size: 1000
           batch_size_limit: 100
           timeout: 10s
+          iam:
+            service_account_key:
+              file: "/etc/yandex/unified_agent/sa-key.json"
 
   - name: metrics
     channel:
@@ -33,7 +36,8 @@ channels:
         config:
           folder_id: "${FOLDER_ID}"
           iam:
-            cloud_meta: {}
+            service_account_key:
+              file: "/etc/yandex/unified_agent/sa-key.json"
 
 routes:
   # Docker container logs
