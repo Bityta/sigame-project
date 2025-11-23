@@ -58,7 +58,7 @@ services:
       JWT_REFRESH_TTL: 604800
       
       # Server
-      HTTP_PORT: 8001
+      HTTP_PORT: 8081
       GRPC_PORT: 50051
       GIN_MODE: release
       
@@ -71,12 +71,12 @@ services:
       OTEL_SERVICE_NAME: auth-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
-      - "8001:8001"
+      - "8081:8081"
       - "50051:50051"
     networks:
       - sigame-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -117,21 +117,21 @@ services:
       PACK_SERVICE_HOST: pack-service
       PACK_SERVICE_PORT: 50055
       GAME_SERVICE_HOST: game-service
-      GAME_SERVICE_PORT: 8003
+      GAME_SERVICE_PORT: 8083
       
       # Server
-      HTTP_PORT: 8002
+      HTTP_PORT: 8082
       
       # Tracing
       OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
       OTEL_SERVICE_NAME: lobby-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
-      - "8002:8002"
+      - "8082:8082"
     networks:
       - sigame-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8002/api/lobby/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/api/lobby/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -173,7 +173,7 @@ services:
       PACK_SERVICE_PORT: 50055
       
       # Server
-      HTTP_PORT: 8003
+      HTTP_PORT: 8083
       WS_PORT: 8083
       GRPC_PORT: 50053
       GIN_MODE: release
@@ -183,13 +183,12 @@ services:
       OTEL_SERVICE_NAME: game-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
-      - "8003:8003"
       - "8083:8083"
       - "50053:50053"
     networks:
       - sigame-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8003/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -216,7 +215,7 @@ services:
       POSTGRES_SSLMODE: disable
       
       # Server
-      HTTP_PORT: 8005
+      HTTP_PORT: 8084
       GRPC_PORT: 50055
       
       # Tracing
@@ -224,12 +223,12 @@ services:
       OTEL_SERVICE_NAME: pack-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
-      - "8005:8005"
+      - "8084:8084"
       - "50055:50055"
     networks:
       - sigame-network
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health')"]
       interval: 10s
       timeout: 5s
       retries: 5

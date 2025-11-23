@@ -155,13 +155,13 @@ class AuthServiceClient(
                 } else {
                     logger.error(e) { "gRPC call to Auth Service failed: $operationName" }
                     lobbyMetrics.recordGrpcError("auth-service", e.status.code.name)
-                    break
+                    return null
                 }
             } catch (e: Exception) {
                 logger.error(e) { "Unexpected error in gRPC call to Auth Service: $operationName" }
                 lobbyMetrics.recordGrpcError("auth-service", "UNKNOWN")
                 lastException = e
-                break
+                return null
             }
         }
         

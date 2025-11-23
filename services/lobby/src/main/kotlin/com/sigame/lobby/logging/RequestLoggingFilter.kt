@@ -1,7 +1,6 @@
 package com.sigame.lobby.logging
 
 import kotlinx.coroutines.reactor.awaitSingleOrNull
-import kotlinx.coroutines.slf4j.MDCContext
 import mu.KotlinLogging
 import org.slf4j.MDC
 import org.springframework.stereotype.Component

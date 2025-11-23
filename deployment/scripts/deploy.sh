@@ -1,90 +1,69 @@
 #!/bin/bash
-
-# Deployment Script - Updates and restarts services
-# Use this script to deploy new versions
-
 set -e
 
-# Configuration
-INSTALL_DIR="/opt/sigame"
-SERVER_TYPE=${1:-"app"}  # app or infra
+echo "=========================================="
+echo "  🚀 Быстрый деплой на сервер"
+echo "=========================================="
+echo ""
 
-# Colors
+# Цвета для вывода
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
+RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
-cd "$INSTALL_DIR"
+APP_SERVER="ubuntu@89.169.139.21"
+PROJECT_DIR="/opt/sigame"
 
-echo "=========================================="
-echo "  Deploying Updates ($SERVER_TYPE server)"
-echo "=========================================="
-
-# Pull latest code
-echo -e "${BLUE}Step 1: Pulling latest code...${NC}"
-git pull origin main
-echo -e "${GREEN}✓ Code updated${NC}"
-
-# Determine which compose file to use
-if [ "$SERVER_TYPE" = "app" ]; then
-    COMPOSE_FILE="docker-compose.app.yml"
-    echo "Deploying Application Server..."
-elif [ "$SERVER_TYPE" = "infra" ]; then
-    COMPOSE_FILE="docker-compose.infra.yml"
-    echo "Deploying Infrastructure Server..."
+echo -e "${YELLOW}1. Коммит и пуш изменений...${NC}"
+git add -A
+if git diff --staged --quiet; then
+    echo "Нет изменений для коммита"
 else
-    echo -e "${YELLOW}Invalid server type. Usage: $0 [app|infra]${NC}"
-    exit 1
+    read -p "Введите сообщение коммита: " commit_msg
+    git commit -m "$commit_msg"
 fi
 
-# Load environment
-if [ -f .env.production ]; then
-    export $(grep -v '^#' .env.production | xargs)
-fi
+git push origin feature/deployment-setup
 
-# Build new images
-echo -e "${BLUE}Step 2: Building images...${NC}"
-docker compose -f "$COMPOSE_FILE" build --no-cache
-echo -e "${GREEN}✓ Images built${NC}"
+echo ""
+echo -e "${YELLOW}2. Деплой на сервер...${NC}"
+ssh $APP_SERVER << 'ENDSSH'
+set -e
 
-# Pull latest base images
-echo -e "${BLUE}Step 3: Pulling base images...${NC}"
-docker compose -f "$COMPOSE_FILE" pull
-echo -e "${GREEN}✓ Images pulled${NC}"
+cd /opt/sigame
 
-# Stop services
-echo -e "${BLUE}Step 4: Stopping services...${NC}"
-docker compose -f "$COMPOSE_FILE" down
-echo -e "${GREEN}✓ Services stopped${NC}"
+echo "📥 Получение последних изменений..."
+git pull origin feature/deployment-setup
 
-# Start services
-echo -e "${BLUE}Step 5: Starting services...${NC}"
-docker compose -f "$COMPOSE_FILE" up -d
-echo -e "${GREEN}✓ Services started${NC}"
+echo ""
+echo "🛑 Остановка контейнеров..."
+sudo docker compose -f docker-compose.app.yml --env-file .env.production down
 
-# Wait for services to be healthy
-echo -e "${BLUE}Step 6: Waiting for services to be healthy...${NC}"
+echo ""
+echo "🔨 Пересборка изменённых сервисов..."
+sudo docker compose -f docker-compose.app.yml --env-file .env.production build
+
+echo ""
+echo "🚀 Запуск сервисов..."
+sudo docker compose -f docker-compose.app.yml --env-file .env.production up -d
+
+echo ""
+echo "⏳ Ожидание запуска (10 секунд)..."
 sleep 10
 
-# Check health
-echo -e "${BLUE}Step 7: Checking service health...${NC}"
-docker compose -f "$COMPOSE_FILE" ps
-
-# Cleanup old images
-echo -e "${BLUE}Step 8: Cleaning up old images...${NC}"
-docker image prune -f
-echo -e "${GREEN}✓ Cleanup complete${NC}"
+echo ""
+echo "📊 Статус контейнеров:"
+sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep sigame || true
 
 echo ""
-echo "=========================================="
-echo -e "${GREEN}✓ Deployment Complete!${NC}"
-echo "=========================================="
-echo ""
-echo "Services Status:"
-docker compose -f "$COMPOSE_FILE" ps
-echo ""
-echo "To view logs:"
-echo "  docker compose -f $COMPOSE_FILE logs -f [service-name]"
-echo "=========================================="
+echo "✅ Деплой завершён!"
+ENDSSH
 
+echo ""
+echo -e "${GREEN}=========================================="
+echo "  ✅ ДЕПЛОЙ ЗАВЕРШЁН УСПЕШНО"
+echo "==========================================${NC}"
+echo ""
+echo "🌐 Проверьте: http://89.169.139.21"
+echo ""

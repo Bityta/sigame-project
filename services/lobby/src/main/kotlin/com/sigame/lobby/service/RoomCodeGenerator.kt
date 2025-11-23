@@ -1,7 +1,7 @@
 package com.sigame.lobby.service
 
 import com.sigame.lobby.config.RoomConfig
-import com.sigame.lobby.domain.GameRoomRepository
+import com.sigame.lobby.domain.repository.GameRoomRepository
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.springframework.stereotype.Service
 import kotlin.random.Random

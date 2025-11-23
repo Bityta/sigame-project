@@ -9,6 +9,7 @@ import (
 // PlayerRole represents the role of a player in the game
 type PlayerRole string
 
+// Player role constants
 const (
 	PlayerRoleHost   PlayerRole = "host"
 	PlayerRolePlayer PlayerRole = "player"

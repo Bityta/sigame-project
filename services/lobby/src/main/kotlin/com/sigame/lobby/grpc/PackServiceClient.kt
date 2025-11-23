@@ -144,13 +144,13 @@ class PackServiceClient(
                 } else {
                     logger.error(e) { "gRPC call to Pack Service failed: $operationName" }
                     lobbyMetrics.recordGrpcError("pack-service", e.status.code.name)
-                    break
+                    return null
                 }
             } catch (e: Exception) {
                 logger.error(e) { "Unexpected error in gRPC call to Pack Service: $operationName" }
                 lobbyMetrics.recordGrpcError("pack-service", "UNKNOWN")
                 lastException = e
-                break
+                return null
             }
         }
         

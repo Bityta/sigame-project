@@ -10,22 +10,33 @@ import (
 // MessageType represents the type of WebSocket message
 type MessageType string
 
+// WebSocket message type constants (client to server and server to client)
 const (
-	// Client -> Server messages
-	MessageTypeReady          MessageType = "READY"
+	// MessageTypeReady indicates player is ready
+	MessageTypeReady MessageType = "READY"
+	// MessageTypeSelectQuestion indicates question selection
 	MessageTypeSelectQuestion MessageType = "SELECT_QUESTION"
-	MessageTypePressButton    MessageType = "PRESS_BUTTON"
-	MessageTypeSubmitAnswer   MessageType = "SUBMIT_ANSWER"
-	MessageTypeJudgeAnswer    MessageType = "JUDGE_ANSWER"
+	// MessageTypePressButton indicates button press
+	MessageTypePressButton MessageType = "PRESS_BUTTON"
+	// MessageTypeSubmitAnswer indicates answer submission
+	MessageTypeSubmitAnswer MessageType = "SUBMIT_ANSWER"
+	// MessageTypeJudgeAnswer indicates answer judging
+	MessageTypeJudgeAnswer MessageType = "JUDGE_ANSWER"
 
-	// Server -> Client messages
-	MessageTypeStateUpdate     MessageType = "STATE_UPDATE"
+	// MessageTypeStateUpdate indicates game state update
+	MessageTypeStateUpdate MessageType = "STATE_UPDATE"
+	// MessageTypeQuestionSelected indicates question was selected
 	MessageTypeQuestionSelected MessageType = "QUESTION_SELECTED"
-	MessageTypeButtonPressed   MessageType = "BUTTON_PRESSED"
-	MessageTypeAnswerResult    MessageType = "ANSWER_RESULT"
-	MessageTypeRoundComplete   MessageType = "ROUND_COMPLETE"
-	MessageTypeGameComplete    MessageType = "GAME_COMPLETE"
-	MessageTypeError           MessageType = "ERROR"
+	// MessageTypeButtonPressed indicates button was pressed
+	MessageTypeButtonPressed MessageType = "BUTTON_PRESSED"
+	// MessageTypeAnswerResult indicates answer result
+	MessageTypeAnswerResult MessageType = "ANSWER_RESULT"
+	// MessageTypeRoundComplete indicates round completion
+	MessageTypeRoundComplete MessageType = "ROUND_COMPLETE"
+	// MessageTypeGameComplete indicates game completion
+	MessageTypeGameComplete MessageType = "GAME_COMPLETE"
+	// MessageTypeError indicates an error occurred
+	MessageTypeError MessageType = "ERROR"
 )
 
 // ClientMessage represents a message from client to server

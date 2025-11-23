@@ -10,10 +10,12 @@ import (
 	"github.com/sigame/auth/internal/service"
 )
 
+// Handler handles HTTP requests for authentication
 type Handler struct {
 	authService *service.AuthService
 }
 
+// NewHandler creates a new HTTP handler for authentication endpoints
 func NewHandler(authService *service.AuthService) *Handler {
 	return &Handler{
 		authService: authService,

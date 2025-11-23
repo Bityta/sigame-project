@@ -5,6 +5,7 @@ import (
 	"github.com/sigame/auth/internal/metrics"
 )
 
+// SetupRouter configures and returns the Gin router with all routes and middleware
 func SetupRouter(handler *Handler, jwtMiddleware gin.HandlerFunc, metrics *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 

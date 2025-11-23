@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -25,7 +26,7 @@ func InitTracer(serviceName string) (*sdktrace.TracerProvider, error) {
 	}
 
 	// Try to connect with retries
-	var exporter *otlptracegrpc.Exporter
+	var exporter *otlptrace.Exporter
 	var err error
 	maxRetries := 5
 	
@@ -62,7 +63,7 @@ func InitTracer(serviceName string) (*sdktrace.TracerProvider, error) {
 	}
 
 	// Create resource with service information
-	res, err := resource.New(ctx,
+	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion("1.0.0"),
@@ -102,4 +103,8 @@ func Shutdown(tp *sdktrace.TracerProvider) {
 		}
 	}
 }
+
+// TracerProvider returns *sdktrace.TracerProvider (alias for InitTracer return type)
+type TracerProvider = sdktrace.TracerProvider
+
 
