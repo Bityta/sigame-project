@@ -258,11 +258,12 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Tempo (Distributed Tracing)
+  # Tempo (Distributed Tracing) - DISABLED due to permission issues
   tempo:
     image: grafana/tempo:latest
     container_name: sigame-tempo
     command: ["-config.file=/etc/tempo/tempo.yml"]
+    profiles: ["observability"]  # Only start with --profile observability
     ports:
       - "3200:3200"   # Tempo HTTP
       - "4317:4317"   # OTLP gRPC
@@ -279,11 +280,12 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Loki (Log Aggregation)
+  # Loki (Log Aggregation) - DISABLED due to permission issues
   loki:
     image: grafana/loki:latest
     container_name: sigame-loki
     command: ["-config.file=/etc/loki/loki.yml"]
+    profiles: ["observability"]  # Only start with --profile observability
     ports:
       - "3100:3100"
     volumes:
@@ -298,11 +300,12 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Promtail (Log Shipper)
+  # Promtail (Log Shipper) - DISABLED (requires Loki)
   promtail:
     image: grafana/promtail:latest
     container_name: sigame-promtail
     command: ["-config.file=/etc/promtail/promtail.yml"]
+    profiles: ["observability"]  # Only start with --profile observability
     volumes:
       - ./infrastructure/promtail/promtail.yml:/etc/promtail/promtail.yml
       - /var/run/docker.sock:/var/run/docker.sock
@@ -320,10 +323,6 @@ services:
     container_name: sigame-grafana
     depends_on:
       prometheus:
-        condition: service_healthy
-      tempo:
-        condition: service_healthy
-      loki:
         condition: service_healthy
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}

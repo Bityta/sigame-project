@@ -14,7 +14,7 @@ services:
       - VITE_API_URL=http://${APP_SERVER_IP:-localhost}:8002
       - VITE_WS_URL=ws://${APP_SERVER_IP:-localhost}:8083
     ports:
-      - "3001:80"
+      - "80:80"
     networks:
       - sigame-network
     healthcheck:
