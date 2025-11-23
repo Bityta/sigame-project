@@ -3,8 +3,6 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [ main, develop, feature/** ]
-  push:
-    branches: [ main, develop ]
 
 env:
   GO_VERSION: '1.21'
