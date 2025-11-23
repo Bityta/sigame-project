@@ -264,11 +264,11 @@ jobs:
         run: |
           echo "Проверка доступности сервисов..."
           
-          # Grafana
-          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:3000/api/health | grep -q "200"; then
-            echo "✅ Grafana доступна"
+          # Unified Agent
+          if sudo docker ps | grep -q "sigame-unified-agent"; then
+            echo "✅ Unified Agent запущен"
           else
-            echo "⚠️ Grafana недоступна"
+            echo "⚠️ Unified Agent не запущен"
           fi
           
           # Prometheus

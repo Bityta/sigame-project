@@ -235,115 +235,24 @@ services:
       - sigame-network
     restart: on-failure
 
-  # Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: sigame-prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    ports:
-      - "9090:9090"
+  # Yandex Unified Agent для сбора метрик и логов
+  unified-agent:
+    image: cr.yandex/yc/unified-agent:latest
+    container_name: sigame-unified-agent
     volumes:
-      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    networks:
-      - sigame-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Tempo (Distributed Tracing) - DISABLED due to permission issues
-  tempo:
-    image: grafana/tempo:latest
-    container_name: sigame-tempo
-    command: ["-config.file=/etc/tempo/tempo.yml"]
-    profiles: ["observability"]  # Only start with --profile observability
-    ports:
-      - "3200:3200"   # Tempo HTTP
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-    volumes:
-      - ./infrastructure/tempo/tempo.yml:/etc/tempo/tempo.yml
-      - tempo-data:/tmp/tempo
-    networks:
-      - sigame-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Loki (Log Aggregation) - DISABLED due to permission issues
-  loki:
-    image: grafana/loki:latest
-    container_name: sigame-loki
-    command: ["-config.file=/etc/loki/loki.yml"]
-    profiles: ["observability"]  # Only start with --profile observability
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./infrastructure/loki/loki.yml:/etc/loki/loki.yml
-      - loki-data:/tmp/loki
-    networks:
-      - sigame-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Promtail (Log Shipper) - DISABLED (requires Loki)
-  promtail:
-    image: grafana/promtail:latest
-    container_name: sigame-promtail
-    command: ["-config.file=/etc/promtail/promtail.yml"]
-    profiles: ["observability"]  # Only start with --profile observability
-    volumes:
-      - ./infrastructure/promtail/promtail.yml:/etc/promtail/promtail.yml
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./infrastructure/unified-agent/config.yml:/etc/yandex/unified_agent/config.yml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    depends_on:
-      loki:
-        condition: service_healthy
-    networks:
-      - sigame-network
-    restart: unless-stopped
-
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: sigame-grafana
-    depends_on:
-      prometheus:
-        condition: service_healthy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
-      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
-      GF_SERVER_ROOT_URL: http://${APP_SERVER_IP:-localhost}:3000
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
-    networks:
-      - sigame-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - UA_CONFIG_PATH=/etc/yandex/unified_agent/config.yml
+      - FOLDER_ID=${YC_FOLDER_ID}
+    network_mode: "host"
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   sigame-network:
@@ -359,8 +268,4 @@ volumes:
   zookeeper-logs:
   kafka-data:
   minio-data:
-  prometheus-data:
-  grafana-data:
-  tempo-data:
-  loki-data:
 

@@ -1,0 +1,97 @@
+status:
+  port: 16241
+
+storages:
+  - name: main
+    plugin: fs
+    config:
+      directory: /tmp/unified_agent/storage
+      max_partition_size: 100mb
+      max_segment_size: 10mb
+
+channels:
+  - name: docker_logs
+    channel:
+      pipe:
+        - storage_ref:
+            name: main
+      output:
+        plugin: yc_logs
+        config:
+          folder_id: "${FOLDER_ID}"
+          message_queue_size: 1000
+          batch_size_limit: 100
+          timeout: 10s
+
+  - name: metrics
+    channel:
+      pipe:
+        - storage_ref:
+            name: main
+      output:
+        plugin: yc_metrics
+        config:
+          folder_id: "${FOLDER_ID}"
+          iam:
+            cloud_meta: {}
+
+routes:
+  # Docker container logs
+  - input:
+      plugin: docker_logs
+      config:
+        include_containers:
+          - "sigame-*"
+        parse_json: true
+    channel: docker_logs
+
+  # System metrics
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:9090/metrics
+        format:
+          prometheus: {}
+        namespace: sigame
+    channel: metrics
+
+  # Auth service metrics
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:8081/metrics
+        format:
+          prometheus: {}
+        namespace: sigame.auth
+    channel: metrics
+
+  # Lobby service metrics  
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:8082/actuator/prometheus
+        format:
+          prometheus: {}
+        namespace: sigame.lobby
+    channel: metrics
+
+  # Game service metrics
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:8083/metrics
+        format:
+          prometheus: {}
+        namespace: sigame.game
+    channel: metrics
+
+  # Pack service metrics
+  - input:
+      plugin: metrics_pull
+      config:
+        url: http://localhost:8084/metrics
+        format:
+          prometheus: {}
+        namespace: sigame.pack
+    channel: metrics
+

@@ -66,10 +66,9 @@ services:
       RATE_LIMIT_ATTEMPTS: 5
       RATE_LIMIT_WINDOW: 300
       
-      # Tracing (disabled)
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_SERVICE_NAME: auth-service
-      OTEL_TRACES_SAMPLER: always_on
+      # Logging
+      LOG_LEVEL: info
+      LOG_FORMAT: json
     ports:
       - "8081:8081"
       - "50051:50051"
@@ -122,10 +121,9 @@ services:
       # Server
       HTTP_PORT: 8082
       
-      # Tracing (disabled)
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_SERVICE_NAME: lobby-service
-      OTEL_TRACES_SAMPLER: always_on
+      # Logging
+      LOG_LEVEL: info
+      LOGGING_PATTERN_CONSOLE: '{"timestamp":"%d{ISO8601}","level":"%p","trace_id":"%X{traceId}","span_id":"%X{spanId}","service":"lobby-service","thread":"%t","logger":"%c{1}","message":"%m"}%n'
     ports:
       - "8082:8082"
     networks:
@@ -178,10 +176,9 @@ services:
       GRPC_PORT: 50053
       GIN_MODE: release
       
-      # Tracing (disabled)
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_SERVICE_NAME: game-service
-      OTEL_TRACES_SAMPLER: always_on
+      # Logging
+      LOG_LEVEL: info
+      LOG_FORMAT: json
     ports:
       - "8083:8083"
       - "50053:50053"
@@ -218,10 +215,9 @@ services:
       HTTP_PORT: 8084
       GRPC_PORT: 50055
       
-      # Tracing (disabled)
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
-      OTEL_SERVICE_NAME: pack-service
-      OTEL_TRACES_SAMPLER: always_on
+      # Logging
+      LOG_LEVEL: info
+      LOG_FORMAT: json
     ports:
       - "8084:8084"
       - "50055:50055"
