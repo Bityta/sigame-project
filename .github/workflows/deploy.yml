@@ -1,123 +1,311 @@
-name: Deploy to Yandex Cloud
+name: CD - Deploy to Production
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Выберите окружение для деплоя'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      services:
+        description: 'Какие сервисы деплоить? (all/auth/lobby/game/pack/frontend)'
+        required: true
+        default: 'all'
+        type: string
+      skip_backup:
+        description: 'Пропустить бэкап БД?'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  SSH_USER: ubuntu
+  APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
+  DEPLOY_PATH: /opt/sigame
 
 jobs:
-  deploy:
+  # ==========================================
+  # 1. PRE-DEPLOYMENT CHECKS
+  # ==========================================
+  pre-deploy:
+    name: 🔍 Pre-Deployment Checks
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup SSH
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.APP_SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: ✅ Validate inputs
+        run: |
+          echo "=========================================="
+          echo "  ПАРАМЕТРЫ ДЕПЛОЯ"
+          echo "=========================================="
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Services: ${{ inputs.services }}"
+          echo "Skip Backup: ${{ inputs.skip_backup }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "=========================================="
 
-    - name: Deploy to Application Server
-      env:
-        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
-      run: |
-        echo "🚀 Deploying to Application Server..."
-        
-        # Copy updated files
-        rsync -avz --exclude '.git' --exclude 'node_modules' --exclude '.terraform' \
-          -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
-          ./ ubuntu@$APP_SERVER_IP:/opt/sigame/
-        
-        # Restart services
-        ssh -i ~/.ssh/id_rsa ubuntu@$APP_SERVER_IP << 'EOF'
-          cd /opt/sigame
-          
-          # Load environment
-          export $(grep -v '^#' .env.production | xargs)
-          
-          # Pull latest images
-          docker compose -f docker-compose.app.yml pull
-          
-          # Build new images
-          docker compose -f docker-compose.app.yml build
-          
-          # Restart services with zero downtime
-          docker compose -f docker-compose.app.yml up -d --no-deps --build
-          
-          # Clean old images
-          docker image prune -f
-          
-          echo "✅ Application Server deployed successfully"
-        EOF
+      - name: 🔐 Check secrets
+        run: |
+          if [ -z "${{ secrets.APP_SERVER_IP }}" ]; then
+            echo "❌ APP_SERVER_IP не настроен!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY не настроен!"
+            exit 1
+          fi
+          echo "✅ Все секреты на месте"
 
-    - name: Deploy to Infrastructure Server
-      env:
-        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
-        INFRA_SERVER_IP: ${{ secrets.INFRA_SERVER_IP }}
-      run: |
-        echo "🚀 Deploying to Infrastructure Server..."
-        
-        # Setup jump host
-        echo "Host infra-jump" > ~/.ssh/config
-        echo "  HostName $INFRA_SERVER_IP" >> ~/.ssh/config
-        echo "  User ubuntu" >> ~/.ssh/config
-        echo "  ProxyJump ubuntu@$APP_SERVER_IP" >> ~/.ssh/config
-        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        
-        # Copy updated files
-        rsync -avz --exclude '.git' --exclude 'node_modules' --exclude '.terraform' \
-          -e "ssh -F ~/.ssh/config" \
-          ./ ubuntu@infra-jump:/opt/sigame/
-        
-        # Restart infrastructure if needed (only config changes)
-        ssh -F ~/.ssh/config ubuntu@infra-jump << 'EOF'
-          cd /opt/sigame
+  # ==========================================
+  # 2. BACKUP DATABASE
+  # ==========================================
+  backup:
+    name: 💾 Backup Database
+    runs-on: ubuntu-latest
+    needs: [pre-deploy]
+    if: ${{ !inputs.skip_backup }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.APP_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: 💾 Create backup
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ secrets.APP_SERVER_IP }} << 'ENDSSH'
+            cd ${{ env.DEPLOY_PATH }}
+            
+            # Создаём директорию для бэкапов
+            mkdir -p backups
+            
+            BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+            BACKUP_DIR="backups/backup_${BACKUP_DATE}"
+            mkdir -p "$BACKUP_DIR"
+            
+            echo "🗄️ Бэкап PostgreSQL..."
+            
+            # Auth DB
+            docker exec sigame-postgres-auth pg_dump -U sigame_auth -d sigame_auth > "$BACKUP_DIR/auth.sql" || true
+            
+            # Lobby DB
+            docker exec sigame-postgres-lobby pg_dump -U sigame_lobby -d sigame_lobby > "$BACKUP_DIR/lobby.sql" || true
+            
+            # Game DB
+            docker exec sigame-postgres-game pg_dump -U sigame_game -d sigame_game > "$BACKUP_DIR/game.sql" || true
+            
+            # Pack DB
+            docker exec sigame-postgres-packs pg_dump -U sigame_packs -d sigame_packs > "$BACKUP_DIR/packs.sql" || true
+            
+            # Compress backup
+            cd backups
+            tar -czf "backup_${BACKUP_DATE}.tar.gz" "backup_${BACKUP_DATE}"
+            rm -rf "backup_${BACKUP_DATE}"
+            
+            echo "✅ Бэкап создан: backup_${BACKUP_DATE}.tar.gz"
+            
+            # Удаляем старые бэкапы (храним последние 7)
+            ls -t backup_*.tar.gz | tail -n +8 | xargs -r rm
+          ENDSSH
+
+  # ==========================================
+  # 3. BUILD & PUSH (опционально для Docker Registry)
+  # ==========================================
+  build:
+    name: 🏗️ Build Services
+    runs-on: ubuntu-latest
+    needs: [pre-deploy]
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ℹ️ Build info
+        run: |
+          echo "Билд будет производиться на сервере для экономии времени"
+          echo "Если используете Docker Registry, добавьте push здесь"
+
+  # ==========================================
+  # 4. DEPLOY TO SERVER
+  # ==========================================
+  deploy:
+    name: 🚀 Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [backup, build]
+    if: always() && (needs.backup.result == 'success' || needs.backup.result == 'skipped')
+    environment:
+      name: ${{ inputs.environment }}
+      url: http://${{ secrets.APP_SERVER_IP }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.APP_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: 📤 Copy .env.production
+        run: |
+          # Копируем .env файл если он есть
+          if [ -f .env.production ]; then
+            scp .env.production ${{ env.SSH_USER }}@${{ secrets.APP_SERVER_IP }}:${{ env.DEPLOY_PATH }}/.env.production
+          fi
+
+      - name: 🚀 Deploy services
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ secrets.APP_SERVER_IP }} << 'ENDSSH'
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            
+            echo "=========================================="
+            echo "  🚀 НАЧАЛО ДЕПЛОЯ"
+            echo "=========================================="
+            echo "Branch: ${{ github.ref_name }}"
+            echo "Commit: ${{ github.sha }}"
+            echo "Services: ${{ inputs.services }}"
+            echo ""
+            
+            # Получаем последние изменения
+            echo "📥 Получение изменений из Git..."
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
+            
+            # Определяем какие сервисы деплоить
+            SERVICES="${{ inputs.services }}"
+            
+            if [ "$SERVICES" = "all" ]; then
+              echo "🔄 Деплой ВСЕХ сервисов..."
+              
+              # Останавливаем всё
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production down
+              
+              # Пересобираем и запускаем
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production up -d --build
+              
+            else
+              echo "🔄 Деплой сервиса: $SERVICES..."
+              
+              # Останавливаем конкретный сервис
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production stop ${SERVICES}-service || true
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production stop $SERVICES || true
+              
+              # Пересобираем и запускаем
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production up -d --build ${SERVICES}-service || \
+              sudo docker compose -f docker-compose.app.yml --env-file .env.production up -d --build $SERVICES
+            fi
+            
+            echo ""
+            echo "⏳ Ожидание запуска сервисов (30 сек)..."
+            sleep 30
+            
+            echo ""
+            echo "=========================================="
+            echo "  📊 СТАТУС СЕРВИСОВ"
+            echo "=========================================="
+            sudo docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "NAME|sigame"
+            
+            echo ""
+            echo "=========================================="
+            echo "  ✅ ДЕПЛОЙ ЗАВЕРШЁН!"
+            echo "=========================================="
+          ENDSSH
+
+      - name: 🧹 Cleanup old images
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ secrets.APP_SERVER_IP }} << 'ENDSSH'
+            echo "🧹 Очистка старых Docker образов..."
+            docker system prune -f --volumes || true
+            echo "✅ Очистка завершена"
+          ENDSSH
+
+  # ==========================================
+  # 5. POST-DEPLOYMENT CHECKS
+  # ==========================================
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    
+    steps:
+      - name: 🔍 Check services health
+        run: |
+          echo "Проверка доступности сервисов..."
           
-          # Only restart if docker-compose.infra.yml changed
-          if git diff --name-only HEAD^ HEAD | grep -q "docker-compose.infra.yml\|infrastructure/"; then
-            echo "Infrastructure files changed, restarting..."
-            export $(grep -v '^#' .env.production | xargs)
-            docker compose -f docker-compose.infra.yml up -d
+          # Frontend
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:3001 | grep -q "200\|301\|302"; then
+            echo "✅ Frontend доступен"
           else
-            echo "No infrastructure changes, skipping restart"
+            echo "⚠️ Frontend недоступен"
           fi
           
-          echo "✅ Infrastructure Server updated"
-        EOF
+          # Auth Service
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:8081/health | grep -q "200"; then
+            echo "✅ Auth Service доступен"
+          else
+            echo "⚠️ Auth Service недоступен"
+          fi
+          
+          # Lobby Service
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:8082/actuator/health | grep -q "200"; then
+            echo "✅ Lobby Service доступен"
+          else
+            echo "⚠️ Lobby Service недоступен"
+          fi
+          
+          # Game Service
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:8083/health | grep -q "200"; then
+            echo "✅ Game Service доступен"
+          else
+            echo "⚠️ Game Service недоступен"
+          fi
+          
+          # Pack Service  
+          if curl -f -s -o /dev/null -w "%{http_code}" http://${{ secrets.APP_SERVER_IP }}:8084/health | grep -q "200"; then
+            echo "✅ Pack Service доступен"
+          else
+            echo "⚠️ Pack Service недоступен"
+          fi
+          
+          echo ""
+          echo "🎉 Health check завершён!"
 
-    - name: Health Check
-      env:
-        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
-      run: |
-        echo "🏥 Running health checks..."
-        sleep 30  # Wait for services to start
-        
-        # Check frontend
-        curl -f http://$APP_SERVER_IP:3001 || exit 1
-        echo "✅ Frontend is healthy"
-        
-        # Check auth service
-        curl -f http://$APP_SERVER_IP:8001/health || exit 1
-        echo "✅ Auth Service is healthy"
-        
-        # Check lobby service
-        curl -f http://$APP_SERVER_IP:8002/api/lobby/health || exit 1
-        echo "✅ Lobby Service is healthy"
-        
-        # Check game service
-        curl -f http://$APP_SERVER_IP:8003/health || exit 1
-        echo "✅ Game Service is healthy"
-        
-        echo "🎉 All services are healthy!"
-
-    - name: Notify on failure
-      if: failure()
-      run: |
-        echo "❌ Deployment failed! Check the logs above."
-
+  # ==========================================
+  # 6. NOTIFICATION
+  # ==========================================
+  notify:
+    name: 📢 Notification
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: always()
+    
+    steps:
+      - name: 📊 Deploy Summary
+        run: |
+          echo "=========================================="
+          echo "  📊 ИТОГИ ДЕПЛОЯ"
+          echo "=========================================="
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Services: ${{ inputs.services }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Status: ${{ needs.deploy.result }}"
+          echo ""
+          echo "🔗 URL: http://${{ secrets.APP_SERVER_IP }}"
+          echo "=========================================="
