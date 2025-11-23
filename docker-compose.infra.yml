@@ -1,0 +1,367 @@
+version: '3.9'
+
+# Docker Compose для Infrastructure Server (Сервер 2)
+# Содержит базы данных, очереди сообщений и мониторинг
+
+services:
+  # PostgreSQL - Auth Database
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: sigame-postgres-auth
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
+      POSTGRES_USER: ${AUTH_DB_USER:-authuser}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-authpass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-auth-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-authuser} -d ${AUTH_DB_NAME:-auth_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL - Lobby Database
+  postgres-lobby:
+    image: postgres:15-alpine
+    container_name: sigame-postgres-lobby
+    environment:
+      POSTGRES_DB: ${LOBBY_DB_NAME:-lobby_db}
+      POSTGRES_USER: ${LOBBY_DB_USER:-lobbyuser}
+      POSTGRES_PASSWORD: ${LOBBY_DB_PASSWORD:-lobbypass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-lobby-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-lobby-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOBBY_DB_USER:-lobbyuser} -d ${LOBBY_DB_NAME:-lobby_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL - Packs Database
+  postgres-packs:
+    image: postgres:15-alpine
+    container_name: sigame-postgres-packs
+    environment:
+      POSTGRES_DB: ${PACKS_DB_NAME:-packs_db}
+      POSTGRES_USER: ${PACKS_DB_USER:-packsuser}
+      POSTGRES_PASSWORD: ${PACKS_DB_PASSWORD:-packspass}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-packs-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-packs-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PACKS_DB_USER:-packsuser} -d ${PACKS_DB_NAME:-packs_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL - Game Database
+  postgres-game:
+    image: postgres:15-alpine
+    container_name: sigame-postgres-game
+    environment:
+      POSTGRES_DB: ${GAME_DB_NAME:-game_db}
+      POSTGRES_USER: ${GAME_DB_USER:-gameuser}
+      POSTGRES_PASSWORD: ${GAME_DB_PASSWORD:-gamepass}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-game-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-game-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GAME_DB_USER:-gameuser} -d ${GAME_DB_NAME:-game_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: sigame-redis
+    command: redis-server /usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: sigame-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: sigame-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${INFRA_SERVER_IP:-localhost}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # Kafka Init (creates topics)
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: sigame-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/init-topics.sh"]
+    volumes:
+      - ./infrastructure/kafka/init-topics.sh:/init-topics.sh
+    networks:
+      - sigame-network
+    restart: on-failure
+
+  # MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: sigame-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO Init (creates buckets)
+  minio-init:
+    image: minio/mc:latest
+    container_name: sigame-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/init-buckets.sh"]
+    volumes:
+      - ./infrastructure/minio/init-buckets.sh:/init-buckets.sh
+    networks:
+      - sigame-network
+    restart: on-failure
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sigame-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Tempo (Distributed Tracing)
+  tempo:
+    image: grafana/tempo:latest
+    container_name: sigame-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./infrastructure/tempo/tempo.yml:/etc/tempo/tempo.yml
+      - tempo-data:/tmp/tempo
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Loki (Log Aggregation)
+  loki:
+    image: grafana/loki:latest
+    container_name: sigame-loki
+    command: ["-config.file=/etc/loki/loki.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infrastructure/loki/loki.yml:/etc/loki/loki.yml
+      - loki-data:/tmp/loki
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Promtail (Log Shipper)
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sigame-promtail
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./infrastructure/promtail/promtail.yml:/etc/promtail/promtail.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - sigame-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sigame-grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+      GF_SERVER_ROOT_URL: http://${APP_SERVER_IP:-localhost}:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  sigame-network:
+    driver: bridge
+
+volumes:
+  postgres-auth-data:
+  postgres-lobby-data:
+  postgres-packs-data:
+  postgres-game-data:
+  redis-data:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+  minio-data:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+  loki-data:
+

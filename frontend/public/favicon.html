@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Favicon Generator</title></head>
+<body>
+<canvas id="c" width="32" height="32"></canvas>
+<script>
+const c = document.getElementById('c').getContext('2d');
+c.fillStyle = '#4F46E5';
+c.fillRect(0, 0, 32, 32);
+c.fillStyle = '#FFF';
+c.font = 'bold 24px Arial';
+c.textAlign = 'center';
+c.textBaseline = 'middle';
+c.fillText('?', 16, 18);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "SIGame 2.0",
+  "short_name": "SIGame",
+  "description": "Своя Игра онлайн",
+  "icons": [
+    {
+      "src": "/game-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#4F46E5",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/"
+}

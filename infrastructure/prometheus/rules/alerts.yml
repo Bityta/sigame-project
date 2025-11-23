@@ -1,0 +1,281 @@
+# ==============================================
+# SIGame 2.0 - Prometheus Alert Rules
+# ==============================================
+
+groups:
+  # ========================================
+  # Infrastructure Alerts
+  # ========================================
+  - name: infrastructure
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job!="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 2 minutes."
+          
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for more than 5 minutes (current: {{ $value }}%)"
+          
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% for more than 5 minutes (current: {{ $value }}%)"
+          
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"} * 100) < 15
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "Disk space running out on {{ $labels.instance }}"
+          description: "Disk {{ $labels.mountpoint }} has less than 15% free space (current: {{ $value }}%)"
+
+  # ========================================
+  # Database Alerts
+  # ========================================
+  - name: database
+    interval: 30s
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "PostgreSQL {{ $labels.database }} is down"
+          description: "PostgreSQL database {{ $labels.database }} has been down for more than 1 minute."
+          
+      - alert: PostgresHighConnections
+        expr: (pg_stat_database_numbackends / pg_settings_max_connections) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "High connection usage on {{ $labels.database }}"
+          description: "PostgreSQL {{ $labels.database }} is using more than 80% of max connections (current: {{ $value }}%)"
+          
+      - alert: PostgresSlowQueries
+        expr: rate(pg_stat_activity_max_tx_duration[5m]) > 60
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Slow queries detected on {{ $labels.database }}"
+          description: "PostgreSQL {{ $labels.database }} has queries running for more than 60 seconds."
+          
+      - alert: PostgresDeadlocks
+        expr: rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Deadlocks detected on {{ $labels.database }}"
+          description: "PostgreSQL {{ $labels.database }} has detected deadlocks."
+          
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute."
+          
+      - alert: RedisHighMemoryUsage
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using more than 85% of allocated memory (current: {{ $value }}%)"
+          
+      - alert: RedisHighEvictionRate
+        expr: rate(redis_evicted_keys_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "High eviction rate in Redis"
+          description: "Redis is evicting more than 100 keys per second (current: {{ $value }}/s)"
+
+  # ========================================
+  # Application Service Alerts
+  # ========================================
+  - name: application
+    interval: 15s
+    rules:
+      - alert: HighErrorRate
+        expr: (rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has error rate above 5% (current: {{ $value }}%)"
+          
+      - alert: CriticalErrorRate
+        expr: (rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) * 100 > 10
+        for: 2m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "Critical error rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has error rate above 10% (current: {{ $value }}%)"
+          
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: "High response time on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has p95 response time above 1s (current: {{ $value }}s)"
+          
+      - alert: HighRequestRate
+        expr: rate(http_requests_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: info
+          category: application
+        annotations:
+          summary: "High request rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is handling more than 1000 req/s (current: {{ $value }} req/s)"
+
+  # ========================================
+  # Game-Specific Alerts
+  # ========================================
+  - name: game
+    interval: 15s
+    rules:
+      - alert: HighActiveGames
+        expr: active_games_total > 100
+        for: 5m
+        labels:
+          severity: info
+          category: game
+        annotations:
+          summary: "High number of active games"
+          description: "There are more than 100 active games (current: {{ $value }})"
+          
+      - alert: GameServiceHighLatency
+        expr: histogram_quantile(0.95, rate(game_action_duration_seconds_bucket[5m])) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+          category: game
+        annotations:
+          summary: "High game action latency"
+          description: "Game action p95 latency is above 500ms (current: {{ $value }}s)"
+          
+      - alert: WebSocketConnectionsHigh
+        expr: websocket_connections_active > 500
+        for: 5m
+        labels:
+          severity: warning
+          category: game
+        annotations:
+          summary: "High number of WebSocket connections"
+          description: "Active WebSocket connections exceed 500 (current: {{ $value }})"
+          
+      - alert: GameTimeoutRateHigh
+        expr: rate(game_timeouts_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: game
+        annotations:
+          summary: "High game timeout rate"
+          description: "Game timeout rate is above 10/min (current: {{ $value }}/s)"
+
+  # ========================================
+  # Kafka Alerts
+  # ========================================
+  - name: kafka
+    interval: 30s
+    rules:
+      - alert: KafkaDown
+        expr: kafka_brokers == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: messaging
+        annotations:
+          summary: "Kafka cluster is down"
+          description: "No Kafka brokers are available."
+          
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_topic_partition_under_replicated_partition > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "Kafka has under-replicated partitions"
+          description: "Topic {{ $labels.topic }} has {{ $value }} under-replicated partitions."
+          
+      - alert: KafkaConsumerLag
+        expr: kafka_consumergroup_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer group {{ $labels.consumergroup }} has lag > 1000 (current: {{ $value }})"
+
+  # ========================================
+  # Storage Alerts (MinIO)
+  # ========================================
+  - name: storage
+    interval: 30s
+    rules:
+      - alert: MinIODown
+        expr: up{job="minio"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: "MinIO storage is down"
+          description: "MinIO has been down for more than 2 minutes."
+          
+      - alert: MinIOHighDiskUsage
+        expr: (minio_disk_storage_used_bytes / minio_disk_storage_total_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: "MinIO disk usage is high"
+          description: "MinIO disk usage is above 85% (current: {{ $value }}%)"
+

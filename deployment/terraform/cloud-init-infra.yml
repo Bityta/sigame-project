@@ -1,0 +1,44 @@
+#cloud-config
+
+hostname: ${hostname}
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - git
+  - make
+  - htop
+  - net-tools
+  - postgresql-client
+
+runcmd:
+  # Set timezone
+  - timedatectl set-timezone Europe/Moscow
+  
+  # Create working directory
+  - mkdir -p /opt/sigame
+  - chown ubuntu:ubuntu /opt/sigame
+  
+  # Create backup directory
+  - mkdir -p /backups/postgresql
+  - chown ubuntu:ubuntu /backups
+
+write_files:
+  - path: /etc/sysctl.d/99-database.conf
+    content: |
+      # PostgreSQL optimization
+      vm.swappiness = 10
+      vm.overcommit_memory = 2
+      vm.overcommit_ratio = 80
+      
+      # Network optimization
+      net.core.somaxconn = 1024
+      net.ipv4.tcp_max_syn_backlog = 2048
+    permissions: '0644'
+

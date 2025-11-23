@@ -1,0 +1,72 @@
+/* RoomSettings Styles */
+
+.room-settings {
+  width: 100%;
+}
+
+.room-settings__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1rem 0;
+}
+
+.room-settings__view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.room-settings__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.room-settings__row:last-child {
+  border-bottom: none;
+}
+
+.room-settings__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.room-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.room-settings__field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.room-settings__slider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.room-settings__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.room-settings__checkbox input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
+
+.room-settings__checkbox label {
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+}
+

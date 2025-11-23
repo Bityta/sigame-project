@@ -1,0 +1,39 @@
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git make protoc protobuf-dev
+
+# Set working directory
+WORKDIR /app
+
+# Copy all source code
+COPY . .
+
+# Download dependencies and generate go.sum
+RUN go mod download && go mod tidy
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
+
+# Runtime stage
+FROM alpine:latest
+
+# Install ca-certificates for HTTPS and wget for healthcheck
+RUN apk --no-cache add ca-certificates wget
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/server .
+
+# Expose ports
+EXPOSE 8003 8083 50053 9090
+
+# Healthcheck
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8003/health || exit 1
+
+# Run the binary
+CMD ["./server"]
+

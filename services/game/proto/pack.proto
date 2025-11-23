@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package pack;
+
+// Pack Service - gRPC definitions
+service PackService {
+  // Get basic pack information
+  rpc GetPackInfo(GetPackInfoRequest) returns (PackInfoResponse);
+  
+  // Get full pack content with all questions
+  rpc GetPackContent(GetPackContentRequest) returns (PackContentResponse);
+  
+  // Validate if pack exists
+  rpc ValidatePackExists(ValidatePackRequest) returns (ValidatePackResponse);
+}
+
+// Request to get pack info
+message GetPackInfoRequest {
+  string pack_id = 1;
+}
+
+// Pack information response
+message PackInfoResponse {
+  string id = 1;
+  string name = 2;
+  string author = 3;
+  string description = 4;
+  int32 rounds_count = 5;
+  int32 questions_count = 6;
+  string created_at = 7;
+}
+
+// Request to get pack content
+message GetPackContentRequest {
+  string pack_id = 1;
+}
+
+// Question message
+message Question {
+  string id = 1;
+  int32 price = 2;
+  string text = 3;
+  string answer = 4;
+  string media_type = 5;
+}
+
+// Theme message
+message Theme {
+  string id = 1;
+  string name = 2;
+  repeated Question questions = 3;
+}
+
+// Round message
+message Round {
+  string id = 1;
+  int32 round_number = 2;
+  string name = 3;
+  repeated Theme themes = 4;
+}
+
+// Pack content response
+message PackContentResponse {
+  string id = 1;
+  string name = 2;
+  string author = 3;
+  string description = 4;
+  int32 rounds_count = 5;
+  int32 questions_count = 6;
+  string created_at = 7;
+  repeated Round rounds = 8;
+}
+
+// Request to validate pack exists
+message ValidatePackRequest {
+  string pack_id = 1;
+}
+
+// Validate pack response
+message ValidatePackResponse {
+  bool exists = 1;
+  string pack_id = 2;
+}
+
+option go_package = "github.com/sigame/game/proto/pack";
+

@@ -1,0 +1,123 @@
+name: Deploy to Yandex Cloud
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.APP_SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to Application Server
+      env:
+        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
+      run: |
+        echo "🚀 Deploying to Application Server..."
+        
+        # Copy updated files
+        rsync -avz --exclude '.git' --exclude 'node_modules' --exclude '.terraform' \
+          -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+          ./ ubuntu@$APP_SERVER_IP:/opt/sigame/
+        
+        # Restart services
+        ssh -i ~/.ssh/id_rsa ubuntu@$APP_SERVER_IP << 'EOF'
+          cd /opt/sigame
+          
+          # Load environment
+          export $(grep -v '^#' .env.production | xargs)
+          
+          # Pull latest images
+          docker compose -f docker-compose.app.yml pull
+          
+          # Build new images
+          docker compose -f docker-compose.app.yml build
+          
+          # Restart services with zero downtime
+          docker compose -f docker-compose.app.yml up -d --no-deps --build
+          
+          # Clean old images
+          docker image prune -f
+          
+          echo "✅ Application Server deployed successfully"
+        EOF
+
+    - name: Deploy to Infrastructure Server
+      env:
+        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
+        INFRA_SERVER_IP: ${{ secrets.INFRA_SERVER_IP }}
+      run: |
+        echo "🚀 Deploying to Infrastructure Server..."
+        
+        # Setup jump host
+        echo "Host infra-jump" > ~/.ssh/config
+        echo "  HostName $INFRA_SERVER_IP" >> ~/.ssh/config
+        echo "  User ubuntu" >> ~/.ssh/config
+        echo "  ProxyJump ubuntu@$APP_SERVER_IP" >> ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        
+        # Copy updated files
+        rsync -avz --exclude '.git' --exclude 'node_modules' --exclude '.terraform' \
+          -e "ssh -F ~/.ssh/config" \
+          ./ ubuntu@infra-jump:/opt/sigame/
+        
+        # Restart infrastructure if needed (only config changes)
+        ssh -F ~/.ssh/config ubuntu@infra-jump << 'EOF'
+          cd /opt/sigame
+          
+          # Only restart if docker-compose.infra.yml changed
+          if git diff --name-only HEAD^ HEAD | grep -q "docker-compose.infra.yml\|infrastructure/"; then
+            echo "Infrastructure files changed, restarting..."
+            export $(grep -v '^#' .env.production | xargs)
+            docker compose -f docker-compose.infra.yml up -d
+          else
+            echo "No infrastructure changes, skipping restart"
+          fi
+          
+          echo "✅ Infrastructure Server updated"
+        EOF
+
+    - name: Health Check
+      env:
+        APP_SERVER_IP: ${{ secrets.APP_SERVER_IP }}
+      run: |
+        echo "🏥 Running health checks..."
+        sleep 30  # Wait for services to start
+        
+        # Check frontend
+        curl -f http://$APP_SERVER_IP:3001 || exit 1
+        echo "✅ Frontend is healthy"
+        
+        # Check auth service
+        curl -f http://$APP_SERVER_IP:8001/health || exit 1
+        echo "✅ Auth Service is healthy"
+        
+        # Check lobby service
+        curl -f http://$APP_SERVER_IP:8002/api/lobby/health || exit 1
+        echo "✅ Lobby Service is healthy"
+        
+        # Check game service
+        curl -f http://$APP_SERVER_IP:8003/health || exit 1
+        echo "✅ Game Service is healthy"
+        
+        echo "🎉 All services are healthy!"
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed! Check the logs above."
+

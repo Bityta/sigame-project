@@ -1,0 +1,30 @@
+# Yandex Cloud Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+# OAuth token from https://oauth.yandex.ru/authorize?response_type=token&client_id=1a6990aa636648e9b2ef855fa7bec2fb
+yandex_cloud_token = "YOUR_OAUTH_TOKEN_HERE"
+
+# Cloud ID (get from: yc config list)
+cloud_id = "YOUR_CLOUD_ID"
+
+# Folder ID (get from: yc config list)
+folder_id = "YOUR_FOLDER_ID"
+
+# Zone (default: ru-central1-a)
+zone = "ru-central1-a"
+
+# Path to your SSH public key (default: ~/.ssh/id_rsa.pub)
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# Project settings
+project_name = "sigame"
+environment  = "prod"
+
+# Server configurations (можно оставить по умолчанию)
+# app_server_cores      = 4
+# app_server_memory     = 8
+# app_server_disk_size  = 50
+# infra_server_cores    = 4
+# infra_server_memory   = 16
+# infra_server_disk_size = 100
+

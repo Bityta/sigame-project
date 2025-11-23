@@ -1,0 +1,171 @@
+# ==============================================
+# SIGame 2.0 - Promtail Configuration
+# Advanced log collection setup
+# ==============================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+  log_format: json
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    timeout: 10s
+    batchwait: 1s
+    batchsize: 1048576  # 1MB
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+
+scrape_configs:
+  # ==============================================
+  # Docker Container Logs
+  # ==============================================
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["logging=true"]
+    
+    relabel_configs:
+      # Extract container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      
+      # Extract compose service name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      
+      # Extract compose project
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      
+      # Extract log stream (stdout/stderr)
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      
+      # Extract container ID
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+        regex: '(.{12}).*'
+        replacement: '$1'
+      
+      # Add environment label
+      - target_label: 'environment'
+        replacement: 'production'
+    
+    pipeline_stages:
+      # ==============================================
+      # JSON Log Parsing
+      # ==============================================
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            message: message
+            msg: msg
+            trace_id: trace_id
+            span_id: span_id
+            service_name: service
+            logger: logger
+            error: error
+            method: method
+            path: path
+            status: status
+            duration: duration
+            user_id: user_id
+            room_id: room_id
+            game_id: game_id
+      
+      # ==============================================
+      # Timestamp Extraction
+      # ==============================================
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - "2006-01-02T15:04:05Z07:00"
+            - "2006-01-02 15:04:05"
+      
+      # ==============================================
+      # Label Extraction
+      # ==============================================
+      - labels:
+          level:
+          trace_id:
+          span_id:
+          service_name:
+          logger:
+          method:
+          status:
+      
+      # ==============================================
+      # Level Normalization (DEBUG/INFO/WARN/ERROR/FATAL)
+      # ==============================================
+      - template:
+          source: level
+          template: '{{ if .level }}{{ .level | ToUpper }}{{ else }}INFO{{ end }}'
+      
+      # ==============================================
+      # Message Output
+      # ==============================================
+      - output:
+          source: message
+      
+      # ==============================================
+      # Metrics Generation
+      # ==============================================
+      - metrics:
+          # Count logs by level
+          log_lines_total:
+            type: Counter
+            description: "Total number of log lines"
+            source: level
+            config:
+              action: inc
+          
+          # Count errors
+          log_errors_total:
+            type: Counter
+            description: "Total number of error logs"
+            source: level
+            config:
+              match_all: true
+              action: inc
+            prefix: loki_
+            match_stage:
+              pipeline_name: error_counter
+              selector: '{level=~"ERROR|FATAL"}'
+  
+  # ==============================================
+  # System Logs (optional)
+  # ==============================================
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          __path__: /var/log/*.log
+    
+    pipeline_stages:
+      - match:
+          selector: '{job="system"}'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\S+ \S+) (?P<level>\w+) (?P<message>.+)$'
+            - labels:
+                level:
+            - timestamp:
+                source: timestamp
+                format: "Jan 02 15:04:05"
+

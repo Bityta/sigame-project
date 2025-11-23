@@ -1,0 +1,153 @@
+package websocket
+
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+	"github.com/sigame/game/internal/domain"
+)
+
+// MessageType represents the type of WebSocket message
+type MessageType string
+
+const (
+	// Client -> Server messages
+	MessageTypeReady          MessageType = "READY"
+	MessageTypeSelectQuestion MessageType = "SELECT_QUESTION"
+	MessageTypePressButton    MessageType = "PRESS_BUTTON"
+	MessageTypeSubmitAnswer   MessageType = "SUBMIT_ANSWER"
+	MessageTypeJudgeAnswer    MessageType = "JUDGE_ANSWER"
+
+	// Server -> Client messages
+	MessageTypeStateUpdate     MessageType = "STATE_UPDATE"
+	MessageTypeQuestionSelected MessageType = "QUESTION_SELECTED"
+	MessageTypeButtonPressed   MessageType = "BUTTON_PRESSED"
+	MessageTypeAnswerResult    MessageType = "ANSWER_RESULT"
+	MessageTypeRoundComplete   MessageType = "ROUND_COMPLETE"
+	MessageTypeGameComplete    MessageType = "GAME_COMPLETE"
+	MessageTypeError           MessageType = "ERROR"
+)
+
+// ClientMessage represents a message from client to server
+type ClientMessage struct {
+	Type    MessageType            `json:"type"`
+	UserID  uuid.UUID              `json:"user_id"`
+	GameID  uuid.UUID              `json:"game_id"`
+	Payload map[string]interface{} `json:"payload,omitempty"`
+}
+
+// ServerMessage represents a message from server to client
+type ServerMessage struct {
+	Type    MessageType `json:"type"`
+	Payload interface{} `json:"payload,omitempty"`
+}
+
+// SelectQuestionPayload represents the payload for selecting a question
+type SelectQuestionPayload struct {
+	ThemeID    string `json:"theme_id"`
+	QuestionID string `json:"question_id"`
+}
+
+// SubmitAnswerPayload represents the payload for submitting an answer
+type SubmitAnswerPayload struct {
+	Answer string `json:"answer"`
+}
+
+// JudgeAnswerPayload represents the payload for judging an answer
+type JudgeAnswerPayload struct {
+	UserID  uuid.UUID `json:"user_id"`
+	Correct bool      `json:"correct"`
+}
+
+// ButtonPressedPayload represents the payload when a button is pressed
+type ButtonPressedPayload struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Username  string    `json:"username"`
+	LatencyMS int64     `json:"latency_ms"`
+}
+
+// AnswerResultPayload represents the payload for answer result
+type AnswerResultPayload struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Username  string    `json:"username"`
+	Correct   bool      `json:"correct"`
+	Answer    string    `json:"answer,omitempty"`
+	Score     int       `json:"score"`
+	ScoreDelta int      `json:"score_delta"`
+}
+
+// RoundCompletePayload represents the payload for round completion
+type RoundCompletePayload struct {
+	RoundNumber int                  `json:"round_number"`
+	Scores      []domain.PlayerScore `json:"scores"`
+	NextRound   *int                 `json:"next_round,omitempty"`
+}
+
+// GameCompletePayload represents the payload for game completion
+type GameCompletePayload struct {
+	Winners []domain.PlayerScore `json:"winners"`
+	Scores  []domain.PlayerScore `json:"scores"`
+}
+
+// ErrorPayload represents an error message
+type ErrorPayload struct {
+	Message string `json:"message"`
+	Code    string `json:"code,omitempty"`
+}
+
+// NewClientMessage creates a ClientMessage from JSON bytes
+func NewClientMessage(data []byte) (*ClientMessage, error) {
+	var msg ClientMessage
+	if err := json.Unmarshal(data, &msg); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+// NewServerMessage creates a new server message
+func NewServerMessage(msgType MessageType, payload interface{}) *ServerMessage {
+	return &ServerMessage{
+		Type:    msgType,
+		Payload: payload,
+	}
+}
+
+// ToJSON converts ServerMessage to JSON bytes
+func (m *ServerMessage) ToJSON() ([]byte, error) {
+	return json.Marshal(m)
+}
+
+// NewStateUpdateMessage creates a state update message
+func NewStateUpdateMessage(state *domain.GameState) *ServerMessage {
+	return NewServerMessage(MessageTypeStateUpdate, state)
+}
+
+// NewButtonPressedMessage creates a button pressed message
+func NewButtonPressedMessage(userID uuid.UUID, username string, latencyMS int64) *ServerMessage {
+	return NewServerMessage(MessageTypeButtonPressed, ButtonPressedPayload{
+		UserID:    userID,
+		Username:  username,
+		LatencyMS: latencyMS,
+	})
+}
+
+// NewAnswerResultMessage creates an answer result message
+func NewAnswerResultMessage(userID uuid.UUID, username string, correct bool, answer string, score, scoreDelta int) *ServerMessage {
+	return NewServerMessage(MessageTypeAnswerResult, AnswerResultPayload{
+		UserID:     userID,
+		Username:   username,
+		Correct:    correct,
+		Answer:     answer,
+		Score:      score,
+		ScoreDelta: scoreDelta,
+	})
+}
+
+// NewErrorMessage creates an error message
+func NewErrorMessage(message, code string) *ServerMessage {
+	return NewServerMessage(MessageTypeError, ErrorPayload{
+		Message: message,
+		Code:    code,
+	})
+}
+

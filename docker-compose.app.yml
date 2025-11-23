@@ -1,0 +1,246 @@
+version: '3.9'
+
+# Docker Compose для Application Server (Сервер 1)
+# Содержит только микросервисы приложений и фронтенд
+
+services:
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sigame-frontend
+    environment:
+      - VITE_API_URL=http://${APP_SERVER_IP:-localhost}:8002
+      - VITE_WS_URL=ws://${APP_SERVER_IP:-localhost}:8083
+    ports:
+      - "3001:80"
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: sigame-auth-service
+    environment:
+      # PostgreSQL (Infrastructure Server)
+      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${AUTH_DB_USER:-authuser}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-authpass}
+      POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
+      POSTGRES_SSLMODE: disable
+      POSTGRES_MAX_CONNS: 25
+      POSTGRES_MAX_IDLE: 5
+      
+      # Redis (Infrastructure Server)
+      REDIS_HOST: ${INFRA_SERVER_IP}
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL: 3600
+      JWT_REFRESH_TTL: 604800
+      
+      # Server
+      HTTP_PORT: 8001
+      GRPC_PORT: 50051
+      GIN_MODE: release
+      
+      # Rate Limiting
+      RATE_LIMIT_ATTEMPTS: 5
+      RATE_LIMIT_WINDOW: 300
+      
+      # Tracing
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      OTEL_SERVICE_NAME: auth-service
+      OTEL_TRACES_SAMPLER: always_on
+    ports:
+      - "8001:8001"
+      - "50051:50051"
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Lobby Service
+  lobby-service:
+    build:
+      context: ./services/lobby
+      dockerfile: Dockerfile
+    container_name: sigame-lobby-service
+    environment:
+      # PostgreSQL (Infrastructure Server)
+      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${LOBBY_DB_USER:-lobbyuser}
+      POSTGRES_PASSWORD: ${LOBBY_DB_PASSWORD:-lobbypass}
+      POSTGRES_DB: ${LOBBY_DB_NAME:-lobby_db}
+      POSTGRES_MAX_CONNS: 25
+      
+      # Redis (Infrastructure Server)
+      REDIS_HOST: ${INFRA_SERVER_IP}
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 1
+      
+      # Kafka (Infrastructure Server)
+      KAFKA_BROKERS: ${INFRA_SERVER_IP}:9092
+      
+      # gRPC Services
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 50051
+      PACK_SERVICE_HOST: pack-service
+      PACK_SERVICE_PORT: 50055
+      GAME_SERVICE_HOST: game-service
+      GAME_SERVICE_PORT: 8003
+      
+      # Server
+      HTTP_PORT: 8002
+      
+      # Tracing
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      OTEL_SERVICE_NAME: lobby-service
+      OTEL_TRACES_SAMPLER: always_on
+    ports:
+      - "8002:8002"
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8002/api/lobby/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Game Service
+  game-service:
+    build:
+      context: ./services/game
+      dockerfile: Dockerfile
+    container_name: sigame-game-service
+    environment:
+      # PostgreSQL (Infrastructure Server)
+      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${GAME_DB_USER:-gameuser}
+      POSTGRES_PASSWORD: ${GAME_DB_PASSWORD:-gamepass}
+      POSTGRES_DB: ${GAME_DB_NAME:-game_db}
+      POSTGRES_SSLMODE: disable
+      POSTGRES_MAX_CONNS: 25
+      POSTGRES_MAX_IDLE: 5
+      
+      # Redis (Infrastructure Server)
+      REDIS_HOST: ${INFRA_SERVER_IP}
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 2
+      
+      # Kafka (Infrastructure Server)
+      KAFKA_BROKERS: ${INFRA_SERVER_IP}:9092
+      
+      # gRPC Services
+      PACK_SERVICE_HOST: pack-service
+      PACK_SERVICE_PORT: 50055
+      
+      # Server
+      HTTP_PORT: 8003
+      WS_PORT: 8083
+      GRPC_PORT: 50053
+      GIN_MODE: release
+      
+      # Tracing
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      OTEL_SERVICE_NAME: game-service
+      OTEL_TRACES_SAMPLER: always_on
+    ports:
+      - "8003:8003"
+      - "8083:8083"
+      - "50053:50053"
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Pack Service
+  pack-service:
+    build:
+      context: ./services/packs
+      dockerfile: Dockerfile
+    container_name: sigame-pack-service
+    environment:
+      # PostgreSQL (Infrastructure Server)
+      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${PACKS_DB_USER:-packsuser}
+      POSTGRES_PASSWORD: ${PACKS_DB_PASSWORD:-packspass}
+      POSTGRES_DB: ${PACKS_DB_NAME:-packs_db}
+      POSTGRES_SSLMODE: disable
+      
+      # Server
+      HTTP_PORT: 8005
+      GRPC_PORT: 50055
+      
+      # Tracing
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      OTEL_SERVICE_NAME: pack-service
+      OTEL_TRACES_SAMPLER: always_on
+    ports:
+      - "8005:8005"
+      - "50055:50055"
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  sigame-network:
+    driver: bridge
+
