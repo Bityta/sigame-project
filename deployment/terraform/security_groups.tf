@@ -33,7 +33,7 @@ resource "yandex_vpc_security_group" "app_server_sg" {
     protocol       = "TCP"
     description    = "Auth Service HTTP"
     v4_cidr_blocks = ["0.0.0.0/0"]
-    port           = 8001
+    port           = 8081
   }
 
   # Lobby Service HTTP
@@ -41,21 +41,13 @@ resource "yandex_vpc_security_group" "app_server_sg" {
     protocol       = "TCP"
     description    = "Lobby Service HTTP"
     v4_cidr_blocks = ["0.0.0.0/0"]
-    port           = 8002
+    port           = 8082
   }
 
-  # Game Service HTTP
+  # Game Service HTTP & WebSocket
   ingress {
     protocol       = "TCP"
-    description    = "Game Service HTTP"
-    v4_cidr_blocks = ["0.0.0.0/0"]
-    port           = 8003
-  }
-
-  # Game Service WebSocket
-  ingress {
-    protocol       = "TCP"
-    description    = "Game Service WebSocket"
+    description    = "Game Service HTTP & WebSocket"
     v4_cidr_blocks = ["0.0.0.0/0"]
     port           = 8083
   }
@@ -65,15 +57,15 @@ resource "yandex_vpc_security_group" "app_server_sg" {
     protocol       = "TCP"
     description    = "Pack Service HTTP"
     v4_cidr_blocks = ["0.0.0.0/0"]
-    port           = 8005
+    port           = 8084
   }
 
-  # Frontend (Nginx)
+  # Grafana
   ingress {
     protocol       = "TCP"
-    description    = "Frontend Nginx"
+    description    = "Grafana"
     v4_cidr_blocks = ["0.0.0.0/0"]
-    port           = 3001
+    port           = 3000
   }
 
   # Allow all outgoing traffic

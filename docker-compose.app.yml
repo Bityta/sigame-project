@@ -36,8 +36,8 @@ services:
       dockerfile: Dockerfile
     container_name: sigame-auth-service
     environment:
-      # PostgreSQL (Infrastructure Server)
-      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      # PostgreSQL (via Docker network)
+      POSTGRES_HOST: postgres-auth
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${AUTH_DB_USER:-authuser}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-authpass}
@@ -46,8 +46,8 @@ services:
       POSTGRES_MAX_CONNS: 25
       POSTGRES_MAX_IDLE: 5
       
-      # Redis (Infrastructure Server)
-      REDIS_HOST: ${INFRA_SERVER_IP}
+      # Redis (via Docker network)
+      REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ""
       REDIS_DB: 0
@@ -66,8 +66,8 @@ services:
       RATE_LIMIT_ATTEMPTS: 5
       RATE_LIMIT_WINDOW: 300
       
-      # Tracing
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      # Tracing (disabled)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       OTEL_SERVICE_NAME: auth-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
@@ -94,22 +94,22 @@ services:
       dockerfile: Dockerfile
     container_name: sigame-lobby-service
     environment:
-      # PostgreSQL (Infrastructure Server)
-      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      # PostgreSQL (via Docker network)
+      POSTGRES_HOST: postgres-lobby
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${LOBBY_DB_USER:-lobbyuser}
       POSTGRES_PASSWORD: ${LOBBY_DB_PASSWORD:-lobbypass}
       POSTGRES_DB: ${LOBBY_DB_NAME:-lobby_db}
       POSTGRES_MAX_CONNS: 25
       
-      # Redis (Infrastructure Server)
-      REDIS_HOST: ${INFRA_SERVER_IP}
+      # Redis (via Docker network)
+      REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ""
       REDIS_DB: 1
       
-      # Kafka (Infrastructure Server)
-      KAFKA_BROKERS: ${INFRA_SERVER_IP}:9092
+      # Kafka (via Docker network)
+      KAFKA_BROKERS: kafka:9092
       
       # gRPC Services
       AUTH_SERVICE_HOST: auth-service
@@ -149,8 +149,8 @@ services:
       dockerfile: Dockerfile
     container_name: sigame-game-service
     environment:
-      # PostgreSQL (Infrastructure Server)
-      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      # PostgreSQL (via Docker network)
+      POSTGRES_HOST: postgres-game
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${GAME_DB_USER:-gameuser}
       POSTGRES_PASSWORD: ${GAME_DB_PASSWORD:-gamepass}
@@ -159,14 +159,14 @@ services:
       POSTGRES_MAX_CONNS: 25
       POSTGRES_MAX_IDLE: 5
       
-      # Redis (Infrastructure Server)
-      REDIS_HOST: ${INFRA_SERVER_IP}
+      # Redis (via Docker network)
+      REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ""
       REDIS_DB: 2
       
-      # Kafka (Infrastructure Server)
-      KAFKA_BROKERS: ${INFRA_SERVER_IP}:9092
+      # Kafka (via Docker network)
+      KAFKA_BROKERS: kafka:9092
       
       # gRPC Services
       PACK_SERVICE_HOST: pack-service
@@ -178,8 +178,8 @@ services:
       GRPC_PORT: 50053
       GIN_MODE: release
       
-      # Tracing
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      # Tracing (disabled)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       OTEL_SERVICE_NAME: game-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
@@ -206,8 +206,8 @@ services:
       dockerfile: Dockerfile
     container_name: sigame-pack-service
     environment:
-      # PostgreSQL (Infrastructure Server)
-      POSTGRES_HOST: ${INFRA_SERVER_IP}
+      # PostgreSQL (via Docker network)
+      POSTGRES_HOST: postgres-packs
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${PACKS_DB_USER:-packsuser}
       POSTGRES_PASSWORD: ${PACKS_DB_PASSWORD:-packspass}
@@ -218,8 +218,8 @@ services:
       HTTP_PORT: 8084
       GRPC_PORT: 50055
       
-      # Tracing
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      # Tracing (disabled)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
       OTEL_SERVICE_NAME: pack-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
