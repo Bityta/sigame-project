@@ -54,8 +54,8 @@ class AuthServiceClient(
             .keepAliveTimeout(10, TimeUnit.SECONDS)
             .build()
         
+        // Don't set deadline on stub initialization - set it per-call instead
         stub = AuthServiceGrpcKt.AuthServiceCoroutineStub(channel)
-            .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         
         logger.info { "Auth Service gRPC client initialized: ${config.host}:${config.port}" }
     }
@@ -86,7 +86,10 @@ class AuthServiceClient(
                 .setToken(token)
                 .build()
             
-            val response = stub.validateToken(request)
+            // Set deadline per-call, not on stub initialization
+            val response = stub
+                .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .validateToken(request)
             
             if (response.valid) {
                 UserInfo(
@@ -109,7 +112,10 @@ class AuthServiceClient(
                 .setUserId(userId.toString())
                 .build()
             
-            val response = stub.getUserInfo(request)
+            // Set deadline per-call
+            val response = stub
+                .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .getUserInfo(request)
             
             if (response.error.isEmpty()) {
                 UserInfo(
