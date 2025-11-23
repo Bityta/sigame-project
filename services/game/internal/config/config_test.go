@@ -5,23 +5,27 @@ import (
 	"testing"
 )
 
-func TestLoadConfig(t *testing.T) {
+func TestLoad(t *testing.T) {
 	// Set required environment variables
-	os.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
-	os.Setenv("REDIS_URL", "redis://localhost:6379")
+	os.Setenv("POSTGRES_HOST", "localhost")
+	os.Setenv("POSTGRES_USER", "testuser")
+	os.Setenv("POSTGRES_PASSWORD", "testpass")
+	os.Setenv("REDIS_HOST", "localhost")
 	
 	defer func() {
-		os.Unsetenv("DATABASE_URL")
-		os.Unsetenv("REDIS_URL")
+		os.Unsetenv("POSTGRES_HOST")
+		os.Unsetenv("POSTGRES_USER")
+		os.Unsetenv("POSTGRES_PASSWORD")
+		os.Unsetenv("REDIS_HOST")
 	}()
 
-	cfg, err := LoadConfig()
+	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("LoadConfig() failed: %v", err)
+		t.Fatalf("Load() failed: %v", err)
 	}
 
 	if cfg == nil {
-		t.Fatal("LoadConfig() returned nil config")
+		t.Fatal("Load() returned nil config")
 	}
 
 	// Check defaults
@@ -49,7 +53,12 @@ func TestConfig_Validate(t *testing.T) {
 					GRPCPort: "50053",
 				},
 				Database: DatabaseConfig{
-					URL: "postgres://test:test@localhost:5432/test",
+					Host:     "localhost",
+					User:     "testuser",
+					Password: "testpass",
+				},
+				Redis: RedisConfig{
+					Host: "localhost",
 				},
 			},
 			wantErr: false,
@@ -60,6 +69,9 @@ func TestConfig_Validate(t *testing.T) {
 				Server: ServerConfig{
 					HTTPPort: "",
 					WSPort:   "8083",
+				},
+				Database: DatabaseConfig{
+					Host: "localhost",
 				},
 			},
 			wantErr: true,

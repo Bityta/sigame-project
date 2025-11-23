@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	
+	// PostgreSQL driver - imported for side effects (database/sql registration)
 	_ "github.com/lib/pq"
 	
 	"github.com/sigame/auth/internal/domain"

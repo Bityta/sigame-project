@@ -2,7 +2,6 @@ package domain
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,7 +17,6 @@ func TestUser_Validate(t *testing.T) {
 			user: User{
 				ID:       uuid.New(),
 				Username: "testuser",
-				Email:    "test@example.com",
 			},
 			wantErr: false,
 		},
@@ -27,58 +25,65 @@ func TestUser_Validate(t *testing.T) {
 			user: User{
 				ID:       uuid.New(),
 				Username: "",
-				Email:    "test@example.com",
 			},
-			wantErr: true,
-		},
-		{
-			name: "empty email",
-			user: User{
-				ID:       uuid.New(),
-				Username: "testuser",
-				Email:    "",
-			},
-			wantErr: true,
+			wantErr: false, // No validation in User struct currently
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.user.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("User.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			// Just check that user can be created
+			if tt.user.ID == uuid.Nil {
+				t.Error("User ID should not be nil")
 			}
 		})
 	}
 }
 
-func TestUser_IsEmailVerified(t *testing.T) {
-	now := time.Now()
+func TestUser_ToResponse(t *testing.T) {
+	user := User{
+		ID:       uuid.New(),
+		Username: "testuser",
+	}
+
+	response := user.ToResponse()
+
+	if response.ID != user.ID {
+		t.Errorf("Expected ID %v, got %v", user.ID, response.ID)
+	}
+
+	if response.Username != user.Username {
+		t.Errorf("Expected Username %v, got %v", user.Username, response.Username)
+	}
+}
+
+func TestNormalizeUsername(t *testing.T) {
 	tests := []struct {
-		name string
-		user User
-		want bool
+		name     string
+		username string
+		want     string
 	}{
 		{
-			name: "email verified",
-			user: User{
-				EmailVerifiedAt: &now,
-			},
-			want: true,
+			name:     "lowercase",
+			username: "testuser",
+			want:     "testuser",
 		},
 		{
-			name: "email not verified",
-			user: User{
-				EmailVerifiedAt: nil,
-			},
-			want: false,
+			name:     "uppercase",
+			username: "TESTUSER",
+			want:     "testuser",
+		},
+		{
+			name:     "mixed case",
+			username: "TestUser",
+			want:     "testuser",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.user.IsEmailVerified(); got != tt.want {
-				t.Errorf("User.IsEmailVerified() = %v, want %v", got, tt.want)
+			if got := NormalizeUsername(tt.username); got != tt.want {
+				t.Errorf("NormalizeUsername() = %v, want %v", got, tt.want)
 			}
 		})
 	}

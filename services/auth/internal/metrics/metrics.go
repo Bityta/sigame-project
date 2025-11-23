@@ -7,6 +7,7 @@ import (
 	"github.com/sigame/auth/internal/domain"
 )
 
+// Metrics holds all Prometheus metrics for the auth service
 type Metrics struct {
 	requestsTotal          *prometheus.CounterVec
 	requestDuration        *prometheus.HistogramVec
@@ -19,6 +20,7 @@ type Metrics struct {
 	grpcRequestDuration    *prometheus.HistogramVec
 }
 
+// New creates a new Metrics instance with all Prometheus collectors
 func New() *Metrics {
 	return &Metrics{
 		requestsTotal: promauto.NewCounterVec(

@@ -5,29 +5,37 @@ import (
 	"testing"
 )
 
-func TestLoadConfig(t *testing.T) {
+func TestLoad(t *testing.T) {
 	// Set required environment variables
-	os.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
-	os.Setenv("REDIS_URL", "redis://localhost:6379")
-	os.Setenv("JWT_SECRET", "test-secret")
+	os.Setenv("POSTGRES_HOST", "localhost")
+	os.Setenv("POSTGRES_USER", "testuser")
+	os.Setenv("POSTGRES_PASSWORD", "testpass")
+	os.Setenv("REDIS_HOST", "localhost")
+	os.Setenv("JWT_SECRET", "test-secret-key-min-32-chars-long")
 	
 	defer func() {
-		os.Unsetenv("DATABASE_URL")
-		os.Unsetenv("REDIS_URL")
+		os.Unsetenv("POSTGRES_HOST")
+		os.Unsetenv("POSTGRES_USER")
+		os.Unsetenv("POSTGRES_PASSWORD")
+		os.Unsetenv("REDIS_HOST")
 		os.Unsetenv("JWT_SECRET")
 	}()
 
-	cfg, err := LoadConfig()
+	cfg, err := Load()
 	if err != nil {
-		t.Fatalf("LoadConfig() failed: %v", err)
+		t.Fatalf("Load() failed: %v", err)
 	}
 
 	if cfg == nil {
-		t.Fatal("LoadConfig() returned nil config")
+		t.Fatal("Load() returned nil config")
 	}
 
 	if cfg.JWT.Secret == "" {
 		t.Error("JWT secret is empty")
+	}
+
+	if cfg.Database.Host != "localhost" {
+		t.Errorf("Expected database host localhost, got %s", cfg.Database.Host)
 	}
 }
 
@@ -45,10 +53,15 @@ func TestConfig_Validate(t *testing.T) {
 					GRPCPort: "50051",
 				},
 				Database: DatabaseConfig{
-					URL: "postgres://test:test@localhost:5432/test",
+					Host:     "localhost",
+					User:     "testuser",
+					Password: "testpass",
+				},
+				Redis: RedisConfig{
+					Host: "localhost",
 				},
 				JWT: JWTConfig{
-					Secret: "test-secret",
+					Secret: "test-secret-key-min-32-chars-long",
 				},
 			},
 			wantErr: false,
@@ -59,8 +72,28 @@ func TestConfig_Validate(t *testing.T) {
 				Server: ServerConfig{
 					HTTPPort: "8080",
 				},
+				Database: DatabaseConfig{
+					Host:     "localhost",
+					User:     "testuser",
+					Password: "testpass",
+				},
+				Redis: RedisConfig{
+					Host: "localhost",
+				},
 				JWT: JWTConfig{
 					Secret: "",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing database host",
+			config: Config{
+				JWT: JWTConfig{
+					Secret: "test-secret",
+				},
+				Database: DatabaseConfig{
+					Host: "",
 				},
 			},
 			wantErr: true,
@@ -74,6 +107,26 @@ func TestConfig_Validate(t *testing.T) {
 				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestConfig_GetPostgresConnectionString(t *testing.T) {
+	cfg := &Config{
+		Database: DatabaseConfig{
+			Host:     "localhost",
+			Port:     "5432",
+			User:     "testuser",
+			Password: "testpass",
+			DBName:   "testdb",
+			SSLMode:  "disable",
+		},
+	}
+
+	connStr := cfg.GetPostgresConnectionString()
+	expected := "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable"
+
+	if connStr != expected {
+		t.Errorf("Expected %s, got %s", expected, connStr)
 	}
 }
 
