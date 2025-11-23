@@ -122,8 +122,10 @@ services:
       # Server
       HTTP_PORT: 8082
       
-      # Tracing
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://${INFRA_SERVER_IP}:4317
+      # Tracing (disabled)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_SERVICE_NAME: lobby-service
+      OTEL_TRACES_SAMPLER: always_on
       OTEL_SERVICE_NAME: lobby-service
       OTEL_TRACES_SAMPLER: always_on
     ports:
