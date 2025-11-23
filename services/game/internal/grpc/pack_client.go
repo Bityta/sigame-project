@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Temporary stub until we generate proto files
+// PackServiceClient defines the interface for pack service gRPC client (temporary stub until we generate proto files)
 type PackServiceClient interface {
 	GetPackContent(ctx context.Context, packID uuid.UUID) (*domain.Pack, error)
 	ValidatePackExists(ctx context.Context, packID uuid.UUID) (bool, error)

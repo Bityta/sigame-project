@@ -21,11 +21,11 @@ func TestGame_CreateGame(t *testing.T) {
 }
 
 func TestPlayer_CreatePlayer(t *testing.T) {
-	playerID := uuid.New()
+	userID := uuid.New()
 	username := "testplayer"
 
-	if playerID == uuid.Nil {
-		t.Error("Player ID should not be nil")
+	if userID == uuid.Nil {
+		t.Error("User ID should not be nil")
 	}
 
 	if username == "" {

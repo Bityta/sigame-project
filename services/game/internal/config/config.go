@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config holds all configuration for the game service
 type Config struct {
 	Server      ServerConfig
 	Database    DatabaseConfig
@@ -15,6 +16,7 @@ type Config struct {
 	PackService PackServiceConfig
 }
 
+// ServerConfig holds HTTP, WebSocket and gRPC server configuration
 type ServerConfig struct {
 	HTTPPort string
 	WSPort   string
@@ -22,6 +24,7 @@ type ServerConfig struct {
 	Mode     string // "debug" or "release"
 }
 
+// DatabaseConfig holds PostgreSQL database configuration
 type DatabaseConfig struct {
 	Host     string
 	Port     string
@@ -33,6 +36,7 @@ type DatabaseConfig struct {
 	MaxIdle  int
 }
 
+// RedisConfig holds Redis cache configuration
 type RedisConfig struct {
 	Host     string
 	Port     string
@@ -40,11 +44,13 @@ type RedisConfig struct {
 	DB       int
 }
 
+// KafkaConfig holds Kafka messaging configuration
 type KafkaConfig struct {
 	Brokers []string
 	Topic   string
 }
 
+// PackServiceConfig holds pack service gRPC connection configuration
 type PackServiceConfig struct {
 	Host string
 	Port string
@@ -142,6 +148,7 @@ func setDefaults() {
 	viper.SetDefault("PACK_SERVICE_PORT", "50055")
 }
 
+// Validate validates the configuration
 func (c *Config) Validate() error {
 	if c.Database.Host == "" {
 		return fmt.Errorf("POSTGRES_HOST is required")

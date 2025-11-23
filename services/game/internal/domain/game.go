@@ -9,6 +9,7 @@ import (
 // GameStatus represents the current status of a game
 type GameStatus string
 
+// Game status constants
 const (
 	GameStatusWaiting        GameStatus = "waiting"
 	GameStatusRoundStart     GameStatus = "round_start"

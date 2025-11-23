@@ -9,6 +9,7 @@ import (
 // EventType represents the type of game event
 type EventType string
 
+// Game event type constants
 const (
 	EventGameCreated       EventType = "GAME_CREATED"
 	EventGameStarted       EventType = "GAME_STARTED"

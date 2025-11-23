@@ -3,43 +3,58 @@ package domain
 import "errors"
 
 var (
-	// Game errors
-	ErrGameNotFound      = errors.New("game not found")
+	// ErrGameNotFound indicates a game was not found
+	ErrGameNotFound = errors.New("game not found")
+	// ErrGameAlreadyExists indicates a game already exists
 	ErrGameAlreadyExists = errors.New("game already exists")
-	ErrGameFinished      = errors.New("game already finished")
-	ErrGameNotStarted    = errors.New("game not started")
-	ErrInvalidGameState  = errors.New("invalid game state")
+	// ErrGameFinished indicates game has finished
+	ErrGameFinished = errors.New("game already finished")
+	// ErrGameNotStarted indicates game has not started yet
+	ErrGameNotStarted = errors.New("game not started")
+	// ErrInvalidGameState indicates invalid game state
+	ErrInvalidGameState = errors.New("invalid game state")
 
-	// Player errors
-	ErrPlayerNotFound    = errors.New("player not found")
-	ErrPlayerNotActive   = errors.New("player not active")
-	ErrNotPlayerTurn     = errors.New("not player's turn")
-	ErrPlayerNotReady    = errors.New("player not ready")
+	// ErrPlayerNotFound indicates player was not found
+	ErrPlayerNotFound = errors.New("player not found")
+	// ErrPlayerNotActive indicates player is not active
+	ErrPlayerNotActive = errors.New("player not active")
+	// ErrNotPlayerTurn indicates it's not the player's turn
+	ErrNotPlayerTurn = errors.New("not player's turn")
+	// ErrPlayerNotReady indicates player is not ready
+	ErrPlayerNotReady = errors.New("player not ready")
+	// ErrInsufficientPlayers indicates not enough players
 	ErrInsufficientPlayers = errors.New("insufficient players to start game")
 
-	// Question errors
-	ErrQuestionNotFound    = errors.New("question not found")
+	// ErrQuestionNotFound indicates question was not found
+	ErrQuestionNotFound = errors.New("question not found")
+	// ErrQuestionAlreadyUsed indicates question was already used
 	ErrQuestionAlreadyUsed = errors.New("question already used")
-	ErrInvalidAnswer       = errors.New("invalid answer")
+	// ErrInvalidAnswer indicates answer is invalid
+	ErrInvalidAnswer = errors.New("invalid answer")
 
-	// Round errors
-	ErrRoundNotFound  = errors.New("round not found")
-	ErrRoundComplete  = errors.New("round already complete")
-	ErrInvalidRound   = errors.New("invalid round number")
+	// ErrRoundNotFound indicates round was not found
+	ErrRoundNotFound = errors.New("round not found")
+	// ErrRoundComplete indicates round is complete
+	ErrRoundComplete = errors.New("round already complete")
+	// ErrInvalidRound indicates invalid round number
+	ErrInvalidRound = errors.New("invalid round number")
 
-	// Button press errors
+	// ErrButtonAlreadyPressed indicates button was already pressed
 	ErrButtonAlreadyPressed = errors.New("button already pressed")
-	ErrButtonPressTimeout   = errors.New("button press timeout")
+	// ErrButtonPressTimeout indicates button press timeout
+	ErrButtonPressTimeout = errors.New("button press timeout")
 
-	// Pack errors
-	ErrPackNotFound  = errors.New("pack not found")
-	ErrPackInvalid   = errors.New("pack is invalid")
+	// ErrPackNotFound indicates pack was not found
+	ErrPackNotFound = errors.New("pack not found")
+	// ErrPackInvalid indicates pack is invalid
+	ErrPackInvalid = errors.New("pack is invalid")
 
-	// WebSocket errors
+	// ErrWSConnectionClosed indicates websocket connection closed
 	ErrWSConnectionClosed = errors.New("websocket connection closed")
-	ErrWSInvalidMessage   = errors.New("invalid websocket message")
+	// ErrWSInvalidMessage indicates invalid websocket message
+	ErrWSInvalidMessage = errors.New("invalid websocket message")
 
-	// Timer errors
+	// ErrTimerExpired indicates timer has expired
 	ErrTimerExpired = errors.New("timer expired")
 )
 
