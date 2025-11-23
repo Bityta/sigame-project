@@ -123,7 +123,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: 🔍 Lint & Check
-        run: chmod +x gradlew && ./gradlew ktlintCheck || true
+        run: ./gradlew ktlintCheck || true
 
       - name: 🧪 Run tests
         run: ./gradlew test || echo "⚠️ Tests not configured yet"
