@@ -13,8 +13,6 @@ bash deployment/scripts/deploy.sh
 **SSH**: `ssh ubuntu@89.169.139.21`  
 **Мониторинг**: http://89.169.139.21:3000 (Grafana)
 
-📖 Подробные инструкции: [`DEPLOY.md`](./DEPLOY.md)
-
 ## 📦 Архитектура
 
 - **Frontend**: React + TypeScript + Vite
