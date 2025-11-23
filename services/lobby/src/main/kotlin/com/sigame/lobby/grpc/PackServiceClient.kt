@@ -57,8 +57,8 @@ class PackServiceClient(
             .keepAliveTimeout(10, TimeUnit.SECONDS)
             .build()
         
+        // Don't set deadline on stub initialization - set it per-call instead
         stub = PackServiceGrpcKt.PackServiceCoroutineStub(channel)
-            .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         
         logger.info { "Pack Service gRPC client initialized: ${config.host}:${config.port}" }
     }
@@ -87,7 +87,10 @@ class PackServiceClient(
                 .setPackId(packId.toString())
                 .build()
             
-            val response = stub.validatePackExists(request)
+            // Set deadline per-call
+            val response = stub
+                .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .validatePackExists(request)
             response.exists
         }
     } ?: false
@@ -101,7 +104,10 @@ class PackServiceClient(
                 .setPackId(packId.toString())
                 .build()
             
-            val response = stub.getPackInfo(request)
+            // Set deadline per-call
+            val response = stub
+                .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .getPackInfo(request)
             PackInfo(
                 id = UUID.fromString(response.id),
                 name = response.name,
