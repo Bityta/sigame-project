@@ -147,7 +147,6 @@ jobs:
     if: always() && (needs.backup.result == 'success' || needs.backup.result == 'skipped')
     environment:
       name: ${{ inputs.environment }}
-      url: http://${{ secrets.APP_SERVER_IP }}
     
     steps:
       - name: 📥 Checkout code
