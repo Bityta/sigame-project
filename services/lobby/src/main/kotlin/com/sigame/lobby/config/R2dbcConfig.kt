@@ -1,7 +1,7 @@
 package com.sigame.lobby.config
 
-import com.sigame.lobby.domain.PlayerRole
-import com.sigame.lobby.domain.RoomStatus
+import com.sigame.lobby.domain.enums.PlayerRole
+import com.sigame.lobby.domain.enums.RoomStatus
 import io.r2dbc.postgresql.codec.EnumCodec
 import io.r2dbc.spi.ConnectionFactory
 import org.springframework.context.annotation.Bean

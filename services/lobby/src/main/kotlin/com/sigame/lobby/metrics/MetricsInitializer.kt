@@ -1,8 +1,8 @@
 package com.sigame.lobby.metrics
 
-import com.sigame.lobby.domain.GameRoomRepository
-import com.sigame.lobby.domain.RoomPlayerRepository
-import com.sigame.lobby.domain.RoomStatus
+import com.sigame.lobby.domain.repository.GameRoomRepository
+import com.sigame.lobby.domain.repository.RoomPlayerRepository
+import com.sigame.lobby.domain.enums.RoomStatus
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
