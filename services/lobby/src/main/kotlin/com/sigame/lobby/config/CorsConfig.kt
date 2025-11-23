@@ -23,7 +23,10 @@ class CorsConfig {
             "http://127.0.0.1:5173",
             // Docker/Production origins
             "http://frontend:80",
-            "http://frontend"
+            "http://frontend",
+            // Production server IP
+            "http://89.169.139.21",
+            "http://89.169.139.21:80"
         )
         
         // Allow all HTTP methods
