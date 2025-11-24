@@ -1,112 +1,196 @@
 {
-  "title": "Pack Service",
+  "title": "📦 Pack Service",
   "uid": "pack-service",
   "tags": ["sigame", "pack", "backend"],
   "timezone": "browser",
-  "refresh": "30s",
+  "refresh": "10s",
   "time": {
-    "from": "now-1h",
+    "from": "now-15m",
     "to": "now"
   },
+  "editable": true,
+  "graphTooltip": 1,
   "panels": [
     {
       "id": 1,
-      "title": "HTTP Requests (2xx)",
-      "type": "graph",
+      "title": "✅ Success Requests (2xx)",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{job=\"pack-service\",status=~\"2..\"}[5m])",
-          "legendFormat": "2xx - {{method}} {{endpoint}}",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"2..\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "yaxes": [
-        {"format": "reqps", "label": "Requests/sec"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
     },
     {
       "id": 2,
-      "title": "HTTP Requests (4xx)",
-      "type": "graph",
+      "title": "⚠️ Client Errors (4xx)",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{job=\"pack-service\",status=~\"4..\"}[5m])",
-          "legendFormat": "4xx - {{method}} {{endpoint}}",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"4..\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "yaxes": [
-        {"format": "reqps", "label": "Requests/sec"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "auto"
+          },
+          "unit": "reqps"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName"},
+            "properties": [
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "yellow"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
     },
     {
       "id": 3,
-      "title": "HTTP Requests (5xx)",
-      "type": "graph",
+      "title": "🔥 Server Errors (5xx)",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{job=\"pack-service\",status=~\"5..\"}[5m])",
-          "legendFormat": "5xx - {{method}} {{endpoint}}",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"5..\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "yaxes": [
-        {"format": "reqps", "label": "Requests/sec"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "fixed", "fixedColor": "red"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 40,
+            "gradientMode": "opacity",
+            "lineWidth": 3,
+            "showPoints": "always"
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
     },
     {
       "id": 4,
-      "title": "RPS (Total Requests Per Second)",
-      "type": "graph",
+      "title": "📊 Total Request Rate",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"pack-service\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\"}[1m]))",
           "legendFormat": "Total RPS",
           "refId": "A"
         }
       ],
-      "yaxes": [
-        {"format": "reqps", "label": "Requests/sec"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 25,
+            "gradientMode": "hue",
+            "lineWidth": 3,
+            "showPoints": "never"
+          },
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"},
+        "tooltip": {"mode": "single"}
+      }
     },
     {
       "id": 5,
-      "title": "Request Latency (p50, p95, p99)",
-      "type": "graph",
+      "title": "⏱️ Response Time (p50, p95, p99)",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[1m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[1m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\"}[1m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
       ],
-      "yaxes": [
-        {"format": "s", "label": "Duration"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s",
+          "decimals": 3
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "lastNotNull", "max"]},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      }
     },
     {
       "id": 6,
-      "title": "Available Packs",
+      "title": "📦 Available Packs",
       "type": "stat",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
       "targets": [
@@ -114,25 +198,58 @@
           "expr": "pack_available_packs_total",
           "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 1},
+              {"color": "orange", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      }
     },
     {
       "id": 7,
-      "title": "gRPC Requests",
-      "type": "graph",
+      "title": "🔌 gRPC Request Rate",
+      "type": "timeseries",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
       "targets": [
         {
-          "expr": "rate(grpc_requests_total{job=\"pack-service\"}[5m])",
-          "legendFormat": "{{method}} - {{status}}",
+          "expr": "sum(rate(grpc_requests_total{job=\"pack-service\"}[1m])) by (method, status)",
+          "legendFormat": "{{method}} ({{status}})",
           "refId": "A"
         }
       ],
-      "yaxes": [
-        {"format": "reqps", "label": "Requests/sec"},
-        {"format": "short"}
-      ]
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
     }
   ]
 }
-
