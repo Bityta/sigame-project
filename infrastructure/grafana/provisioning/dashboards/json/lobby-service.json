@@ -16,8 +16,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{service=\"lobby-service\",status=\"2xx\"}[5m])",
-          "legendFormat": "2xx - {{method}} {{endpoint}}",
+          "expr": "rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"2..\"}[5m])",
+          "legendFormat": "2xx - {{method}} {{uri}}",
           "refId": "A"
         }
       ],
@@ -33,8 +33,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{service=\"lobby-service\",status=\"4xx\"}[5m])",
-          "legendFormat": "4xx - {{method}} {{endpoint}}",
+          "expr": "rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"4..\"}[5m])",
+          "legendFormat": "4xx - {{method}} {{uri}}",
           "refId": "A"
         }
       ],
@@ -50,8 +50,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "rate(http_requests_total{service=\"lobby-service\",status=\"5xx\"}[5m])",
-          "legendFormat": "5xx - {{method}} {{endpoint}}",
+          "expr": "rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"5..\"}[5m])",
+          "legendFormat": "5xx - {{method}} {{uri}}",
           "refId": "A"
         }
       ],
@@ -67,7 +67,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{service=\"lobby-service\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\"}[5m]))",
           "legendFormat": "Total RPS",
           "refId": "A"
         }
@@ -84,19 +84,14 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{service=\"lobby-service\"}[5m])) by (le))",
-          "legendFormat": "p50",
+          "expr": "rate(http_server_requests_seconds_sum{job=\"lobby-service\"}[5m]) / rate(http_server_requests_seconds_count{job=\"lobby-service\"}[5m])",
+          "legendFormat": "avg",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"lobby-service\"}[5m])) by (le))",
-          "legendFormat": "p95",
+          "expr": "http_server_requests_seconds_max{job=\"lobby-service\"}",
+          "legendFormat": "max",
           "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service=\"lobby-service\"}[5m])) by (le))",
-          "legendFormat": "p99",
-          "refId": "C"
         }
       ],
       "yaxes": [
@@ -186,7 +181,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
       "targets": [
         {
-          "expr": "rate(grpc_requests_total{service=\"lobby-service\"}[5m])",
+          "expr": "rate(lobby_grpc_calls_total[5m])",
           "legendFormat": "{{method}} - {{status}}",
           "refId": "A"
         }
