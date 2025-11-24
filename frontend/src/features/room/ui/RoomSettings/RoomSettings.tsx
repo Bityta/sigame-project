@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUpdateRoomSettings } from '@/entities/room';
-import { Button, Card } from '@/shared/ui';
+import { Button, Card, Toggle } from '@/shared/ui';
 import { DEFAULT_ROOM_SETTINGS } from '@/shared/config';
 import type { GameRoom, RoomSettings } from '@/shared/types';
 import './RoomSettings.css';
@@ -101,32 +101,24 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
           />
         </div>
 
-        <div className="room-settings__checkbox">
-          <input
-            type="checkbox"
-            id="allowWrongAnswer"
+        <div className="room-settings__field">
+          <Toggle
+            label="Разрешить неправильные ответы"
             checked={settings.allowWrongAnswer}
-            onChange={(e) =>
-              setSettings({ ...settings, allowWrongAnswer: e.target.checked })
+            onChange={(checked) =>
+              setSettings({ ...settings, allowWrongAnswer: checked })
             }
           />
-          <label htmlFor="allowWrongAnswer">
-            Разрешить неправильные ответы
-          </label>
         </div>
 
-        <div className="room-settings__checkbox">
-          <input
-            type="checkbox"
-            id="showRightAnswer"
+        <div className="room-settings__field">
+          <Toggle
+            label="Показывать правильный ответ"
             checked={settings.showRightAnswer}
-            onChange={(e) =>
-              setSettings({ ...settings, showRightAnswer: e.target.checked })
+            onChange={(checked) =>
+              setSettings({ ...settings, showRightAnswer: checked })
             }
           />
-          <label htmlFor="showRightAnswer">
-            Показывать правильный ответ
-          </label>
         </div>
 
         <Button

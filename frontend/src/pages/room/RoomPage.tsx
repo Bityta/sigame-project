@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useRoom, useLeaveRoom, useStartGame } from '@/entities/room';
 import { useCurrentUser } from '@/entities/user';
 import { RoomSettingsComponent } from '@/features/room';
@@ -9,6 +10,7 @@ import './RoomPage.css';
 export const RoomPage = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const [copySuccess, setCopySuccess] = useState(false);
   
   const { data: room, isLoading, refetch } = useRoom(roomId!, {
     refetchInterval: 3000,
@@ -39,6 +41,32 @@ export const RoomPage = () => {
     }
   };
 
+  const handleCopyLink = async () => {
+    if (!room) return;
+    
+    const roomUrl = `${window.location.origin}${ROUTES.ROOM(room.id)}`;
+    
+    try {
+      await navigator.clipboard.writeText(roomUrl);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!room) return;
+    
+    try {
+      await navigator.clipboard.writeText(room.roomCode);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="room-page">
@@ -66,8 +94,26 @@ export const RoomPage = () => {
     <div className="room-page">
       <header className="room-page__header">
         <h1 className="room-page__title">{room.name}</h1>
-        <div className="room-page__code">
-          {TEXTS.ROOM.ROOM_CODE} <span>{room.roomCode}</span>
+        <div className="room-page__share">
+          <div className="room-page__code">
+            {TEXTS.ROOM.ROOM_CODE} <span>{room.roomCode}</span>
+          </div>
+          <div className="room-page__share-buttons">
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={handleCopyCode}
+            >
+              {copySuccess ? '✓ Скопировано' : '📋 Копировать код'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={handleCopyLink}
+            >
+              {copySuccess ? '✓ Скопировано' : '🔗 Копировать ссылку'}
+            </Button>
+          </div>
         </div>
       </header>
 
