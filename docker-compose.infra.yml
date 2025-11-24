@@ -330,6 +330,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Tempo для distributed tracing
+  tempo:
+    image: grafana/tempo:latest
+    container_name: sigame-tempo
+    command: [ "-config.file=/etc/tempo.yml" ]
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./infrastructure/tempo/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Grafana для визуализации метрик и логов
   grafana:
     image: grafana/grafana:latest
@@ -349,6 +375,7 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 10s
@@ -377,5 +404,6 @@ volumes:
   minio-data:
   prometheus-data:
   loki-data:
+  tempo-data:
   grafana-data:
 
