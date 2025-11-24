@@ -28,7 +28,6 @@ async def list_packs():
     
     try:
         packs = get_all_packs()
-        metrics.inc_pack_request("list")
         
         duration = time.time() - start_time
         metrics.record_http_request("GET", "/api/packs", 200, duration)
@@ -56,7 +55,6 @@ async def get_pack_info(pack_id: str):
             metrics.record_http_request("GET", "/api/packs/{pack_id}", 404, duration)
             raise HTTPException(status_code=404, detail="Pack not found")
         
-        metrics.inc_pack_request("info")
         duration = time.time() - start_time
         metrics.record_http_request("GET", "/api/packs/{pack_id}", 200, duration)
         
@@ -82,7 +80,6 @@ async def get_pack_full_content(pack_id: str):
             metrics.record_http_request("GET", "/api/packs/{pack_id}/content", 404, duration)
             raise HTTPException(status_code=404, detail="Pack not found")
         
-        metrics.inc_pack_request("content")
         duration = time.time() - start_time
         metrics.record_http_request("GET", "/api/packs/{pack_id}/content", 200, duration)
         
