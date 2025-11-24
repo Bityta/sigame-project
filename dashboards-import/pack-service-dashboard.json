@@ -20,8 +20,8 @@
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "Pack Service - Complete",
-  "uid": "pack-service-complete",
+  "title": "Pack Service",
+  "uid": "pack-service",
   "version": 0,
   "weekStart": ""
 }

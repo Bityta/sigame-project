@@ -21,8 +21,8 @@
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "Game Service - Complete",
-  "uid": "game-service-complete",
+  "title": "Game Service",
+  "uid": "game-service",
   "version": 0,
   "weekStart": ""
 }

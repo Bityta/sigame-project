@@ -21,8 +21,8 @@
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "Lobby Service - Complete",
-  "uid": "lobby-service-complete",
+  "title": "Lobby Service",
+  "uid": "lobby-service",
   "version": 0,
   "weekStart": ""
 }
