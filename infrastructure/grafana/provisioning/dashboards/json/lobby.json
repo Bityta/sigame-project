@@ -1,0 +1,10 @@
+{
+  "title": "Lobby Service",
+  "uid": "lobby-service",
+  "tags": ["sigame", "lobby"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "30s"
+}
+

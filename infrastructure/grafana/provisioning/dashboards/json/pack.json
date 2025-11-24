@@ -1,0 +1,10 @@
+{
+  "title": "Pack Service",
+  "uid": "pack-service",
+  "tags": ["sigame", "pack"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "30s"
+}
+
