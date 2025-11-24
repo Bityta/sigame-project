@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException
 import com.fasterxml.jackson.databind.exc.MismatchedInputException
 import com.sigame.lobby.domain.exception.*
 import mu.KotlinLogging
+import org.springframework.core.codec.DecodingException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.http.codec.DecodingException
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -51,8 +51,9 @@ class GlobalExceptionHandler {
                 logger.warn { "JSON deserialization error: Missing or mismatched field '$fieldName', expected type=${cause.targetType?.simpleName}" }
             }
             is DecodingException -> {
-                logger.warn(cause) { "JSON decoding error: ${cause.message}" }
-                details["error"] = cause.message ?: "Failed to decode JSON"
+                val decodingError = cause as DecodingException
+                logger.warn(decodingError) { "JSON decoding error: ${decodingError.message}" }
+                details["error"] = decodingError.message ?: "Failed to decode JSON"
             }
             else -> {
                 logger.warn(ex) { "ServerWebInputException: ${ex.message}, cause: ${cause?.message}" }
