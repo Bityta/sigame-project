@@ -9,6 +9,9 @@ import (
 func SetupRouter(handler *Handler, jwtMiddleware gin.HandlerFunc, metrics *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
+	// Apply request/response logging middleware globally
+	router.Use(RequestResponseLoggingMiddleware())
+
 	// Apply metrics middleware globally
 	router.Use(MetricsMiddleware(metrics))
 
