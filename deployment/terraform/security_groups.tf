@@ -77,9 +77,9 @@ resource "yandex_vpc_security_group" "app_server_sg" {
 
   # Allow traffic from infra subnet
   ingress {
-    protocol          = "ANY"
-    description       = "Allow from infrastructure subnet"
-    v4_cidr_blocks    = ["10.129.0.0/24"]
+    protocol       = "ANY"
+    description    = "Allow from infrastructure subnet"
+    v4_cidr_blocks = ["10.129.0.0/24"]
   }
 }
 

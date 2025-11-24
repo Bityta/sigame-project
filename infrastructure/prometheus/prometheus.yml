@@ -1,6 +1,6 @@
 # ==============================================
 # SIGame 2.0 - Prometheus Configuration
-# Production-ready monitoring setup
+# Production-ready monitoring setup with Yandex Monitoring remote_write
 # ==============================================
 
 global:
@@ -8,22 +8,21 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'sigame'
+    cluster: 'sigame-prod'
     environment: 'production'
     project: 'sigame-2.0'
 
-# Alertmanager configuration
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
-      timeout: 10s
-      api_version: v2
-
-# Load alert rules
-rule_files:
-  - "/etc/prometheus/rules/*.yml"
+# Remote Write to Yandex Monitoring
+remote_write:
+  - url: https://monitoring.api.cloud.yandex.net/monitoring/v2/data/write
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 10
+      batch_send_deadline: 5s
+    remote_timeout: 30s
+    headers:
+      Authorization: "Bearer ${YC_IAM_TOKEN}"
+      X-Folder-Id: "${YC_FOLDER_ID}"
 
 # ==============================================
 # Scrape configurations
@@ -42,95 +41,15 @@ scrape_configs:
           service: 'prometheus'
           component: 'monitoring'
 
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['node-exporter:9100']
-        labels:
-          service: 'node'
-          component: 'infrastructure'
-    scrape_interval: 30s
-
-  # ----------------
-  # Database Monitoring
-  # ----------------
-  
-  - job_name: 'postgres-auth'
-    static_configs:
-      - targets: ['postgres-auth-exporter:9187']
-        labels:
-          service: 'postgres'
-          database: 'auth_db'
-          component: 'database'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'postgres-lobby'
-    static_configs:
-      - targets: ['postgres-lobby-exporter:9187']
-        labels:
-          service: 'postgres'
-          database: 'lobby_db'
-          component: 'database'
-    scrape_interval: 30s
-
-  - job_name: 'postgres-game'
-    static_configs:
-      - targets: ['postgres-game-exporter:9187']
-        labels:
-          service: 'postgres'
-          database: 'game_db'
-          component: 'database'
-    scrape_interval: 30s
-
-  - job_name: 'postgres-packs'
-    static_configs:
-      - targets: ['postgres-packs-exporter:9187']
-        labels:
-          service: 'postgres'
-          database: 'packs_db'
-          component: 'database'
-    scrape_interval: 30s
-
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-        labels:
-          service: 'redis'
-          component: 'cache'
-    scrape_interval: 15s
-    scrape_timeout: 10s
-
-  # ----------------
-  # Message Queue & Storage
-  # ----------------
-  
-  - job_name: 'kafka'
-    static_configs:
-      - targets: ['kafka-exporter:9308']
-        labels:
-          service: 'kafka'
-          component: 'messaging'
-    scrape_interval: 30s
-
-  - job_name: 'minio'
-    metrics_path: /minio/v2/metrics/cluster
-    scheme: http
-    static_configs:
-      - targets: ['minio:9000']
-        labels:
-          service: 'minio'
-          component: 'storage'
-    scrape_interval: 30s
-
   # ----------------
   # Application Services
   # ----------------
   
   - job_name: 'auth-service'
     static_configs:
-      - targets: ['auth-service:8001']
+      - targets: ['auth-service:8081']
         labels:
-          service: 'auth'
+          service: 'auth-service'
           component: 'backend'
           language: 'go'
     metrics_path: '/metrics'
@@ -139,9 +58,9 @@ scrape_configs:
 
   - job_name: 'lobby-service'
     static_configs:
-      - targets: ['lobby-service:8002']
+      - targets: ['lobby-service:8082']
         labels:
-          service: 'lobby'
+          service: 'lobby-service'
           component: 'backend'
           language: 'kotlin'
     metrics_path: '/actuator/prometheus'
@@ -150,9 +69,9 @@ scrape_configs:
 
   - job_name: 'game-service'
     static_configs:
-      - targets: ['game-service:8003']
+      - targets: ['game-service:8083']
         labels:
-          service: 'game'
+          service: 'game-service'
           component: 'backend'
           language: 'go'
     metrics_path: '/metrics'
@@ -161,9 +80,9 @@ scrape_configs:
 
   - job_name: 'pack-service'
     static_configs:
-      - targets: ['pack-service:8005']
+      - targets: ['pack-service:8084']
         labels:
-          service: 'packs'
+          service: 'pack-service'
           component: 'backend'
           language: 'python'
     metrics_path: '/metrics'
