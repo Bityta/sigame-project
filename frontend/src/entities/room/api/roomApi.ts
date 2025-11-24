@@ -51,6 +51,18 @@ export const roomApi = {
    * Создать комнату
    */
   async createRoom(data: CreateRoomRequest): Promise<GameRoom> {
+    // Убеждаемся, что packId - это строка UUID, а не пустая строка
+    if (!data.packId || data.packId === '') {
+      throw new Error('Pack ID is required');
+    }
+    
+    // Убеждаемся, что имя не пустое
+    if (!data.name || data.name.trim() === '') {
+      throw new Error('Room name is required');
+    }
+    
+    console.log('[DEBUG] Creating room with data:', data);
+    
     const response = await lobbyApi.post<GameRoom>(
       API_CONFIG.ENDPOINTS.LOBBY.ROOMS,
       data
