@@ -20,9 +20,11 @@ remote_write:
       max_shards: 10
       batch_send_deadline: 5s
     remote_timeout: 30s
+    authorization:
+      type: "Bearer"
+      credentials_file: "/etc/prometheus/iam_token"
     headers:
-      Authorization: "Bearer ${YC_IAM_TOKEN}"
-      X-Folder-Id: "${YC_FOLDER_ID}"
+      X-Folder-Id: "b1g79ef2i8m53bbrbjru"
 
 # ==============================================
 # Scrape configurations

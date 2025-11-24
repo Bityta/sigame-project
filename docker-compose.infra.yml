@@ -291,6 +291,8 @@ services:
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+    environment:
+      - YC_IAM_TOKEN=${YC_IAM_TOKEN}
     networks:
       - sigame-network
     healthcheck:
