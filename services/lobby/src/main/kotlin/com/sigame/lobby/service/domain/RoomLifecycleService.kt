@@ -99,7 +99,14 @@ class RoomLifecycleService(
             allowWrongAnswer = request.settings?.allowWrongAnswer ?: true,
             showRightAnswer = request.settings?.showRightAnswer ?: true
         )
-        roomSettingsRepository.save(roomSettings).awaitFirstOrNull()
+        // Используем прямой INSERT вместо save(), чтобы избежать попытки UPDATE
+        roomSettingsRepository.insertRoomSettings(
+            roomId = roomSettings.roomId,
+            timeForAnswer = roomSettings.timeForAnswer,
+            timeForChoice = roomSettings.timeForChoice,
+            allowWrongAnswer = roomSettings.allowWrongAnswer,
+            showRightAnswer = roomSettings.showRightAnswer
+        ).awaitFirstOrNull()
         
         // Добавляем хоста как игрока
         val hostPlayer = RoomPlayer(
@@ -264,14 +271,14 @@ class RoomLifecycleService(
                 )
                 roomSettingsRepository.save(updatedSettings).awaitFirstOrNull()
             } else {
-                val newSettings = RoomSettings(
+                // Если настроек нет (странная ситуация), создаём через INSERT
+                roomSettingsRepository.insertRoomSettings(
                     roomId = roomId,
                     timeForAnswer = request.settings.timeForAnswer,
                     timeForChoice = request.settings.timeForChoice,
                     allowWrongAnswer = request.settings.allowWrongAnswer,
                     showRightAnswer = request.settings.showRightAnswer
-                )
-                roomSettingsRepository.save(newSettings).awaitFirstOrNull()
+                ).awaitFirstOrNull()
             }
         }
         
