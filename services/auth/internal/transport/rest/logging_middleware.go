@@ -22,6 +22,7 @@ func (w responseWriter) Write(b []byte) (int, error) {
 }
 
 // RequestResponseLoggingMiddleware logs request and response data at debug level
+// Supports asynchronous logging with sensitive data masking
 func RequestResponseLoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip health and metrics endpoints
