@@ -41,13 +41,11 @@ export const RoomPage = () => {
     }
   };
 
-  const handleCopyLink = async () => {
+  const handleCopyCode = async () => {
     if (!room) return;
     
-    const roomUrl = `${window.location.origin}${ROUTES.ROOM(room.id)}`;
-    
     try {
-      await navigator.clipboard.writeText(roomUrl);
+      await navigator.clipboard.writeText(room.roomCode);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -55,11 +53,13 @@ export const RoomPage = () => {
     }
   };
 
-  const handleCopyCode = async () => {
+  const handleCopyLink = async () => {
     if (!room) return;
     
+    const roomUrl = `${window.location.origin}${ROUTES.ROOM(room.id)}`;
+    
     try {
-      await navigator.clipboard.writeText(room.roomCode);
+      await navigator.clipboard.writeText(roomUrl);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -95,25 +95,26 @@ export const RoomPage = () => {
       <header className="room-page__header">
         <h1 className="room-page__title">{room.name}</h1>
         <div className="room-page__share">
-          <div className="room-page__code">
-            {TEXTS.ROOM.ROOM_CODE} <span>{room.roomCode}</span>
+          <div 
+            className="room-page__code"
+            onClick={handleCopyCode}
+            title="Нажмите, чтобы скопировать код"
+          >
+            {TEXTS.ROOM.ROOM_CODE} 
+            <span className="room-page__code-value">
+              {room.roomCode}
+              {copySuccess && <span className="room-page__copy-hint"> ✓</span>}
+            </span>
           </div>
-          <div className="room-page__share-buttons">
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={handleCopyCode}
-            >
-              {copySuccess ? '✓ Скопировано' : '📋 Копировать код'}
-            </Button>
+          {room.isPublic && (
             <Button
               variant="secondary"
               size="small"
               onClick={handleCopyLink}
             >
-              {copySuccess ? '✓ Скопировано' : '🔗 Копировать ссылку'}
+              {copySuccess ? '✓ Скопировано' : '🔗 Поделиться ссылкой'}
             </Button>
-          </div>
+          )}
         </div>
       </header>
 
