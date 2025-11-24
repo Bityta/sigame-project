@@ -15,7 +15,7 @@ const (
 	PlayerRolePlayer PlayerRole = "player"
 )
 
-// Player represents a player in the game
+// Player represents a player in the game (Entity - internal model)
 type Player struct {
 	UserID    uuid.UUID  `json:"user_id"`
 	Username  string     `json:"username"`
@@ -27,22 +27,24 @@ type Player struct {
 	LeftAt    *time.Time `json:"left_at,omitempty"`
 }
 
-// PlayerState represents player state for broadcasting
+// PlayerState represents player state for broadcasting (DTO)
+// All fields are required
 type PlayerState struct {
-	UserID   uuid.UUID  `json:"user_id"`
-	Username string     `json:"username"`
-	Role     PlayerRole `json:"role"`
-	Score    int        `json:"score"`
-	IsActive bool       `json:"is_active"`
-	IsReady  bool       `json:"is_ready"`
+	UserID   uuid.UUID  `json:"user_id" binding:"required"`
+	Username string     `json:"username" binding:"required"`
+	Role     PlayerRole `json:"role" binding:"required"`
+	Score    int        `json:"score" binding:"required"`
+	IsActive bool       `json:"is_active" binding:"required"`
+	IsReady  bool       `json:"is_ready" binding:"required"`
 }
 
-// PlayerScore represents a player's score entry
+// PlayerScore represents a player's score entry (DTO)
+// All fields are required
 type PlayerScore struct {
-	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
-	Score    int       `json:"score"`
-	Rank     int       `json:"rank"`
+	UserID   uuid.UUID `json:"user_id" binding:"required"`
+	Username string    `json:"username" binding:"required"`
+	Score    int       `json:"score" binding:"required"`
+	Rank     int       `json:"rank" binding:"required"`
 }
 
 // NewPlayer creates a new player

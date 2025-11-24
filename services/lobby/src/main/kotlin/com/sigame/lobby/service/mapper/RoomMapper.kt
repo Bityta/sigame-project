@@ -2,6 +2,7 @@ package com.sigame.lobby.service.mapper
 
 import com.sigame.lobby.domain.dto.PlayerDto
 import com.sigame.lobby.domain.dto.RoomDto
+import com.sigame.lobby.domain.dto.RoomSettingsDto
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
@@ -36,6 +37,7 @@ class RoomMapper(
         val packInfo = packServiceClient.getPackInfo(room.packId)
         
         val playerDtos = players?.let { buildPlayerDtos(it) }
+        val settingsDto = settings?.let { toSettingsDto(it) }
         
         return RoomDto(
             id = room.id!!,
@@ -52,7 +54,7 @@ class RoomMapper(
             hasPassword = room.passwordHash != null,
             createdAt = room.createdAt,
             players = playerDtos,
-            settings = settings
+            settings = settingsDto
         )
     }
     
@@ -71,6 +73,7 @@ class RoomMapper(
         val packInfo = packInfoCache[room.packId]
         
         val playerDtos = players?.let { buildPlayerDtosWithCache(it, userInfoCache) }
+        val settingsDto = settings?.let { toSettingsDto(it) }
         
         return RoomDto(
             id = room.id!!,
@@ -87,7 +90,7 @@ class RoomMapper(
             hasPassword = room.passwordHash != null,
             createdAt = room.createdAt,
             players = playerDtos,
-            settings = settings
+            settings = settingsDto
         )
     }
     
@@ -124,6 +127,18 @@ class RoomMapper(
                 joinedAt = player.joinedAt
             )
         }
+    }
+    
+    /**
+     * Преобразует RoomSettings (Entity) в RoomSettingsDto
+     */
+    private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
+        return RoomSettingsDto(
+            timeForAnswer = settings.timeForAnswer,
+            timeForChoice = settings.timeForChoice,
+            allowWrongAnswer = settings.allowWrongAnswer,
+            showRightAnswer = settings.showRightAnswer
+        )
     }
 }
 

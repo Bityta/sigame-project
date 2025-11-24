@@ -78,7 +78,12 @@ class LobbyController(
         @Valid @RequestBody request: CreateRoomRequest,
         @Parameter(hidden = true) @CurrentUser user: AuthenticatedUser
     ): ResponseEntity<RoomDto> {
-        logger.info { "User ${user.userId} creating room: ${request.name}" }
+        logger.info { 
+            "User ${user.userId} creating room: name='${request.name}', " +
+            "packId=${request.packId}, maxPlayers=${request.maxPlayers}, " +
+            "isPublic=${request.isPublic}, hasPassword=${request.password != null}, " +
+            "settings=${request.settings}"
+        }
         val room = roomLifecycleService.createRoom(user.userId, request)
         return ResponseEntity.status(HttpStatus.CREATED).body(room)
     }

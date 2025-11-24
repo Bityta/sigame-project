@@ -5,61 +5,156 @@ from datetime import datetime
 
 
 class Question(BaseModel):
-    """Question model"""
-    id: str
-    price: int
-    text: str
-    answer: str
-    media_type: str = "text"
+    """Question model (DTO)
+    
+    All fields are required
+    """
+    id: str = Field(..., description="Unique identifier of the question")
+    price: int = Field(..., description="Question price/difficulty (points)", ge=0)
+    text: str = Field(..., description="Question text", min_length=1)
+    answer: str = Field(..., description="Correct answer", min_length=1)
+    media_type: str = Field(default="text", description="Media type: text, image, audio, video")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "q1",
+                "price": 100,
+                "text": "What is the capital of France?",
+                "answer": "Paris",
+                "media_type": "text"
+            }
+        }
 
 
 class Theme(BaseModel):
-    """Theme model"""
-    id: str
-    name: str
-    questions: List[Question]
+    """Theme model (DTO)
+    
+    All fields are required
+    """
+    id: str = Field(..., description="Unique identifier of the theme")
+    name: str = Field(..., description="Theme name", min_length=1)
+    questions: List[Question] = Field(..., description="List of questions in this theme")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "theme1",
+                "name": "Geography",
+                "questions": []
+            }
+        }
 
 
 class Round(BaseModel):
-    """Round model"""
-    id: str
-    round_number: int
-    name: str
-    themes: List[Theme]
+    """Round model (DTO)
+    
+    All fields are required
+    """
+    id: str = Field(..., description="Unique identifier of the round")
+    round_number: int = Field(..., description="Round number", ge=1)
+    name: str = Field(..., description="Round name", min_length=1)
+    themes: List[Theme] = Field(..., description="List of themes in this round")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "round1",
+                "round_number": 1,
+                "name": "First Round",
+                "themes": []
+            }
+        }
 
 
 class PackInfo(BaseModel):
-    """Pack information without full content"""
-    id: str
-    name: str
-    author: str
-    description: str
-    rounds_count: int
-    questions_count: int
-    created_at: str
+    """Pack information without full content (DTO)
+    
+    All fields are required
+    """
+    id: str = Field(..., description="Unique identifier of the pack")
+    name: str = Field(..., description="Pack name", min_length=1)
+    author: str = Field(..., description="Pack author", min_length=1)
+    description: str = Field(..., description="Pack description")
+    rounds_count: int = Field(..., description="Total number of rounds", ge=0)
+    questions_count: int = Field(..., description="Total number of questions", ge=0)
+    created_at: str = Field(..., description="Creation timestamp (ISO 8601)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "pack1",
+                "name": "General Knowledge",
+                "author": "Admin",
+                "description": "A pack about general knowledge",
+                "rounds_count": 3,
+                "questions_count": 30,
+                "created_at": "2024-01-01T00:00:00"
+            }
+        }
 
 
 class PackContent(BaseModel):
-    """Full pack content with all questions"""
-    id: str
-    name: str
-    author: str
-    description: str
-    rounds_count: int
-    questions_count: int
-    created_at: str
-    rounds: List[Round]
+    """Full pack content with all questions (DTO)
+    
+    All fields are required
+    """
+    id: str = Field(..., description="Unique identifier of the pack")
+    name: str = Field(..., description="Pack name", min_length=1)
+    author: str = Field(..., description="Pack author", min_length=1)
+    description: str = Field(..., description="Pack description")
+    rounds_count: int = Field(..., description="Total number of rounds", ge=0)
+    questions_count: int = Field(..., description="Total number of questions", ge=0)
+    created_at: str = Field(..., description="Creation timestamp (ISO 8601)")
+    rounds: List[Round] = Field(..., description="Complete list of rounds with content")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "pack1",
+                "name": "General Knowledge",
+                "author": "Admin",
+                "description": "A pack about general knowledge",
+                "rounds_count": 3,
+                "questions_count": 30,
+                "created_at": "2024-01-01T00:00:00",
+                "rounds": []
+            }
+        }
 
 
 class PackListResponse(BaseModel):
-    """Response for list of packs"""
-    packs: List[PackInfo]
-    total: int
+    """Response for list of packs (DTO)
+    
+    All fields are required
+    """
+    packs: List[PackInfo] = Field(..., description="List of pack information")
+    total: int = Field(..., description="Total number of packs", ge=0)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "packs": [],
+                "total": 0
+            }
+        }
 
 
 class HealthResponse(BaseModel):
-    """Health check response"""
-    status: str
-    service: str
-    version: str
+    """Health check response (DTO)
+    
+    All fields are required
+    """
+    status: str = Field(..., description="Service status")
+    service: str = Field(..., description="Service name")
+    version: str = Field(..., description="Service version")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "healthy",
+                "service": "pack-service",
+                "version": "1.0.0"
+            }
+        }
 

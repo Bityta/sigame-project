@@ -109,7 +109,7 @@ class RequestLoggingFilter : WebFilter {
                     if (responseBody.isNotEmpty()) {
                         logger.debug { "Response body: ${sanitizeBody(responseBody.toString())}" }
                     }
-                    logger.info { "Request completed: $method $path - status=$statusCode duration=${duration}ms" }
+                logger.info { "Request completed: $method $path - status=$statusCode duration=${duration}ms" }
                 }.subscribe()
                 
                 // Очищаем MDC
