@@ -15,7 +15,7 @@ import (
 type Manager struct {
 	game        *domain.Game
 	pack        *domain.Pack
-	hub         GameHub
+	hub         Hub
 	ctx         context.Context
 	cancel      context.CancelFunc
 	actionChan  chan *PlayerAction
@@ -31,8 +31,8 @@ type PlayerAction struct {
 	Message *websocket.ClientMessage
 }
 
-// GameHub interface for broadcasting messages
-type GameHub interface {
+// Hub interface for broadcasting messages to game clients
+type Hub interface {
 	Broadcast(gameID uuid.UUID, message []byte)
 }
 
@@ -42,7 +42,7 @@ type EventLogger interface {
 }
 
 // NewManager creates a new game manager
-func NewManager(game *domain.Game, pack *domain.Pack, hub GameHub, eventLogger EventLogger) *Manager {
+func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger EventLogger) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Manager{

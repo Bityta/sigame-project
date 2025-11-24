@@ -84,10 +84,13 @@ class RequestLoggingFilter : WebFilter {
                     Flux.from(body).doOnNext { buffer ->
                         // Read response body asynchronously
                         mono {
-                            val bytes = ByteArray(buffer.readableByteCount())
-                            buffer.slice().read(bytes)
-                            val bodyString = String(bytes, StandardCharsets.UTF_8)
-                            responseBody.append(bodyString)
+                            val readableBytes = buffer.readableByteCount()
+                            if (readableBytes > 0) {
+                                val bytes = ByteArray(readableBytes)
+                                buffer.asByteBuffer().get(bytes)
+                                val bodyString = String(bytes, StandardCharsets.UTF_8)
+                                responseBody.append(bodyString)
+                            }
                         }.subscribe()
                     }
                 )
