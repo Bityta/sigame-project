@@ -255,27 +255,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Fluent Bit для отправки логов в Yandex Cloud Logging
-  fluent-bit:
-    image: fluent/fluent-bit:latest
-    container_name: sigame-fluent-bit
-    volumes:
-      - ./infrastructure/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
-      - ./infrastructure/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - YC_FOLDER_ID=${YC_FOLDER_ID}
-      - LOG_GROUP_ID=${LOG_GROUP_ID}
-      - YC_IAM_TOKEN=${YC_IAM_TOKEN}
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - sigame-network
+  # ==========================================
+  # Monitoring Stack: Prometheus + Loki + Grafana
+  # ==========================================
 
   # Prometheus для сбора метрик приложений
   prometheus:
@@ -285,19 +267,90 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=7d'
-      - '--web.enable-remote-write-receiver'
     ports:
       - "9090:9090"
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./infrastructure/prometheus/iam_token:/etc/prometheus/iam_token:ro
       - prometheus-data:/prometheus
-    environment:
-      - YC_IAM_TOKEN=${YC_IAM_TOKEN}
     networks:
       - sigame-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Loki для сбора логов
+  loki:
+    image: grafana/loki:latest
+    container_name: sigame-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infrastructure/loki/loki.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/config.yml
+    networks:
+      - sigame-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Promtail для отправки логов в Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: sigame-promtail
+    volumes:
+      - ./infrastructure/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - sigame-network
+    depends_on:
+      - loki
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana для визуализации метрик и логов
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sigame-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://89.169.139.21:3000
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - sigame-network
+    depends_on:
+      - prometheus
+      - loki
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -323,4 +376,6 @@ volumes:
   kafka-data:
   minio-data:
   prometheus-data:
+  loki-data:
+  grafana-data:
 
