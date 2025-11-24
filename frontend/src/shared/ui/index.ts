@@ -8,4 +8,5 @@ export * from './Input/Input';
 export * from './Card/Card';
 export * from './Spinner/Spinner';
 export * from './ErrorBanner/ErrorBanner';
+export * from './Toggle/Toggle';
 
