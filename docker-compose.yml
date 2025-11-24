@@ -296,8 +296,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - sigame-network
     healthcheck:
