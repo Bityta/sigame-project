@@ -3,10 +3,10 @@
  * Красивый переключатель вкл/выкл
  */
 
-import { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes } from 'react';
 import './Toggle.css';
 
-interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
   label?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
