@@ -16,7 +16,6 @@ from app.metrics import metrics
 from app.mock_data import MOCK_PACKS
 from app.grpc.server import serve_grpc
 from app.tracing import init_tracer, instrument_fastapi, shutdown_tracer
-from app.middleware import AsyncRequestResponseLoggingMiddleware
 
 # Configure logging with JSON format for better parsing
 logging.basicConfig(
@@ -109,9 +108,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Add async request/response logging middleware
-app.add_middleware(AsyncRequestResponseLoggingMiddleware)
 
 # Include routes
 app.include_router(router)

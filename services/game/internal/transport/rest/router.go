@@ -10,8 +10,8 @@ func SetupRouter(handler *Handler, wsHandler *websocket.Handler) *gin.Engine {
 	r := gin.New()
 
 	// Middleware
+	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(RequestResponseLoggingMiddleware()) // Async request/response logging
 	r.Use(CORSMiddleware())
 
 	// Health check
