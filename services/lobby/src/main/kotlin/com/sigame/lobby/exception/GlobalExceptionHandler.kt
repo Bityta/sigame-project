@@ -52,8 +52,17 @@ class GlobalExceptionHandler {
             }
             is DecodingException -> {
                 val decodingError = cause as DecodingException
-                logger.warn(decodingError) { "JSON decoding error: ${decodingError.message}" }
-                details["error"] = decodingError.message ?: "Failed to decode JSON"
+                val errorMessage = decodingError.message ?: ""
+                
+                // Специальная обработка для пустого тела запроса
+                if (errorMessage.contains("No content to map") || errorMessage.contains("end-of-input")) {
+                    logger.warn { "Request with empty body received" }
+                    details["error"] = "Request body is required and must contain valid JSON"
+                    details["hint"] = "Make sure to send Content-Type: application/json header and include required fields in the request body"
+                } else {
+                    logger.warn(decodingError) { "JSON decoding error: $errorMessage" }
+                    details["error"] = errorMessage
+                }
             }
             else -> {
                 logger.warn(ex) { "ServerWebInputException: ${ex.message}, cause: ${cause?.message}" }
@@ -61,10 +70,17 @@ class GlobalExceptionHandler {
             }
         }
         
+        val message = when {
+            details["error"]?.contains("Request body is required") == true -> 
+                details["error"] ?: "Request body is required"
+            else -> 
+                "Failed to read HTTP message: ${details["error"] ?: ex.reason ?: "Invalid JSON format"}"
+        }
+        
         val errorResponse = ErrorResponse(
             status = HttpStatus.BAD_REQUEST.value(),
             error = "Invalid Request Body",
-            message = "Failed to read HTTP message: ${details["error"] ?: ex.reason ?: "Invalid JSON format"}",
+            message = message,
             details = details
         )
         
