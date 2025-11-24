@@ -1,13 +1,17 @@
 package com.sigame.lobby.exception
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException
+import com.fasterxml.jackson.databind.exc.MismatchedInputException
 import com.sigame.lobby.domain.exception.*
 import mu.KotlinLogging
+import org.springframework.core.codec.DecodingException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.support.WebExchangeBindException
+import org.springframework.web.server.ServerWebInputException
 import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
@@ -26,6 +30,46 @@ data class ErrorResponse(
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    
+    @ExceptionHandler(ServerWebInputException::class)
+    fun handleServerWebInputException(ex: ServerWebInputException): ResponseEntity<ErrorResponse> {
+        val cause = ex.cause
+        val details = mutableMapOf<String, String>()
+        
+        when (cause) {
+            is InvalidFormatException -> {
+                val fieldName = cause.path.joinToString(".") { it.fieldName ?: "unknown" }
+                details["field"] = fieldName
+                details["value"] = cause.value?.toString() ?: "null"
+                details["expectedType"] = cause.targetType.simpleName
+                logger.warn { "JSON deserialization error: Invalid format for field '$fieldName', value='${cause.value}', expected type=${cause.targetType.simpleName}" }
+            }
+            is MismatchedInputException -> {
+                val fieldName = cause.path.joinToString(".") { it.fieldName ?: "unknown" }
+                details["field"] = fieldName
+                details["expectedType"] = cause.targetType?.simpleName ?: "unknown"
+                logger.warn { "JSON deserialization error: Missing or mismatched field '$fieldName', expected type=${cause.targetType?.simpleName}" }
+            }
+            is DecodingException -> {
+                val decodingError = cause as DecodingException
+                logger.warn(decodingError) { "JSON decoding error: ${decodingError.message}" }
+                details["error"] = decodingError.message ?: "Failed to decode JSON"
+            }
+            else -> {
+                logger.warn(ex) { "ServerWebInputException: ${ex.message}, cause: ${cause?.message}" }
+                details["error"] = ex.message ?: "Invalid input"
+            }
+        }
+        
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = "Invalid Request Body",
+            message = "Failed to read HTTP message: ${details["error"] ?: ex.reason ?: "Invalid JSON format"}",
+            details = details
+        )
+        
+        return ResponseEntity.badRequest().body(errorResponse)
+    }
     
     @ExceptionHandler(WebExchangeBindException::class)
     fun handleValidationException(ex: WebExchangeBindException): ResponseEntity<ErrorResponse> {

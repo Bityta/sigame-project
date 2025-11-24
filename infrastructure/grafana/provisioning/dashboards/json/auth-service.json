@@ -1,28 +1,28 @@
 {
   "title": "🔐 Auth Service",
-  "uid": "auth-service",
-  "tags": ["sigame", "auth", "backend"],
-  "timezone": "browser",
+    "uid": "auth-service",
+    "tags": ["sigame", "auth", "backend"],
+    "timezone": "browser",
   "refresh": "10s",
-  "time": {
+    "time": {
     "from": "now-15m",
-    "to": "now"
-  },
+      "to": "now"
+    },
   "editable": true,
   "graphTooltip": 1,
-  "panels": [
-    {
-      "id": 1,
+    "panels": [
+      {
+        "id": 1,
       "title": "✅ Success Requests (2xx) by Endpoint",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
-      "targets": [
-        {
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+        "targets": [
+          {
           "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
-          "refId": "A"
-        }
-      ],
+            "refId": "A"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -41,19 +41,19 @@
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
         "tooltip": {"mode": "multi", "sort": "desc"}
       }
-    },
-    {
-      "id": 2,
+      },
+      {
+        "id": 2,
       "title": "⚠️ Client Errors (4xx) by Endpoint",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
-      "targets": [
-        {
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+        "targets": [
+          {
           "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
-          "refId": "A"
-        }
-      ],
+            "refId": "A"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -79,19 +79,19 @@
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
         "tooltip": {"mode": "multi", "sort": "desc"}
       }
-    },
-    {
-      "id": 3,
+      },
+      {
+        "id": 3,
       "title": "🔥 Server Errors (5xx) by Endpoint",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
-      "targets": [
-        {
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+        "targets": [
+          {
           "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
-          "refId": "A"
-        }
-      ],
+            "refId": "A"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "fixed", "fixedColor": "red"},
@@ -109,19 +109,19 @@
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
         "tooltip": {"mode": "multi", "sort": "desc"}
       }
-    },
-    {
-      "id": 4,
+      },
+      {
+        "id": 4,
       "title": "📊 Total Request Rate by Endpoint",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-      "targets": [
-        {
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
           "expr": "sum(rate(http_requests_total{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
-          "refId": "A"
-        }
-      ],
+            "refId": "A"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -139,29 +139,29 @@
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull", "max"]},
         "tooltip": {"mode": "multi", "sort": "desc"}
       }
-    },
-    {
-      "id": 5,
+      },
+      {
+        "id": 5,
       "title": "⏱️ Response Time (p50, p95, p99) by Endpoint",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-      "targets": [
-        {
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
           "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p50)",
-          "refId": "A"
-        },
-        {
+            "refId": "A"
+          },
+          {
           "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p95)",
-          "refId": "B"
-        },
-        {
+            "refId": "B"
+          },
+          {
           "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p99)",
-          "refId": "C"
-        }
-      ],
+            "refId": "C"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -180,17 +180,17 @@
         "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "lastNotNull", "max"]},
         "tooltip": {"mode": "multi", "sort": "none"}
       }
-    },
-    {
-      "id": 6,
+      },
+      {
+        "id": 6,
       "title": "👥 Active Sessions",
-      "type": "stat",
+        "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
-      "targets": [
-        {
-          "expr": "auth_active_sessions",
-          "refId": "A"
-        }
+        "targets": [
+          {
+            "expr": "auth_active_sessions",
+            "refId": "A"
+          }
       ],
       "fieldConfig": {
         "defaults": {
@@ -214,17 +214,17 @@
         "textMode": "value_and_name",
         "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
       }
-    },
-    {
-      "id": 7,
+      },
+      {
+        "id": 7,
       "title": "👤 Total Users",
-      "type": "stat",
+        "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
-      "targets": [
-        {
-          "expr": "auth_total_users",
-          "refId": "A"
-        }
+        "targets": [
+          {
+            "expr": "auth_total_users",
+            "refId": "A"
+          }
       ],
       "fieldConfig": {
         "defaults": {
@@ -247,19 +247,19 @@
         "textMode": "value_and_name",
         "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
       }
-    },
-    {
-      "id": 8,
+      },
+      {
+        "id": 8,
       "title": "🔌 gRPC Request Rate",
       "type": "timeseries",
       "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
-      "targets": [
-        {
+        "targets": [
+          {
           "expr": "sum(rate(grpc_requests_total{job=\"auth-service\"}[1m])) by (method, status)",
           "legendFormat": "{{method}} ({{status}})",
-          "refId": "A"
-        }
-      ],
+            "refId": "A"
+          }
+        ],
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -277,6 +277,6 @@
         "legend": {"displayMode": "table", "placement": "right"},
         "tooltip": {"mode": "multi", "sort": "desc"}
       }
-    }
-  ]
+      }
+    ]
 }

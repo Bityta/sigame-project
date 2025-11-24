@@ -7,7 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// User represents a registered user in the authentication system
+// User represents a registered user in the authentication system (Entity)
+// This is the internal domain model, not exposed directly via API
 type User struct {
 	ID           uuid.UUID `json:"id" db:"id"`
 	Username     string    `json:"username" db:"username"`
@@ -16,7 +17,7 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// RefreshToken represents a refresh token stored in the database
+// RefreshToken represents a refresh token stored in the database (Entity)
 // Refresh tokens are long-lived tokens used to obtain new access tokens
 type RefreshToken struct {
 	ID        uuid.UUID `json:"id" db:"id"`
@@ -31,12 +32,13 @@ func (rt *RefreshToken) IsExpired() bool {
 	return time.Now().After(rt.ExpiresAt)
 }
 
-// UserResponse represents user data safe for API responses
+// UserResponse represents user data safe for API responses (DTO)
 // This excludes sensitive information like password hashes
+// All fields are always present
 type UserResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Username  string    `json:"username"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID `json:"id" binding:"required"`
+	Username  string    `json:"username" binding:"required"`
+	CreatedAt time.Time `json:"created_at" binding:"required"`
 }
 
 // ToResponse converts a User to a UserResponse (safe for external use)
