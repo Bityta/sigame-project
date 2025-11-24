@@ -611,8 +611,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Auth Service - Complete",
-  "uid": "auth-service-complete",
+  "title": "Auth Service",
+  "uid": "auth-service",
   "version": 0,
   "weekStart": ""
 }
