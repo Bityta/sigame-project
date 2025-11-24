@@ -77,3 +77,17 @@ scrape_configs:
     scrape_interval: 15s
     scrape_timeout: 10s
 
+# ==============================================
+# Remote Write (для Tempo metrics generator)
+# ==============================================
+
+remote_write:
+  - url: http://tempo:3200/api/v1/push
+    queue_config:
+      capacity: 10000
+      max_shards: 50
+      min_shards: 1
+      max_samples_per_send: 5000
+      batch_send_deadline: 5s
+      min_backoff: 30ms
+      max_backoff: 100ms

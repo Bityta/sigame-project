@@ -41,8 +41,26 @@ metrics_generator:
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+  processor:
+    service_graphs:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+    span_metrics:
+      dimensions:
+        - http.method
+        - http.target
+        - http.status_code
+    local_blocks:
+      flush_check_period: 10s
+      max_block_duration: 5m
+      max_block_bytes: 10485760
 
 overrides:
   metrics_generator_processors:
     - service-graphs
     - span-metrics
+    - local-blocks
