@@ -1,24 +1,88 @@
 {
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": ["sigame"],
+      "targetBlank": false,
+      "title": "📊 Дашборды сервисов",
+      "tooltip": "Перейти к детальным дашбордам",
+      "type": "dashboards",
+      "url": ""
+    },
+    {
+      "icon": "doc",
+      "tags": [],
+      "targetBlank": true,
+      "title": "📋 Логи (Loki)",
+      "tooltip": "Открыть Explore с логами",
+      "type": "link",
+      "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice%3D~%5C%22.%2B%5C%22%7D%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D"
+    },
+    {
+      "icon": "graph",
+      "tags": [],
+      "targetBlank": true,
+      "title": "🔍 Трейсы (Tempo)",
+      "tooltip": "Открыть Explore с трейсами",
+      "type": "link",
+      "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D"
+    }
+  ],
   "liveNow": true,
   "panels": [
     {
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+      "id": 200,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# 🎮 SIGame - Мониторинг платформы\n\n**Быстрые ссылки:** [📋 Все логи](/explore?left=%7B%22datasource%22:%22loki%22%7D) | [🔍 Все трейсы](/explore?left=%7B%22datasource%22:%22tempo%22%7D) | [📊 Метрики Prometheus](http://89.169.139.21:9090)\n\n---",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.0.0",
+      "transparent": true,
+      "type": "text"
+    },
+    {
       "collapsed": false,
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3},
       "id": 100,
       "panels": [],
       "title": "🎮 Статус сервисов",
       "type": "row"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -31,8 +95,25 @@
           }
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 0, "y": 1},
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 4},
       "id": 1,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "📊 Детальный дашборд",
+          "url": "/d/auth-service"
+        },
+        {
+          "targetBlank": true,
+          "title": "📋 Логи Auth Service",
+          "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice%3D%5C%22auth-service%5C%22%7D%22%7D%5D%7D"
+        },
+        {
+          "targetBlank": true,
+          "title": "🔍 Трейсы Auth Service",
+          "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22auth-service%22%7D%5D%7D"
+        }
+      ],
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -42,12 +123,12 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "up{job=\"auth-service\"}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "up{job=\"auth-service\"}", "refId": "A"}],
       "title": "🔐 Auth Service",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -60,8 +141,25 @@
           }
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 4, "y": 1},
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 4},
       "id": 2,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "📊 Детальный дашборд",
+          "url": "/d/lobby-service"
+        },
+        {
+          "targetBlank": true,
+          "title": "📋 Логи Lobby Service",
+          "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice%3D%5C%22lobby-service%5C%22%7D%22%7D%5D%7D"
+        },
+        {
+          "targetBlank": true,
+          "title": "🔍 Трейсы Lobby Service",
+          "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22lobby-service%22%7D%5D%7D"
+        }
+      ],
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -71,12 +169,12 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "up{job=\"lobby-service\"}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "up{job=\"lobby-service\"}", "refId": "A"}],
       "title": "🏠 Lobby Service",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -89,8 +187,25 @@
           }
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 8, "y": 1},
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 4},
       "id": 3,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "📊 Детальный дашборд",
+          "url": "/d/game-service"
+        },
+        {
+          "targetBlank": true,
+          "title": "📋 Логи Game Service",
+          "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice%3D%5C%22game-service%5C%22%7D%22%7D%5D%7D"
+        },
+        {
+          "targetBlank": true,
+          "title": "🔍 Трейсы Game Service",
+          "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22game-service%22%7D%5D%7D"
+        }
+      ],
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -100,12 +215,12 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "up{job=\"game-service\"}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "up{job=\"game-service\"}", "refId": "A"}],
       "title": "🎯 Game Service",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -118,8 +233,25 @@
           }
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 12, "y": 1},
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 4},
       "id": 4,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "📊 Детальный дашборд",
+          "url": "/d/pack-service"
+        },
+        {
+          "targetBlank": true,
+          "title": "📋 Логи Pack Service",
+          "url": "/explore?left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bservice%3D%5C%22pack-service%5C%22%7D%22%7D%5D%7D"
+        },
+        {
+          "targetBlank": true,
+          "title": "🔍 Трейсы Pack Service",
+          "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22pack-service%22%7D%5D%7D"
+        }
+      ],
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -129,24 +261,32 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "up{job=\"pack-service\"}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "up{job=\"pack-service\"}", "refId": "A"}],
       "title": "📦 Pack Service",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 10},
+      "id": 105,
+      "panels": [],
+      "title": "📊 Ключевые метрики",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "blue", "value": null}]
+            "steps": [{"color": "blue", "value": null}, {"color": "green", "value": 10}, {"color": "yellow", "value": 100}]
           },
           "unit": "short"
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 16, "y": 1},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 11},
       "id": 5,
       "options": {
         "colorMode": "value",
@@ -157,24 +297,24 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "auth_total_users", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "auth_total_users", "refId": "A"}],
       "title": "👥 Всего пользователей",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 100}]
           },
           "unit": "short"
         }
       },
-      "gridPos": {"h": 6, "w": 4, "x": 20, "y": 1},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 11},
       "id": 6,
       "options": {
         "colorMode": "value",
@@ -185,20 +325,12 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "auth_active_sessions", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "auth_active_sessions", "refId": "A"}],
       "title": "🔑 Активные сессии",
       "type": "stat"
     },
     {
-      "collapsed": false,
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7},
-      "id": 101,
-      "panels": [],
-      "title": "🏠 Lobby & Rooms",
-      "type": "row"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -210,7 +342,7 @@
           "unit": "short"
         }
       },
-      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 11},
       "id": 10,
       "options": {
         "colorMode": "value",
@@ -221,12 +353,12 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "lobby_active_rooms", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "lobby_active_rooms", "refId": "A"}],
       "title": "🏠 Активные комнаты",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -238,7 +370,7 @@
           "unit": "short"
         }
       },
-      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 8},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 11},
       "id": 11,
       "options": {
         "colorMode": "value",
@@ -249,166 +381,82 @@
         "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "lobby_active_players", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "lobby_active_players", "refId": "A"}],
       "title": "👥 Игроки онлайн",
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {"tooltip": false, "viz": false, "legend": false},
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
-          },
+          "color": {"mode": "thresholds"},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [{"color": "blue", "value": null}, {"color": "green", "value": 10}]
           },
           "unit": "short"
         }
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-      "id": 12,
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 11},
+      "id": 40,
       "options": {
-        "legend": {"calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""},
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "pack_available_packs_total", "refId": "A"}],
+      "title": "📦 Доступно паков",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 11},
+      "id": 50,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""},
+        "textMode": "value_and_name"
       },
       "pluginVersion": "10.0.0",
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "lobby_rooms_by_status", "refId": "A", "legendFormat": "{{status}}"}
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total[5m]))",
+          "refId": "A"
+        }
       ],
-      "title": "📊 Комнаты по статусам",
-      "type": "timeseries"
+      "title": "📈 Total RPS",
+      "type": "stat"
     },
     {
       "collapsed": false,
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16},
-      "id": 102,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15},
+      "id": 106,
       "panels": [],
-      "title": "📈 Статистика событий",
+      "title": "⚡ Производительность и ошибки",
       "type": "row"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Комнаты",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 70,
-            "gradientMode": "none",
-            "hideFrom": {"tooltip": false, "viz": false, "legend": false},
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "normal"},
-            "thresholdsStyle": {"mode": "off"}
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
-      "id": 20,
-      "options": {
-        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "increase(lobby_rooms_created_total[5m])", "refId": "A", "legendFormat": "Создано"},
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "increase(lobby_rooms_started_total[5m])", "refId": "B", "legendFormat": "Начато"},
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "increase(lobby_rooms_cancelled_total[5m])", "refId": "C", "legendFormat": "Отменено"}
-      ],
-      "title": "🎯 События комнат (за 5 минут)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Игроки",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {"tooltip": false, "viz": false, "legend": false},
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
-      "id": 21,
-      "options": {
-        "legend": {"calcs": ["last", "sum"], "displayMode": "table", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi", "sort": "desc"}
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(lobby_players_joined_total[5m]) * 60", "refId": "A", "legendFormat": "Присоединилось / мин"},
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(lobby_players_left_total[5m]) * 60", "refId": "B", "legendFormat": "Вышло / мин"}
-      ],
-      "title": "👥 Активность игроков",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 25},
-      "id": 103,
-      "panels": [],
-      "title": "⚡ Производительность",
-      "type": "row"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -439,7 +487,7 @@
           "unit": "reqps"
         }
       },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
       "id": 30,
       "options": {
         "legend": {"calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true},
@@ -447,21 +495,43 @@
       },
       "pluginVersion": "10.0.0",
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(auth_requests_total[5m])", "refId": "A", "legendFormat": "Auth - {{method}} {{endpoint}}"},
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(http_server_requests_seconds_count{job=\"lobby-service\"}[5m])", "refId": "B", "legendFormat": "Lobby - {{uri}}"}
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "A",
+          "legendFormat": "Auth Service"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "refId": "B",
+          "legendFormat": "Lobby Service"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "C",
+          "legendFormat": "Game Service"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "D",
+          "legendFormat": "Pack Service"
+        }
       ],
-      "title": "📊 Request Rate",
+      "title": "📊 Request Rate по сервисам",
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "Время (мс)",
+            "axisLabel": "Ошибок/сек",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -472,7 +542,7 @@
             "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
+            "showPoints": "auto",
             "spanNulls": true,
             "stacking": {"group": "A", "mode": "none"},
             "thresholdsStyle": {"mode": "line"}
@@ -480,132 +550,143 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 500}, {"color": "red", "value": 1000}]
+            "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]
           },
-          "unit": "ms"
-        }
+          "unit": "reqps"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byRegexp", "options": ".*4xx.*"},
+            "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+          },
+          {
+            "matcher": {"id": "byRegexp", "options": ".*5xx.*"},
+            "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+          }
+        ]
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
       "id": 31,
       "options": {
-        "legend": {"calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true},
+        "legend": {"calcs": ["last", "sum"], "displayMode": "table", "placement": "bottom", "showLegend": true},
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
       "pluginVersion": "10.0.0",
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(auth_request_duration_seconds_sum[5m]) / rate(auth_request_duration_seconds_count[5m]) * 1000", "refId": "A", "legendFormat": "Auth - {{method}} {{endpoint}}"},
-        {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "rate(http_server_requests_seconds_sum{job=\"lobby-service\"}[5m]) / rate(http_server_requests_seconds_count{job=\"lobby-service\"}[5m]) * 1000", "refId": "B", "legendFormat": "Lobby - {{uri}}"}
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "A",
+          "legendFormat": "Auth 4xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "B",
+          "legendFormat": "Auth 5xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"4..\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "refId": "C",
+          "legendFormat": "Lobby 4xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"5..\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "refId": "D",
+          "legendFormat": "Lobby 5xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "E",
+          "legendFormat": "Game 4xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "F",
+          "legendFormat": "Game 5xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "G",
+          "legendFormat": "Pack 4xx"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[5m])) by (job)",
+          "refId": "H",
+          "legendFormat": "Pack 5xx"
+        }
       ],
-      "title": "⏱️ Среднее время ответа",
+      "title": "⚠️ Ошибки (4xx и 5xx)",
       "type": "timeseries"
     },
     {
       "collapsed": false,
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34},
-      "id": 104,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24},
+      "id": 107,
       "panels": [],
-      "title": "📦 Pack Service",
+      "title": "📋 Логи и трейсы",
       "type": "row"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{"color": "blue", "value": null}, {"color": "green", "value": 10}]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 35},
-      "id": 40,
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 25},
+      "id": 60,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""},
-        "textMode": "value_and_name"
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "pack_available_packs_total", "refId": "A"}],
-      "title": "📦 Доступно паков",
-      "type": "stat"
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{service=~\".+\"} |= \"\" | json | level=~\"error|ERROR|warn|WARN\"",
+          "refId": "A"
+        }
+      ],
+      "title": "⚠️ Последние ошибки и предупреждения (все сервисы)",
+      "type": "logs"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "none",
-            "hideFrom": {"tooltip": false, "viz": false, "legend": false},
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {"type": "linear"},
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {"group": "A", "mode": "none"},
-            "thresholdsStyle": {"mode": "off"}
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 35},
-      "id": 41,
+      "datasource": {"type": "datasource", "uid": "-- Dashboard --"},
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 25},
+      "id": 61,
       "options": {
-        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "single", "sort": "none"}
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "# 🔍 Просмотр трейсов\n\n## Быстрые ссылки по сервисам:\n\n- [🔐 Auth Service - Трейсы](/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22auth-service%22%7D%5D%7D)\n- [🏠 Lobby Service - Трейсы](/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22lobby-service%22%7D%5D%7D)\n- [🎯 Game Service - Трейсы](/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22game-service%22%7D%5D%7D)\n- [📦 Pack Service - Трейсы](/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22search%22,%22serviceName%22:%22pack-service%22%7D%5D%7D)\n\n---\n\n## Поиск трейсов с ошибками:\n\n[🔥 Все трейсы с ошибками (status >= 400)](/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceql%22,%22query%22:%22%7B%20span.http.status_code%20%3E%3D%20400%20%7D%22%7D%5D%7D)\n\n---\n\n## Полезные TraceQL запросы:\n\n```traceql\n# Медленные запросы (> 1 секунды)\n{ duration > 1s }\n\n# Запросы с ошибками\n{ span.http.status_code >= 400 }\n\n# Конкретный сервис и метод\n{ resource.service.name = \"pack-service\" && span.http.method = \"GET\" }\n```",
+        "mode": "markdown"
       },
       "pluginVersion": "10.0.0",
-      "targets": [{"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "expr": "pack_available_packs_total", "refId": "A", "legendFormat": "Всего паков"}],
-      "title": "📊 Динамика количества паков",
-      "type": "timeseries"
+      "transparent": true,
+      "type": "text"
     }
   ],
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["sigame", "overview"],
+  "tags": ["sigame", "overview", "main"],
   "templating": {
-    "list": [
-      {
-        "current": {"selected": false, "text": "Prometheus", "value": "prometheus"},
-        "hide": 0,
-        "includeAll": false,
-        "label": "Datasource",
-        "multi": false,
-        "name": "DS_PROMETHEUS",
-        "options": [],
-        "query": "prometheus",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "type": "datasource"
-      }
-    ]
+    "list": []
   },
   "time": {"from": "now-15m", "to": "now"},
   "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]},
   "timezone": "browser",
-  "title": "SIGame - Главный дашборд",
+  "title": "🎮 SIGame - Главный дашборд",
   "uid": "sigame-main",
   "version": 1
 }
-
