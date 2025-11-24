@@ -11,7 +11,9 @@ distributor:
           endpoint: 0.0.0.0:4318
 
 ingester:
-  max_block_duration: 5m
+  max_block_duration: 30s  # Быстрее flush для dev/testing
+  complete_block_timeout: 15s
+  flush_check_period: 10s
 
 compactor:
   compaction:
@@ -55,9 +57,9 @@ metrics_generator:
         - http.target
         - http.status_code
     local_blocks:
-      flush_check_period: 10s
-      max_block_duration: 5m
-      max_block_bytes: 10485760
+      flush_check_period: 5s
+      max_block_duration: 30s
+      max_block_bytes: 5242880
 
 overrides:
   metrics_generator_processors:
