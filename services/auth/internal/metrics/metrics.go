@@ -3,62 +3,61 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	
-	"github.com/sigame/auth/internal/domain"
 )
 
-// Metrics holds all Prometheus metrics for the auth service
+// Metrics holds Prometheus metrics for the auth service
 type Metrics struct {
-	requestsTotal          *prometheus.CounterVec
-	requestDuration        *prometheus.HistogramVec
-	jwtGenerationDuration  prometheus.Histogram
-	usernameChecksTotal    *prometheus.CounterVec
-	loginAttemptsTotal     *prometheus.CounterVec
-	activeSessions         prometheus.Gauge
-	totalUsers             prometheus.Gauge
-	grpcRequestsTotal      *prometheus.CounterVec
-	grpcRequestDuration    *prometheus.HistogramVec
+	// HTTP metrics
+	httpRequestsTotal   *prometheus.CounterVec
+	httpRequestDuration *prometheus.HistogramVec
+	
+	// gRPC metrics
+	grpcRequestsTotal   *prometheus.CounterVec
+	grpcRequestDuration *prometheus.HistogramVec
+	
+	// Business metrics
+	activeSessions prometheus.Gauge
+	totalUsers     prometheus.Gauge
 }
 
-// New creates a new Metrics instance with all Prometheus collectors
+// New creates a new Metrics instance
 func New() *Metrics {
 	return &Metrics{
-		requestsTotal: promauto.NewCounterVec(
+		// HTTP metrics
+		httpRequestsTotal: promauto.NewCounterVec(
 			prometheus.CounterOpts{
-				Name: "auth_requests_total",
-				Help: "Total number of auth service requests",
+				Name: "http_requests_total",
+				Help: "Total number of HTTP requests",
 			},
-			[]string{"method", "path", "status"},
+			[]string{"method", "endpoint", "status"},
 		),
-		requestDuration: promauto.NewHistogramVec(
+		httpRequestDuration: promauto.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "auth_request_duration_seconds",
-				Help:    "Duration of auth service requests in seconds",
-				Buckets: prometheus.DefBuckets,
+				Name:    "http_request_duration_seconds",
+				Help:    "HTTP request latency in seconds",
+				Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			},
-			[]string{"method", "path"},
+			[]string{"method", "endpoint"},
 		),
-		jwtGenerationDuration: promauto.NewHistogram(
+		
+		// gRPC metrics
+		grpcRequestsTotal: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "grpc_requests_total",
+				Help: "Total number of gRPC requests",
+			},
+			[]string{"method", "status"},
+		),
+		grpcRequestDuration: promauto.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name:    "auth_jwt_generation_duration_seconds",
-				Help:    "Duration of JWT token generation in seconds",
-				Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1},
+				Name:    "grpc_request_duration_seconds",
+				Help:    "gRPC request latency in seconds",
+				Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			},
+			[]string{"method"},
 		),
-		usernameChecksTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "auth_username_checks_total",
-				Help: "Total number of username availability checks",
-			},
-			[]string{"available"},
-		),
-		loginAttemptsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "auth_login_attempts_total",
-				Help: "Total number of login attempts",
-			},
-			[]string{"success"},
-		),
+		
+		// Business metrics
 		activeSessions: promauto.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "auth_active_sessions",
@@ -71,68 +70,14 @@ func New() *Metrics {
 				Help: "Total number of registered users",
 			},
 		),
-		grpcRequestsTotal: promauto.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "auth_grpc_requests_total",
-				Help: "Total number of gRPC requests",
-			},
-			[]string{"method", "status"},
-		),
-		grpcRequestDuration: promauto.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "auth_grpc_request_duration_seconds",
-				Help:    "Duration of gRPC requests in seconds",
-				Buckets: prometheus.DefBuckets,
-			},
-			[]string{"method"},
-		),
 	}
 }
 
 // RecordHTTPRequest records HTTP request metrics
 func (m *Metrics) RecordHTTPRequest(method, path string, status int, duration float64) {
-	m.requestsTotal.WithLabelValues(method, path, statusToString(status)).Inc()
-	m.requestDuration.WithLabelValues(method, path).Observe(duration)
-}
-
-// RecordJWTGeneration records JWT token generation duration
-func (m *Metrics) RecordJWTGeneration(duration float64) {
-	m.jwtGenerationDuration.Observe(duration)
-}
-
-// RecordUsernameCheck records username availability check
-func (m *Metrics) RecordUsernameCheck(available bool) {
-	m.usernameChecksTotal.WithLabelValues(boolToString(available)).Inc()
-}
-
-// RecordLoginAttempt records login attempt
-func (m *Metrics) RecordLoginAttempt(success bool) {
-	m.loginAttemptsTotal.WithLabelValues(boolToString(success)).Inc()
-}
-
-// SetActiveSessions sets the current number of active sessions
-func (m *Metrics) SetActiveSessions(count int) {
-	m.activeSessions.Set(float64(count))
-}
-
-// IncActiveSessions increments active sessions counter
-func (m *Metrics) IncActiveSessions() {
-	m.activeSessions.Inc()
-}
-
-// DecActiveSessions decrements active sessions counter
-func (m *Metrics) DecActiveSessions() {
-	m.activeSessions.Dec()
-}
-
-// SetTotalUsers sets the total number of registered users
-func (m *Metrics) SetTotalUsers(count int) {
-	m.totalUsers.Set(float64(count))
-}
-
-// IncTotalUsers increments total users counter
-func (m *Metrics) IncTotalUsers() {
-	m.totalUsers.Inc()
+	statusCode := statusCodeString(status)
+	m.httpRequestsTotal.WithLabelValues(method, path, statusCode).Inc()
+	m.httpRequestDuration.WithLabelValues(method, path).Observe(duration)
 }
 
 // RecordGRPCRequest records gRPC request metrics
@@ -141,23 +86,42 @@ func (m *Metrics) RecordGRPCRequest(method string, status string, duration float
 	m.grpcRequestDuration.WithLabelValues(method).Observe(duration)
 }
 
-func statusToString(status int) string {
-	if status >= 200 && status < 300 {
-		return domain.StatusCode2xx
-	} else if status >= 300 && status < 400 {
-		return domain.StatusCode3xx
-	} else if status >= 400 && status < 500 {
-		return domain.StatusCode4xx
-	} else if status >= 500 {
-		return domain.StatusCode5xx
-	}
-	return domain.StatusCodeUnknown
+// SetActiveSessions sets active sessions count
+func (m *Metrics) SetActiveSessions(count int) {
+	m.activeSessions.Set(float64(count))
 }
 
-func boolToString(b bool) string {
-	if b {
-		return "true"
+// IncActiveSessions increments active sessions
+func (m *Metrics) IncActiveSessions() {
+	m.activeSessions.Inc()
+}
+
+// DecActiveSessions decrements active sessions
+func (m *Metrics) DecActiveSessions() {
+	m.activeSessions.Dec()
+}
+
+// SetTotalUsers sets total users count
+func (m *Metrics) SetTotalUsers(count int) {
+	m.totalUsers.Set(float64(count))
+}
+
+// IncTotalUsers increments total users
+func (m *Metrics) IncTotalUsers() {
+	m.totalUsers.Inc()
+}
+
+// statusCodeString returns status code as string (2xx/3xx/4xx/5xx)
+func statusCodeString(status int) string {
+	if status >= 200 && status < 300 {
+		return "2xx"
+	} else if status >= 300 && status < 400 {
+		return "3xx"
+	} else if status >= 400 && status < 500 {
+		return "4xx"
+	} else if status >= 500 {
+		return "5xx"
 	}
-	return "false"
+	return "unknown"
 }
 

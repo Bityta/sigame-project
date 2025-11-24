@@ -1,6 +1,6 @@
 # ==============================================
 # Yandex Cloud Monitoring & Logging
-# Auto-generated dashboards for SIGame services
+# Dashboards with widgets for SIGame services
 # ==============================================
 
 # Log Group for centralized logging
@@ -18,7 +18,7 @@ resource "yandex_logging_group" "sigame_logs" {
 # Dashboard 1: Infrastructure Overview
 resource "yandex_monitoring_dashboard" "infrastructure" {
   name        = "sigame-infrastructure-overview"
-  description = "VM metrics: CPU, Memory, Disk, Network, Docker status"
+  description = "VM metrics: CPU, Memory, Disk, Network"
   folder_id   = var.folder_id
 
   labels = {
@@ -31,7 +31,7 @@ resource "yandex_monitoring_dashboard" "infrastructure" {
 # Dashboard 2: Auth Service
 resource "yandex_monitoring_dashboard" "auth_service" {
   name        = "sigame-auth-service"
-  description = "HTTP status codes (2xx/4xx/5xx), RPS, Latency, JWT operations, DB connections"
+  description = "HTTP status codes (2xx/4xx/5xx), RPS, Latency for Auth Service"
   folder_id   = var.folder_id
 
   labels = {
@@ -42,10 +42,10 @@ resource "yandex_monitoring_dashboard" "auth_service" {
   parametrization {}
 }
 
-# Dashboard 3: Lobby Service
+# Dashboard 3: Lobby Service  
 resource "yandex_monitoring_dashboard" "lobby_service" {
   name        = "sigame-lobby-service"
-  description = "HTTP status codes, RPS, Latency, Active rooms, gRPC calls, DB connections"
+  description = "HTTP status codes (2xx/4xx/5xx), RPS, Latency for Lobby Service"
   folder_id   = var.folder_id
 
   labels = {
@@ -59,7 +59,7 @@ resource "yandex_monitoring_dashboard" "lobby_service" {
 # Dashboard 4: Game Service
 resource "yandex_monitoring_dashboard" "game_service" {
   name        = "sigame-game-service"
-  description = "HTTP status codes, RPS, WebSocket connections, Game events, Latency, gRPC calls"
+  description = "HTTP status codes (2xx/4xx/5xx), RPS, Latency, WebSocket connections for Game Service"
   folder_id   = var.folder_id
 
   labels = {
@@ -73,7 +73,7 @@ resource "yandex_monitoring_dashboard" "game_service" {
 # Dashboard 5: Pack Service
 resource "yandex_monitoring_dashboard" "pack_service" {
   name        = "sigame-pack-service"
-  description = "HTTP status codes, RPS, Latency, gRPC calls, DB query latency"
+  description = "HTTP status codes (2xx/4xx/5xx), RPS, Latency for Pack Service"
   folder_id   = var.folder_id
 
   labels = {
@@ -97,4 +97,3 @@ resource "yandex_monitoring_dashboard" "infra_services" {
 
   parametrization {}
 }
-
