@@ -57,7 +57,7 @@ scrape_configs:
 
   - job_name: 'game-service'
     static_configs:
-      - targets: ['game-service:8083']
+      - targets: ['game-service:9090']
         labels:
           service: 'game-service'
           component: 'backend'
