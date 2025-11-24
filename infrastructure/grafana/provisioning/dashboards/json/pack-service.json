@@ -1,7 +1,7 @@
 {
-  "title": "🔐 Auth Service",
-  "uid": "auth-service",
-  "tags": ["sigame", "auth", "backend"],
+  "title": "📦 Pack Service",
+  "uid": "pack-service",
+  "tags": ["sigame", "pack", "backend"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -18,7 +18,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -34,8 +34,7 @@
             "showPoints": "never"
           },
           "unit": "reqps"
-        },
-        "overrides": []
+        }
       },
       "options": {
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
@@ -49,7 +48,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -87,7 +86,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -117,7 +116,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"pack-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -147,17 +146,17 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p50)",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p95)",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"pack-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p99)",
           "refId": "C"
         }
@@ -183,12 +182,12 @@
     },
     {
       "id": 6,
-      "title": "👥 Active Sessions",
+      "title": "📦 Available Packs",
       "type": "stat",
-      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
       "targets": [
         {
-          "expr": "auth_active_sessions",
+          "expr": "pack_available_packs_total",
           "refId": "A"
         }
       ],
@@ -200,8 +199,7 @@
             "steps": [
               {"color": "blue", "value": null},
               {"color": "green", "value": 1},
-              {"color": "yellow", "value": 50},
-              {"color": "red", "value": 100}
+              {"color": "orange", "value": 10}
             ]
           },
           "unit": "short"
@@ -217,45 +215,12 @@
     },
     {
       "id": 7,
-      "title": "👤 Total Users",
-      "type": "stat",
-      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
-      "targets": [
-        {
-          "expr": "auth_total_users",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "blue", "value": null},
-              {"color": "green", "value": 10},
-              {"color": "orange", "value": 100}
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "orientation": "auto",
-        "textMode": "value_and_name",
-        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
-      }
-    },
-    {
-      "id": 8,
       "title": "🔌 gRPC Request Rate",
       "type": "timeseries",
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
       "targets": [
         {
-          "expr": "sum(rate(grpc_requests_total{job=\"auth-service\"}[1m])) by (method, status)",
+          "expr": "sum(rate(grpc_requests_total{job=\"pack-service\"}[1m])) by (method, status)",
           "legendFormat": "{{method}} ({{status}})",
           "refId": "A"
         }

@@ -1,7 +1,7 @@
 {
-  "title": "🔐 Auth Service",
-  "uid": "auth-service",
-  "tags": ["sigame", "auth", "backend"],
+  "title": "🏠 Lobby Service",
+  "uid": "lobby-service",
+  "tags": ["sigame", "lobby", "backend"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -18,8 +18,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
-          "legendFormat": "{{endpoint}}",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"2..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
           "refId": "A"
         }
       ],
@@ -34,8 +34,7 @@
             "showPoints": "never"
           },
           "unit": "reqps"
-        },
-        "overrides": []
+        }
       },
       "options": {
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
@@ -49,8 +48,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
-          "legendFormat": "{{endpoint}}",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"4..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
           "refId": "A"
         }
       ],
@@ -87,8 +86,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
-          "legendFormat": "{{endpoint}}",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"5..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
           "refId": "A"
         }
       ],
@@ -117,8 +116,8 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
-          "legendFormat": "{{endpoint}}",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
           "refId": "A"
         }
       ],
@@ -147,18 +146,18 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p50)",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p50)",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p95)",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p95)",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p99)",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p99)",
           "refId": "C"
         }
       ],
@@ -183,12 +182,12 @@
     },
     {
       "id": 6,
-      "title": "👥 Active Sessions",
+      "title": "🏠 Active Rooms",
       "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
       "targets": [
         {
-          "expr": "auth_active_sessions",
+          "expr": "lobby_active_rooms",
           "refId": "A"
         }
       ],
@@ -200,8 +199,8 @@
             "steps": [
               {"color": "blue", "value": null},
               {"color": "green", "value": 1},
-              {"color": "yellow", "value": 50},
-              {"color": "red", "value": 100}
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
             ]
           },
           "unit": "short"
@@ -217,12 +216,12 @@
     },
     {
       "id": 7,
-      "title": "👤 Total Users",
+      "title": "👥 Active Players",
       "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
       "targets": [
         {
-          "expr": "auth_total_users",
+          "expr": "lobby_active_players",
           "refId": "A"
         }
       ],
@@ -233,8 +232,8 @@
             "mode": "absolute",
             "steps": [
               {"color": "blue", "value": null},
-              {"color": "green", "value": 10},
-              {"color": "orange", "value": 100}
+              {"color": "green", "value": 1},
+              {"color": "orange", "value": 20}
             ]
           },
           "unit": "short"
@@ -250,12 +249,116 @@
     },
     {
       "id": 8,
-      "title": "🔌 gRPC Request Rate",
-      "type": "timeseries",
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
+      "title": "📈 Rooms Created",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16},
       "targets": [
         {
-          "expr": "sum(rate(grpc_requests_total{job=\"auth-service\"}[1m])) by (method, status)",
+          "expr": "lobby_rooms_created_total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      }
+    },
+    {
+      "id": 9,
+      "title": "🚀 Rooms Started",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+      "targets": [
+        {
+          "expr": "lobby_rooms_started_total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 5}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      }
+    },
+    {
+      "id": 10,
+      "title": "📊 Room Events Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "targets": [
+        {
+          "expr": "rate(lobby_rooms_created_total[1m])",
+          "legendFormat": "Created",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(lobby_rooms_started_total[1m])",
+          "legendFormat": "Started",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(lobby_rooms_cancelled_total[1m])",
+          "legendFormat": "Cancelled",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      }
+    },
+    {
+      "id": 11,
+      "title": "🔌 gRPC Request Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "targets": [
+        {
+          "expr": "sum(rate(lobby_grpc_calls_total[1m])) by (method, status)",
           "legendFormat": "{{method}} ({{status}})",
           "refId": "A"
         }

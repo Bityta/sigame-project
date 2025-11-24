@@ -1,7 +1,7 @@
 {
-  "title": "🔐 Auth Service",
-  "uid": "auth-service",
-  "tags": ["sigame", "auth", "backend"],
+  "title": "🎯 Game Service",
+  "uid": "game-service",
+  "tags": ["sigame", "game", "backend"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -18,7 +18,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",status=~\"2..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -34,8 +34,7 @@
             "showPoints": "never"
           },
           "unit": "reqps"
-        },
-        "overrides": []
+        }
       },
       "options": {
         "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"]},
@@ -49,7 +48,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",status=~\"4..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -87,7 +86,7 @@
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",status=~\"5..\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -117,7 +116,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
+          "expr": "sum(rate(http_requests_total{job=\"game-service\",endpoint!~\"/health|/metrics\"}[1m])) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
@@ -147,17 +146,17 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"game-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p50)",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"game-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p95)",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"game-service\",endpoint!~\"/health|/metrics\"}[1m])) by (le, endpoint))",
           "legendFormat": "{{endpoint}} (p99)",
           "refId": "C"
         }
@@ -183,12 +182,12 @@
     },
     {
       "id": 6,
-      "title": "👥 Active Sessions",
+      "title": "🎮 Active Sessions",
       "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
       "targets": [
         {
-          "expr": "auth_active_sessions",
+          "expr": "game_sessions_active",
           "refId": "A"
         }
       ],
@@ -200,8 +199,8 @@
             "steps": [
               {"color": "blue", "value": null},
               {"color": "green", "value": 1},
-              {"color": "yellow", "value": 50},
-              {"color": "red", "value": 100}
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
             ]
           },
           "unit": "short"
@@ -217,12 +216,12 @@
     },
     {
       "id": 7,
-      "title": "👤 Total Users",
+      "title": "📊 Total Sessions",
       "type": "stat",
       "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
       "targets": [
         {
-          "expr": "auth_total_users",
+          "expr": "game_sessions_total",
           "refId": "A"
         }
       ],
@@ -233,8 +232,7 @@
             "mode": "absolute",
             "steps": [
               {"color": "blue", "value": null},
-              {"color": "green", "value": 10},
-              {"color": "orange", "value": 100}
+              {"color": "green", "value": 10}
             ]
           },
           "unit": "short"
@@ -250,12 +248,118 @@
     },
     {
       "id": 8,
-      "title": "🔌 gRPC Request Rate",
-      "type": "timeseries",
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
+      "title": "🔌 WebSocket Connections",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16},
       "targets": [
         {
-          "expr": "sum(rate(grpc_requests_total{job=\"auth-service\"}[1m])) by (method, status)",
+          "expr": "game_ws_connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 1},
+              {"color": "orange", "value": 50}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      }
+    },
+    {
+      "id": 9,
+      "title": "❓ Questions Answered",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+      "targets": [
+        {
+          "expr": "game_questions_answered_total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 10}
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"]}
+      }
+    },
+    {
+      "id": 10,
+      "title": "⚡ Button Press Latency (p50, p95, p99)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(game_button_press_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(game_button_press_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(game_button_press_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s",
+          "decimals": 3
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "lastNotNull", "max"]},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      }
+    },
+    {
+      "id": 11,
+      "title": "🔌 gRPC Request Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "targets": [
+        {
+          "expr": "sum(rate(grpc_requests_total{job=\"game-service\"}[1m])) by (method, status)",
           "legendFormat": "{{method}} ({{status}})",
           "refId": "A"
         }
