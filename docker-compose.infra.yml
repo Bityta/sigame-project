@@ -290,6 +290,7 @@ services:
       - "9090:9090"
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/prometheus/iam_token:/etc/prometheus/iam_token:ro
       - prometheus-data:/prometheus
     environment:
       - YC_IAM_TOKEN=${YC_IAM_TOKEN}
