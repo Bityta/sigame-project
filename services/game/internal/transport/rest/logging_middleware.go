@@ -45,16 +45,15 @@ func RequestResponseLoggingMiddleware() gin.HandlerFunc {
 					json.Unmarshal(bodyBytes, &requestBody)
 				}
 			}
-		}
+	}
 
-		// Log incoming request (async via zerolog)
-		logger.Log.Debug().
-			Str("method", c.Request.Method).
-			Str("path", c.Request.URL.Path).
-			Str("query", c.Request.URL.RawQuery).
-			Str("client_ip", c.ClientIP()).
-			Interface("body", sanitizeRequestBody(requestBody)).
-			Msg("Incoming request")
+	// Log incoming request
+	ctx := c.Request.Context()
+	if len(requestBody) > 0 {
+		logger.Debugf(ctx, "Incoming request: %s %s, body: %v", c.Request.Method, c.Request.URL.Path, sanitizeRequestBody(requestBody))
+	} else {
+		logger.Debugf(ctx, "Incoming request: %s %s", c.Request.Method, c.Request.URL.Path)
+	}
 
 		// Wrap response writer to capture response
 		blw := &responseWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
@@ -66,20 +65,20 @@ func RequestResponseLoggingMiddleware() gin.HandlerFunc {
 		// Calculate duration
 		duration := time.Since(startTime)
 
-		// Parse response body asynchronously
-		var responseBody map[string]interface{}
-		if blw.body.Len() > 0 {
-			json.Unmarshal(blw.body.Bytes(), &responseBody)
-		}
+	// Parse response body
+	var responseBody map[string]interface{}
+	if blw.body.Len() > 0 {
+		json.Unmarshal(blw.body.Bytes(), &responseBody)
+	}
 
-		// Log response (async via zerolog)
-		logger.Log.Debug().
-			Str("method", c.Request.Method).
-			Str("path", c.Request.URL.Path).
-			Int("status", c.Writer.Status()).
-			Dur("duration_ms", duration).
-			Interface("response", responseBody).
-			Msg("Request completed")
+	// Log response
+	if len(responseBody) > 0 {
+		logger.Debugf(ctx, "Request completed: %s %s, status: %d, duration: %v, response: %v", 
+			c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration, responseBody)
+	} else {
+		logger.Debugf(ctx, "Request completed: %s %s, status: %d, duration: %v", 
+			c.Request.Method, c.Request.URL.Path, c.Writer.Status(), duration)
+	}
 	}
 }
 
