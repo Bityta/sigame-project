@@ -22,11 +22,7 @@
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-.room-page__share-buttons {
-  display: flex;
-  gap: 0.5rem;
+  justify-content: center;
 }
 
 .room-page__title {
@@ -37,15 +33,39 @@
 
 .room-page__code {
   font-size: 1.125rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-.room-page__code span {
+.room-page__code:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.room-page__code:active {
+  transform: scale(0.98);
+}
+
+.room-page__code-value {
   font-family: 'Courier New', monospace;
   font-weight: 700;
   letter-spacing: 0.2em;
   background-color: rgba(255, 255, 255, 0.2);
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
+  display: inline-block;
+  margin-left: 0.5rem;
+}
+
+.room-page__copy-hint {
+  color: #4ade80;
+  font-weight: 700;
+  margin-left: 0.5rem;
 }
 
 .room-page__content {
