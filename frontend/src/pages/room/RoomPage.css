@@ -17,55 +17,67 @@
   gap: 1rem;
 }
 
-.room-page__share {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
 .room-page__title {
   font-size: 2rem;
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
+  margin: 0;
 }
 
 .room-page__code {
-  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
   user-select: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
 }
 
 .room-page__code:hover {
-  transform: scale(1.05);
-  opacity: 0.9;
-  background-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .room-page__code:active {
   transform: scale(0.98);
 }
 
-.room-page__code-value {
-  font-family: 'Courier New', monospace;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  display: inline-block;
-  margin-left: 0.5rem;
+.room-page__code--copied {
+  background-color: rgba(74, 222, 128, 0.25);
+  border-color: rgba(74, 222, 128, 0.4);
 }
 
-.room-page__copy-hint {
-  color: #4ade80;
+.room-page__code-label {
+  font-size: 0.9375rem;
+  opacity: 0.9;
+}
+
+.room-page__code-value {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
   font-weight: 700;
-  margin-left: 0.5rem;
+  font-size: 1.25rem;
+  letter-spacing: 0.15em;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+}
+
+.room-page__code-icon {
+  font-size: 1.125rem;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.room-page__code:hover .room-page__code-icon {
+  transform: scale(1.1);
+}
+
+.room-page__code--copied .room-page__code-icon {
+  color: #4ade80;
 }
 
 .room-page__content {
