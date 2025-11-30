@@ -6,11 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 
-/**
- * Запрос на обновление настроек комнаты
- * Согласно README: timeForAnswer, timeForChoice, allowWrongAnswer, showRightAnswer
- * Все поля необязательны - обновляются только переданные (PATCH семантика)
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class UpdateRoomSettingsRequest(

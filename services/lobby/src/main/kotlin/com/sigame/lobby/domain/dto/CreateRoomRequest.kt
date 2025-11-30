@@ -11,11 +11,6 @@ import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 import java.util.UUID
 
-/**
- * Запрос на создание комнаты
- * Обязательные поля: name, packId (валидируются через @NotBlank/@NotNull)
- * Необязательные: maxPlayers (default: 6), isPublic (default: true), password, settings
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class CreateRoomRequest(
@@ -44,4 +39,3 @@ data class CreateRoomRequest(
     @JsonProperty("settings")
     val settings: RoomSettingsDto? = null
 )
-

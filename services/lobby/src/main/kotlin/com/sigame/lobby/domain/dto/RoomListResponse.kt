@@ -2,10 +2,6 @@ package com.sigame.lobby.domain.dto
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-/**
- * Ответ со списком комнат с пагинацией
- * Согласно README: rooms, page, size, totalElements, totalPages
- */
 data class RoomListResponse(
     @JsonProperty("rooms")
     val rooms: List<RoomDto>,

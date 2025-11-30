@@ -26,9 +26,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Сервис для управления членством игроков в комнатах (присоединение/выход)
- */
 @Service
 class RoomMembershipService(
     private val gameRoomRepository: GameRoomRepository,
@@ -40,10 +37,7 @@ class RoomMembershipService(
     private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
 ) {
     
-    /**
-     * Присоединяет пользователя к комнате
-     */
-    @Transactional
+        @Transactional
     suspend fun joinRoom(roomId: UUID, userId: UUID, request: JoinRoomRequest): RoomDto {
         logger.info { "User $userId joining room $roomId" }
         
@@ -144,10 +138,7 @@ class RoomMembershipService(
         )
     }
     
-    /**
-     * Удаляет пользователя из комнаты
-     */
-    @Transactional
+        @Transactional
     suspend fun leaveRoom(roomId: UUID, userId: UUID) {
         logger.info { "User $userId leaving room $roomId" }
         
@@ -193,10 +184,7 @@ class RoomMembershipService(
         )
     }
     
-    /**
-     * Обрабатывает выход хоста из комнаты
-     */
-    private suspend fun handleHostLeaving(room: GameRoom, roomId: UUID) {
+        private suspend fun handleHostLeaving(room: GameRoom, roomId: UUID) {
         val activePlayers = roomPlayerRepository.findActiveByRoomId(roomId).asFlow().toList()
         
         if (activePlayers.isEmpty()) {
@@ -208,10 +196,7 @@ class RoomMembershipService(
         }
     }
     
-    /**
-     * Обрабатывает выход обычного игрока
-     */
-    private suspend fun handlePlayerLeaving(room: GameRoom, roomId: UUID) {
+        private suspend fun handlePlayerLeaving(room: GameRoom, roomId: UUID) {
         val currentPlayers = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
         
         if (currentPlayers == 0) {
@@ -223,10 +208,7 @@ class RoomMembershipService(
         }
     }
     
-    /**
-     * Отменяет комнату
-     */
-    private suspend fun cancelRoom(room: GameRoom, roomId: UUID) {
+        private suspend fun cancelRoom(room: GameRoom, roomId: UUID) {
         logger.info { "No players left in room $roomId, cancelling room" }
         
         val updatedRoom = room.copy(status = GameRoom.statusFromEnum(RoomStatus.CANCELLED))
@@ -242,10 +224,7 @@ class RoomMembershipService(
         kafkaEventPublisher.publishRoomCancelled(roomId, "no_players")
     }
     
-    /**
-     * Передает роль хоста другому игроку
-     */
-    private suspend fun transferHost(room: GameRoom, roomId: UUID, activePlayers: List<RoomPlayer>) {
+        private suspend fun transferHost(room: GameRoom, roomId: UUID, activePlayers: List<RoomPlayer>) {
         val newHost = activePlayers.first()
         logger.info { "Transferring host role in room $roomId to ${newHost.userId}" }
         

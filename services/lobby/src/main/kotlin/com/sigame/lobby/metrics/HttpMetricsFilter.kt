@@ -7,9 +7,6 @@ import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
 
-/**
- * WebFilter to record HTTP metrics for all requests
- */
 @Component
 class HttpMetricsFilter(
     private val httpMetrics: HttpMetrics

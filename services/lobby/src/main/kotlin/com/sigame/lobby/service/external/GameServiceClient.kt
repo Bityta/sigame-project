@@ -14,9 +14,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Клиент для взаимодействия с Game Service
- */
 @Service
 class GameServiceClient(
     private val gameServiceConfig: GameServiceConfig,
@@ -24,10 +21,7 @@ class GameServiceClient(
     private val webClient: WebClient = WebClient.builder().build()
 ) {
     
-    /**
-     * Создает игровую сессию в Game Service
-     */
-    suspend fun createGameSession(
+        suspend fun createGameSession(
         roomId: UUID,
         packId: UUID,
         players: List<RoomPlayer>,
@@ -82,9 +76,6 @@ class GameServiceClient(
     }
 }
 
-/**
- * Настройки игры
- */
 data class GameSettings(
     val timeForAnswer: Int = 30,
     val timeForChoice: Int = 60,
@@ -92,9 +83,6 @@ data class GameSettings(
     val showRightAnswer: Boolean = true
 )
 
-/**
- * Ответ от Game Service при создании сессии
- */
 data class GameSessionResponse(
     val gameSessionId: String,
     val wsUrl: String

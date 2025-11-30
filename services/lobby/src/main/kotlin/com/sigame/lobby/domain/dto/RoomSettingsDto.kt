@@ -5,11 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 
-/**
- * DTO настроек комнаты
- * Все поля необязательны при десериализации (имеют значения по умолчанию)
- * Валидация применяется только если поле передано
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class RoomSettingsDto(
     @field:Min(value = 10, message = "Minimum 10 seconds for answer")
@@ -28,4 +23,3 @@ data class RoomSettingsDto(
     @JsonProperty("showRightAnswer")
     val showRightAnswer: Boolean = true
 )
-

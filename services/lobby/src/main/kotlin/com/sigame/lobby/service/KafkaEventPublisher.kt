@@ -15,9 +15,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Типы событий лобби для Kafka
- */
 enum class LobbyEventType {
     ROOM_CREATED,
     PLAYER_JOINED,
@@ -26,18 +23,12 @@ enum class LobbyEventType {
     ROOM_CANCELLED
 }
 
-/**
- * Структура события для Kafka согласно README
- */
 data class LobbyEvent(
     val event_type: String,
     val timestamp: String,
     val payload: Map<String, Any>
 )
 
-/**
- * Данные игрока для события ROOM_STARTED
- */
 data class PlayerEventData(
     val user_id: String,
     val username: String,
@@ -60,10 +51,7 @@ class KafkaEventPublisher(
     private fun currentTimestamp(): String = 
         DateTimeFormatter.ISO_INSTANT.format(Instant.now())
     
-    /**
-     * Публикует событие ROOM_CREATED
-     */
-    suspend fun publishRoomCreated(
+        suspend fun publishRoomCreated(
         roomId: UUID,
         roomCode: String,
         hostId: UUID,
@@ -90,10 +78,7 @@ class KafkaEventPublisher(
         publishEvent(roomId, event)
     }
     
-    /**
-     * Публикует событие PLAYER_JOINED
-     */
-    suspend fun publishPlayerJoined(
+        suspend fun publishPlayerJoined(
         roomId: UUID,
         userId: UUID,
         username: String,
@@ -116,10 +101,7 @@ class KafkaEventPublisher(
         publishEvent(roomId, event)
     }
     
-    /**
-     * Публикует событие PLAYER_LEFT
-     */
-    suspend fun publishPlayerLeft(
+        suspend fun publishPlayerLeft(
         roomId: UUID,
         userId: UUID,
         username: String,
@@ -140,10 +122,7 @@ class KafkaEventPublisher(
         publishEvent(roomId, event)
     }
     
-    /**
-     * Публикует событие ROOM_STARTED
-     */
-    suspend fun publishRoomStarted(
+        suspend fun publishRoomStarted(
         roomId: UUID,
         gameId: String,
         packId: UUID,
@@ -168,10 +147,7 @@ class KafkaEventPublisher(
         publishEvent(roomId, event)
     }
     
-    /**
-     * Публикует событие ROOM_CANCELLED
-     */
-    suspend fun publishRoomCancelled(roomId: UUID, reason: String) {
+        suspend fun publishRoomCancelled(roomId: UUID, reason: String) {
         val event = LobbyEvent(
             event_type = LobbyEventType.ROOM_CANCELLED.name,
             timestamp = currentTimestamp(),

@@ -20,9 +20,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Сервис для получения информации о комнатах
- */
 @Service
 class RoomQueryService(
     private val gameRoomRepository: GameRoomRepository,
@@ -32,16 +29,7 @@ class RoomQueryService(
     private val batchOperationService: BatchOperationService
 ) {
     
-    /**
-     * Получает список комнат с фильтрацией и пагинацией
-     * Оптимизировано с помощью batch операций для избежания N+1 проблемы
-     * 
-     * @param page номер страницы (0-based)
-     * @param size размер страницы
-     * @param status строковое значение статуса (WAITING, PLAYING, FINISHED) - регистронезависимо
-     * @param hasSlots фильтр по наличию свободных мест
-     */
-    suspend fun getRooms(
+        suspend fun getRooms(
         page: Int,
         size: Int,
         status: String?,
@@ -86,30 +74,21 @@ class RoomQueryService(
         )
     }
     
-    /**
-     * Получает комнату по ID
-     */
-    suspend fun getRoomById(roomId: UUID): RoomDto {
+        suspend fun getRoomById(roomId: UUID): RoomDto {
         val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
             ?: throw RoomNotFoundException(roomId)
         
         return buildDetailedRoomDto(room)
     }
     
-    /**
-     * Получает комнату по коду
-     */
-    suspend fun getRoomByCode(code: String): RoomDto {
+        suspend fun getRoomByCode(code: String): RoomDto {
         val room = gameRoomRepository.findByRoomCode(code).awaitFirstOrNull()
             ?: throw RoomNotFoundByCodeException(code)
         
         return buildDetailedRoomDto(room)
     }
     
-    /**
-     * Получает текущую комнату пользователя
-     */
-    suspend fun getUserCurrentRoom(userId: UUID): RoomDto? {
+        suspend fun getUserCurrentRoom(userId: UUID): RoomDto? {
         val player = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
             ?: return null
         
@@ -121,10 +100,7 @@ class RoomQueryService(
         }
     }
     
-    /**
-     * Строит подробный DTO комнаты со всеми игроками и настройками
-     */
-    private suspend fun buildDetailedRoomDto(room: com.sigame.lobby.domain.model.GameRoom): RoomDto {
+        private suspend fun buildDetailedRoomDto(room: com.sigame.lobby.domain.model.GameRoom): RoomDto {
         val players = roomPlayerRepository.findActiveByRoomId(room.id!!).asFlow().toList()
         val settings = roomSettingsRepository.findByRoomId(room.id).awaitFirstOrNull()
         
@@ -136,12 +112,7 @@ class RoomQueryService(
         )
     }
     
-    /**
-     * Парсит строковое значение статуса в enum RoomStatus
-     * @param status строковое значение статуса (регистронезависимо)
-     * @return RoomStatus или null если значение невалидно
-     */
-    private fun parseRoomStatus(status: String?): RoomStatus? {
+        private fun parseRoomStatus(status: String?): RoomStatus? {
         if (status.isNullOrBlank()) return null
         
         return try {

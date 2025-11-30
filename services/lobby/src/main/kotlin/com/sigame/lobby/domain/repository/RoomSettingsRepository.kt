@@ -8,9 +8,6 @@ import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
 import java.util.UUID
 
-/**
- * Репозиторий для работы с настройками комнат
- */
 @Repository
 interface RoomSettingsRepository : R2dbcRepository<RoomSettings, UUID> {
     

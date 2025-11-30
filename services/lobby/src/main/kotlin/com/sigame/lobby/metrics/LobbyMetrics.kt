@@ -14,9 +14,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Метрики для Lobby Service
- */
 @Component
 class LobbyMetrics(
     private val meterRegistry: MeterRegistry

@@ -6,9 +6,6 @@ import org.springframework.data.relational.core.mapping.Table
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Сущность игровой комнаты
- */
 @Table("game_rooms")
 data class GameRoom(
     @Id
@@ -26,16 +23,10 @@ data class GameRoom(
     val startedAt: LocalDateTime? = null,
     val finishedAt: LocalDateTime? = null
 ) {
-    /**
-     * Получить статус комнаты как enum
-     */
-    fun getStatusEnum(): RoomStatus = RoomStatus.valueOf(status.uppercase())
+        fun getStatusEnum(): RoomStatus = RoomStatus.valueOf(status.uppercase())
     
     companion object {
-        /**
-         * Преобразовать enum статуса в строку для БД
-         */
-        fun statusFromEnum(status: RoomStatus): String = status.name.lowercase()
+                fun statusFromEnum(status: RoomStatus): String = status.name.lowercase()
     }
 }
 

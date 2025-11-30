@@ -3,13 +3,6 @@ package com.sigame.lobby.logging
 import mu.KLogger
 import org.slf4j.MDC
 
-/**
- * Extension функции для улучшения логирования
- */
-
-/**
- * Логирует с дополнительным контекстом
- */
 fun KLogger.infoWithContext(context: Map<String, String>, msg: () -> Any?) {
     val previousValues = context.mapValues { (key, _) -> MDC.get(key) }
     try {
@@ -22,9 +15,6 @@ fun KLogger.infoWithContext(context: Map<String, String>, msg: () -> Any?) {
     }
 }
 
-/**
- * Логирует ошибку с дополнительным контекстом
- */
 fun KLogger.errorWithContext(context: Map<String, String>, throwable: Throwable? = null, msg: () -> Any?) {
     val previousValues = context.mapValues { (key, _) -> MDC.get(key) }
     try {
@@ -41,9 +31,6 @@ fun KLogger.errorWithContext(context: Map<String, String>, throwable: Throwable?
     }
 }
 
-/**
- * Выполняет блок кода с установленным MDC контекстом
- */
 inline fun <T> withMDCContext(context: Map<String, String>, block: () -> T): T {
     val previousValues = context.mapValues { (key, _) -> MDC.get(key) }
     return try {

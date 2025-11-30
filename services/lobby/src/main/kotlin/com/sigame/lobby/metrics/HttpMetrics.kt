@@ -5,18 +5,12 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.springframework.stereotype.Component
 
-/**
- * Standard HTTP and gRPC metrics for dashboards
- */
 @Component
 class HttpMetrics(
     private val meterRegistry: MeterRegistry
 ) {
     
-    /**
-     * Record HTTP request
-     */
-    fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
+        fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
         val statusCode = statusCodeString(status)
         
         // Counter for total requests
@@ -35,10 +29,7 @@ class HttpMetrics(
             .record(java.time.Duration.ofMillis(durationMs))
     }
     
-    /**
-     * Record gRPC request
-     */
-    fun recordGrpcRequest(method: String, status: String, durationMs: Long) {
+        fun recordGrpcRequest(method: String, status: String, durationMs: Long) {
         // Counter for total requests
         Counter.builder("grpc_requests_total")
             .tag("method", method)

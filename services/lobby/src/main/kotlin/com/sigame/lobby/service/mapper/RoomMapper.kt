@@ -14,9 +14,6 @@ import com.sigame.lobby.service.batch.BatchOperationService
 import org.springframework.stereotype.Component
 import java.util.UUID
 
-/**
- * Mapper для преобразования доменных объектов в DTO
- */
 @Component
 class RoomMapper(
     private val authServiceClient: AuthServiceClient,
@@ -24,10 +21,7 @@ class RoomMapper(
     private val batchOperationService: BatchOperationService
 ) {
     
-    /**
-     * Преобразует GameRoom в RoomDto с дополнительной информацией
-     */
-    suspend fun toDto(
+        suspend fun toDto(
         room: GameRoom,
         currentPlayers: Int,
         players: List<RoomPlayer>? = null,
@@ -58,10 +52,7 @@ class RoomMapper(
         )
     }
     
-    /**
-     * Преобразует GameRoom в RoomDto используя кэш данных (для batch операций)
-     */
-    suspend fun toDtoWithCache(
+        suspend fun toDtoWithCache(
         room: GameRoom,
         currentPlayers: Int,
         userInfoCache: Map<UUID, UserInfo?> = emptyMap(),
@@ -94,10 +85,7 @@ class RoomMapper(
         )
     }
     
-    /**
-     * Создает список PlayerDto из RoomPlayer
-     */
-    private suspend fun buildPlayerDtos(players: List<RoomPlayer>): List<PlayerDto> {
+        private suspend fun buildPlayerDtos(players: List<RoomPlayer>): List<PlayerDto> {
         // Используем batch операцию для оптимизации
         val userIds = players.map { it.userId }
         val userInfoMap = batchOperationService.getUserInfoBatch(userIds)
@@ -113,10 +101,7 @@ class RoomMapper(
         }
     }
     
-    /**
-     * Создает список PlayerDto используя кэш
-     */
-    private fun buildPlayerDtosWithCache(
+        private fun buildPlayerDtosWithCache(
         players: List<RoomPlayer>,
         userInfoCache: Map<UUID, UserInfo?>
     ): List<PlayerDto> {
@@ -131,10 +116,7 @@ class RoomMapper(
         }
     }
     
-    /**
-     * Преобразует RoomSettings (Entity) в RoomSettingsDto
-     */
-    private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
+        private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
         return RoomSettingsDto(
             timeForAnswer = settings.timeForAnswer,
             timeForChoice = settings.timeForChoice,

@@ -14,9 +14,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Resolver для автоматического извлечения пользователя из контекста запроса
- */
 @Component
 class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
     

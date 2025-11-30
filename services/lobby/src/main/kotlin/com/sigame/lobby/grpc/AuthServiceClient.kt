@@ -26,10 +26,6 @@ data class UserInfo(
     val avatarUrl: String?
 )
 
-/**
- * Клиент для взаимодействия с Auth Service через gRPC
- * Поддерживает retry с exponential backoff
- */
 @Service
 class AuthServiceClient(
     private val config: AuthServiceConfig,
@@ -76,10 +72,7 @@ class AuthServiceClient(
         }
     }
     
-    /**
-     * Валидирует JWT токен
-     */
-    suspend fun validateToken(token: String): UserInfo? = withRetry("validateToken") {
+        suspend fun validateToken(token: String): UserInfo? = withRetry("validateToken") {
         withContext(Dispatchers.IO) {
             logger.debug { "Validating token with Auth Service..." }
             
@@ -105,10 +98,7 @@ class AuthServiceClient(
         }
     }
     
-    /**
-     * Получает информацию о пользователе
-     */
-    suspend fun getUserInfo(userId: UUID): UserInfo? = withRetry("getUserInfo") {
+        suspend fun getUserInfo(userId: UUID): UserInfo? = withRetry("getUserInfo") {
         withContext(Dispatchers.IO) {
             val request = Auth.GetUserInfoRequest.newBuilder()
                 .setUserId(userId.toString())
@@ -132,10 +122,7 @@ class AuthServiceClient(
         }
     }
     
-    /**
-     * Выполняет операцию с retry и exponential backoff
-     */
-    private suspend fun <T> withRetry(
+        private suspend fun <T> withRetry(
         operationName: String,
         block: suspend () -> T
     ): T? {

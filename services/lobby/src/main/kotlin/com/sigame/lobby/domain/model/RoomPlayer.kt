@@ -6,9 +6,6 @@ import org.springframework.data.relational.core.mapping.Table
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Сущность игрока в комнате
- */
 @Table("room_players")
 data class RoomPlayer(
     @Id
@@ -19,16 +16,10 @@ data class RoomPlayer(
     val joinedAt: LocalDateTime = LocalDateTime.now(),
     val leftAt: LocalDateTime? = null
 ) {
-    /**
-     * Получить роль игрока как enum
-     */
-    fun getRoleEnum(): PlayerRole = PlayerRole.valueOf(role.uppercase())
+        fun getRoleEnum(): PlayerRole = PlayerRole.valueOf(role.uppercase())
     
     companion object {
-        /**
-         * Преобразовать enum роли в строку для БД
-         */
-        fun roleFromEnum(role: PlayerRole): String = role.name.lowercase()
+                fun roleFromEnum(role: PlayerRole): String = role.name.lowercase()
     }
 }
 

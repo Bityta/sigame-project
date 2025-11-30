@@ -73,12 +73,15 @@ message PackContentResponse {
 
 // Request to validate pack exists
 message ValidatePackRequest {
-  string pack_id = 1;
+  string pack_id = 1;    // UUID пака
+  string user_id = 2;    // UUID владельца (опционально)
 }
 
 // Validate pack response
 message ValidatePackResponse {
-  bool exists = 1;
-  string pack_id = 2;
+  bool exists = 1;       // true если пак существует
+  bool is_owner = 2;     // true если user_id владелец
+  string status = 3;     // "processing" | "approved" | "failed"
+  string error = 4;      // Текст ошибки
 }
 

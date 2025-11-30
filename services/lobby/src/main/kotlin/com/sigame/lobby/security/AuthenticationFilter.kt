@@ -17,11 +17,6 @@ import reactor.core.publisher.Mono
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Фильтр для аутентификации пользователей через JWT токены
- * Использует Auth Service для валидации токенов
- * Order = 0 (выполняется после CorsWebFilter с HIGHEST_PRECEDENCE)
- */
 @Component
 @Order(0)
 class AuthenticationFilter(
@@ -90,11 +85,7 @@ class AuthenticationFilter(
         }.flatMap { it }
     }
     
-    /**
-     * Возвращает 401 Unauthorized ответ
-     * CORS заголовки добавляются автоматически через CorsWebFilter
-     */
-    private fun unauthorized(exchange: ServerWebExchange): Mono<Void> {
+        private fun unauthorized(exchange: ServerWebExchange): Mono<Void> {
         exchange.response.statusCode = HttpStatus.UNAUTHORIZED
         return exchange.response.setComplete()
     }

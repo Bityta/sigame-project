@@ -13,9 +13,6 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Сервис для работы с кэшем комнат в Redis
- */
 @Service
 class RoomCacheService(
     private val redisTemplate: ReactiveRedisTemplate<String, String>,
@@ -25,10 +22,7 @@ class RoomCacheService(
     
     private val cacheTtl = Duration.ofSeconds(roomConfig.cacheTtl)
     
-    /**
-     * Кэширует данные комнаты
-     */
-    suspend fun cacheRoomData(room: GameRoom, currentPlayers: Int) {
+        suspend fun cacheRoomData(room: GameRoom, currentPlayers: Int) {
         try {
             val metadata = mapOf(
                 "room_code" to room.roomCode,
@@ -53,10 +47,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Добавляет комнату в sorted set активных комнат
-     */
-    suspend fun addActiveRoom(roomId: UUID, createdAt: Long) {
+        suspend fun addActiveRoom(roomId: UUID, createdAt: Long) {
         try {
             redisTemplate.opsForZSet()
                 .add("active_rooms", roomId.toString(), createdAt.toDouble())
@@ -66,10 +57,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Удаляет комнату из sorted set активных комнат
-     */
-    suspend fun removeActiveRoom(roomId: UUID) {
+        suspend fun removeActiveRoom(roomId: UUID) {
         try {
             redisTemplate.opsForZSet()
                 .remove("active_rooms", roomId.toString())
@@ -79,10 +67,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Сохраняет метаданные комнаты
-     */
-    suspend fun setRoomMeta(roomId: UUID, metadata: Map<String, String>) {
+        suspend fun setRoomMeta(roomId: UUID, metadata: Map<String, String>) {
         try {
             val key = "room:$roomId:meta"
             redisTemplate.opsForHash<String, String>()
@@ -95,10 +80,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Получает метаданные комнаты
-     */
-    suspend fun getRoomMeta(roomId: UUID): Map<String, String>? {
+        suspend fun getRoomMeta(roomId: UUID): Map<String, String>? {
         return try {
             val key = "room:$roomId:meta"
             redisTemplate.opsForHash<String, String>()
@@ -111,10 +93,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Удаляет метаданные комнаты
-     */
-    suspend fun deleteRoomMeta(roomId: UUID) {
+        suspend fun deleteRoomMeta(roomId: UUID) {
         try {
             redisTemplate.delete("room:$roomId:meta").awaitFirstOrNull()
         } catch (e: Exception) {
@@ -122,10 +101,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Устанавливает текущую комнату пользователя
-     */
-    suspend fun setUserCurrentRoom(userId: UUID, roomId: UUID) {
+        suspend fun setUserCurrentRoom(userId: UUID, roomId: UUID) {
         try {
             val key = "user:$userId:current_room"
             redisTemplate.opsForValue()
@@ -136,10 +112,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Получает текущую комнату пользователя
-     */
-    suspend fun getUserCurrentRoom(userId: UUID): UUID? {
+        suspend fun getUserCurrentRoom(userId: UUID): UUID? {
         return try {
             val key = "user:$userId:current_room"
             val value = redisTemplate.opsForValue().get(key).awaitFirstOrNull()
@@ -150,10 +123,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Удаляет текущую комнату пользователя
-     */
-    suspend fun deleteUserCurrentRoom(userId: UUID) {
+        suspend fun deleteUserCurrentRoom(userId: UUID) {
         try {
             redisTemplate.delete("user:$userId:current_room").awaitFirstOrNull()
         } catch (e: Exception) {
@@ -161,10 +131,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Добавляет игрока в комнату
-     */
-    suspend fun addRoomPlayer(roomId: UUID, userId: UUID) {
+        suspend fun addRoomPlayer(roomId: UUID, userId: UUID) {
         try {
             val key = "room:$roomId:players"
             redisTemplate.opsForSet()
@@ -177,10 +144,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Удаляет игрока из комнаты
-     */
-    suspend fun removeRoomPlayer(roomId: UUID, userId: UUID) {
+        suspend fun removeRoomPlayer(roomId: UUID, userId: UUID) {
         try {
             val key = "room:$roomId:players"
             redisTemplate.opsForSet()
@@ -191,10 +155,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Получает список игроков в комнате
-     */
-    suspend fun getRoomPlayers(roomId: UUID): Set<UUID> {
+        suspend fun getRoomPlayers(roomId: UUID): Set<UUID> {
         return try {
             val key = "room:$roomId:players"
             redisTemplate.opsForSet()
@@ -215,10 +176,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Удаляет всех игроков комнаты
-     */
-    suspend fun deleteRoomPlayers(roomId: UUID) {
+        suspend fun deleteRoomPlayers(roomId: UUID) {
         try {
             redisTemplate.delete("room:$roomId:players").awaitFirstOrNull()
         } catch (e: Exception) {
@@ -226,10 +184,7 @@ class RoomCacheService(
         }
     }
     
-    /**
-     * Очищает весь кэш комнаты
-     */
-    suspend fun clearRoomCache(roomId: UUID) {
+        suspend fun clearRoomCache(roomId: UUID) {
         removeActiveRoom(roomId)
         deleteRoomMeta(roomId)
         deleteRoomPlayers(roomId)

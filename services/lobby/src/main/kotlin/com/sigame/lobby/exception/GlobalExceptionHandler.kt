@@ -25,9 +25,6 @@ data class ErrorResponse(
     val details: Map<String, String>? = null
 )
 
-/**
- * Глобальный обработчик исключений для API
- */
 @RestControllerAdvice
 class GlobalExceptionHandler {
     
@@ -139,6 +136,8 @@ class GlobalExceptionHandler {
         InvalidPasswordException::class,
         PlayerNotInRoomException::class,
         PackNotFoundException::class,
+        PackNotApprovedException::class,
+        PackNotOwnedException::class,
         InsufficientPlayersException::class
     )
     fun handleBadRequestException(ex: RuntimeException): ResponseEntity<ErrorResponse> {

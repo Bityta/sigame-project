@@ -22,15 +22,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * WebFilter для структурированного логирования HTTP запросов и ответов
- * 
- * Особенности:
- * - JSON формат для удобного парсинга в системах мониторинга (ELK, Loki)
- * - Маскирование чувствительных данных (пароли, токены)
- * - MDC контекст для трейсинга
- * - Измерение времени выполнения
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 class RequestLoggingFilter(

@@ -28,10 +28,16 @@ data class PackInfo(
     val questionsCount: Int
 )
 
-/**
- * Клиент для взаимодействия с Pack Service через gRPC
- * Поддерживает retry с exponential backoff
- */
+data class PackValidationResult(
+    val exists: Boolean,
+    val isOwner: Boolean,
+    val status: String,  // "processing" | "approved" | "failed"
+    val error: String?
+) {
+    val isApproved: Boolean get() = status == "approved"
+    val canBeUsed: Boolean get() = exists && isApproved
+}
+
 @Service
 class PackServiceClient(
     private val config: PackServiceConfig,
@@ -78,27 +84,27 @@ class PackServiceClient(
         }
     }
     
-    /**
-     * Проверяет существование пака
-     */
-    suspend fun validatePackExists(packId: UUID): Boolean = withRetry("validatePackExists") {
+        suspend fun validatePack(packId: UUID, userId: UUID? = null): PackValidationResult? = withRetry("validatePack") {
         withContext(Dispatchers.IO) {
-            val request = Pack.ValidatePackRequest.newBuilder()
+            val requestBuilder = Pack.ValidatePackRequest.newBuilder()
                 .setPackId(packId.toString())
-                .build()
             
-            // Set deadline per-call
+            userId?.let { requestBuilder.setUserId(it.toString()) }
+            
             val response = stub
                 .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .validatePackExists(request)
-            response.exists
+                .validatePackExists(requestBuilder.build())
+            
+            PackValidationResult(
+                exists = response.exists,
+                isOwner = response.isOwner,
+                status = response.status.ifEmpty { "approved" }, // default для обратной совместимости
+                error = response.error.ifEmpty { null }
+            )
         }
-    } ?: false
+    }
     
-    /**
-     * Получает информацию о паке
-     */
-    suspend fun getPackInfo(packId: UUID): PackInfo? = withRetry("getPackInfo") {
+        suspend fun getPackInfo(packId: UUID): PackInfo? = withRetry("getPackInfo") {
         withContext(Dispatchers.IO) {
             val request = Pack.GetPackInfoRequest.newBuilder()
                 .setPackId(packId.toString())
@@ -118,10 +124,7 @@ class PackServiceClient(
         }
     }
     
-    /**
-     * Выполняет операцию с retry и exponential backoff
-     */
-    private suspend fun <T> withRetry(
+        private suspend fun <T> withRetry(
         operationName: String,
         block: suspend () -> T
     ): T? {
