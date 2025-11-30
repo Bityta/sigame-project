@@ -11,6 +11,7 @@ import java.util.UUID
 @Table("game_rooms")
 data class GameRoom(
     @Id
+    @get:JvmName("getId_")
     val id: UUID = UUID.randomUUID(),
     val roomCode: String,
     val hostId: UUID,

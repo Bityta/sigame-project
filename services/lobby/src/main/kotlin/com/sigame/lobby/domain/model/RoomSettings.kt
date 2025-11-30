@@ -21,7 +21,7 @@ data class RoomSettings(
     private val isNewEntity: Boolean = true
 ) : Persistable<UUID> {
     
-    override fun getId(): UUID = roomId
+    override fun getId(): UUID = roomId  // roomId != id, no conflict
     override fun isNew(): Boolean = isNewEntity
     
     fun markPersisted(): RoomSettings = copy(isNewEntity = false)
