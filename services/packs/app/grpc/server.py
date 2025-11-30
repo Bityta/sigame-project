@@ -41,12 +41,15 @@ if GRPC_AVAILABLE:
                 metrics.record_grpc_request("GetPackInfo", "OK", duration)
                 
                 return pack_pb2.PackInfoResponse(
-                    id=pack["id"],
+                    found=True,
+                    pack_id=pack["id"],
                     name=pack["name"],
                     author=pack["author"],
                     description=pack["description"],
                     rounds_count=pack["rounds_count"],
                     questions_count=pack["questions_count"],
+                    has_media=False,
+                    status="approved",
                     created_at=pack["created_at"]
                 )
             except Exception as e:
@@ -107,13 +110,9 @@ if GRPC_AVAILABLE:
                 metrics.record_grpc_request("GetPackContent", "OK", duration)
                 
                 return pack_pb2.PackContentResponse(
-                    id=pack["id"],
+                    found=True,
+                    pack_id=pack["id"],
                     name=pack["name"],
-                    author=pack["author"],
-                    description=pack["description"],
-                    rounds_count=pack["rounds_count"],
-                    questions_count=pack["questions_count"],
-                    created_at=pack["created_at"],
                     rounds=rounds
                 )
             except Exception as e:
@@ -137,7 +136,8 @@ if GRPC_AVAILABLE:
                 
                 return pack_pb2.ValidatePackResponse(
                     exists=exists,
-                    pack_id=pack_id
+                    is_owner=False,
+                    status="approved" if exists else ""
                 )
             except Exception as e:
                 logger.error(f"Error in ValidatePackExists: {e}")
@@ -145,7 +145,7 @@ if GRPC_AVAILABLE:
                 context.set_details(str(e))
                 duration = time.time() - start_time
                 metrics.record_grpc_request("ValidatePackExists", "ERROR", duration)
-                return pack_pb2.ValidatePackResponse(exists=False, pack_id=pack_id)
+                return pack_pb2.ValidatePackResponse(exists=False, error=str(e))
 
 
 def serve_grpc(port: int):
