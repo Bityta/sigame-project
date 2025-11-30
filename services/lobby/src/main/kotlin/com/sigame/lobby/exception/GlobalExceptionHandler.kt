@@ -138,7 +138,9 @@ class GlobalExceptionHandler {
         PackNotFoundException::class,
         PackNotApprovedException::class,
         PackNotOwnedException::class,
-        InsufficientPlayersException::class
+        InsufficientPlayersException::class,
+        CannotKickHostException::class,
+        CannotKickSelfException::class
     )
     fun handleBadRequestException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
         val errorResponse = ErrorResponse(

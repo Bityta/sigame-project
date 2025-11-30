@@ -6,9 +6,25 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.ninjasquad.springmockk.MockkBean
 import com.sigame.lobby.config.WebFluxConfig
-import com.sigame.lobby.domain.dto.*
+import com.sigame.lobby.domain.dto.CreateRoomRequest
+import com.sigame.lobby.domain.dto.JoinRoomRequest
+import com.sigame.lobby.domain.dto.PlayerDto
+import com.sigame.lobby.domain.dto.RoomDto
+import com.sigame.lobby.domain.dto.RoomListResponse
+import com.sigame.lobby.domain.dto.RoomSettingsDto
+import com.sigame.lobby.domain.dto.StartGameResponse
+import com.sigame.lobby.domain.dto.UpdateRoomSettingsRequest
+import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
 import com.sigame.lobby.domain.enums.RoomStatus
-import com.sigame.lobby.domain.exception.*
+import com.sigame.lobby.domain.exception.InsufficientPlayersException
+import com.sigame.lobby.domain.exception.InvalidPasswordException
+import com.sigame.lobby.domain.exception.InvalidRoomStateException
+import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
+import com.sigame.lobby.domain.exception.PlayerNotInRoomException
+import com.sigame.lobby.domain.exception.RoomFullException
+import com.sigame.lobby.domain.exception.RoomNotFoundByCodeException
+import com.sigame.lobby.domain.exception.RoomNotFoundException
+import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
 import com.sigame.lobby.grpc.AuthServiceClient
 import com.sigame.lobby.grpc.UserInfo
 import com.sigame.lobby.metrics.HttpMetrics
@@ -17,11 +33,11 @@ import com.sigame.lobby.security.CurrentUserArgumentResolver
 import com.sigame.lobby.service.domain.RoomLifecycleService
 import com.sigame.lobby.service.domain.RoomMembershipService
 import com.sigame.lobby.service.domain.RoomQueryService
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
-import io.mockk.Runs
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -30,23 +46,16 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
-import org.springframework.http.codec.json.Jackson2JsonDecoder
-import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
-import org.springframework.web.reactive.function.client.ExchangeStrategies
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Интеграционные тесты для LobbyController
- * Тестирует все REST API эндпоинты согласно README спецификации
- */
 @WebFluxTest(controllers = [LobbyController::class])
 @Import(
     com.sigame.lobby.config.JacksonConfig::class,
-    WebFluxConfig::class, 
-    CurrentUserArgumentResolver::class, 
+    WebFluxConfig::class,
+    CurrentUserArgumentResolver::class,
     HttpMetricsFilter::class,
     com.sigame.lobby.security.AuthenticationFilter::class,
     com.sigame.lobby.exception.GlobalExceptionHandler::class
@@ -78,10 +87,10 @@ class LobbyControllerIntegrationTest {
     private val testRoomId = UUID.randomUUID()
     private val testPackId = UUID.randomUUID()
     private val testRoomCode = "ABC123"
-    
+
     // Токен для аутентифицированных запросов
     private val testToken = "Bearer test-token"
-    
+
     // ObjectMapper с поддержкой Kotlin
     private val objectMapper = ObjectMapper().apply {
         registerModule(KotlinModule.Builder().build())
@@ -97,18 +106,18 @@ class LobbyControllerIntegrationTest {
             username = testUsername,
             avatarUrl = null
         )
-        
+
         // Мокаем метрики
         every { httpMetrics.recordHttpRequest(any(), any(), any(), any()) } just Runs
     }
-    
+
     // Утилита для сериализации запросов
     private fun toJson(obj: Any): String = objectMapper.writeValueAsString(obj)
 
     // ═══════════════════════════════════════════════════════════════════════════
     // GET /api/lobby/health
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     @Nested
     @DisplayName("GET /api/lobby/health")
     inner class HealthEndpoint {
@@ -538,7 +547,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 404 если комната не найдена`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws 
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
                 RoomNotFoundException(testRoomId)
 
             webTestClient.post()
@@ -551,7 +560,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 409 если комната заполнена`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws 
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
                 RoomFullException(testRoomId)
 
             webTestClient.post()
@@ -564,7 +573,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 409 если игрок уже в комнате`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws 
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
                 PlayerAlreadyInRoomException(testUserId, testRoomId)
 
             webTestClient.post()
@@ -577,7 +586,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 400 если неверный пароль`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws 
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
                 InvalidPasswordException()
 
             webTestClient.post()
@@ -622,7 +631,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 400 если игрок не в комнате`() {
-            coEvery { roomMembershipService.leaveRoom(testRoomId, testUserId) } throws 
+            coEvery { roomMembershipService.leaveRoom(testRoomId, testUserId) } throws
                 PlayerNotInRoomException(testUserId, testRoomId)
 
             webTestClient.delete()
@@ -670,7 +679,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 403 если не хост`() {
-            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 UnauthorizedRoomActionException(testUserId, "start room", "Only the host can start the room")
 
             webTestClient.post()
@@ -682,7 +691,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 400 если недостаточно игроков`() {
-            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 InsufficientPlayersException(testRoomId, 1)
 
             webTestClient.post()
@@ -694,7 +703,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 409 если комната не в состоянии WAITING`() {
-            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "start")
 
             webTestClient.post()
@@ -706,7 +715,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 404 если комната не найдена`() {
-            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 RoomNotFoundException(testRoomId)
 
             webTestClient.post()
@@ -818,7 +827,7 @@ class LobbyControllerIntegrationTest {
         @Test
         fun `должен вернуть 403 если не хост`() {
             val request = UpdateRoomSettingsRequest(timeForAnswer = 30)
-            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws 
+            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws
                 UnauthorizedRoomActionException(testUserId, "update settings", "Only the host can update settings")
 
             webTestClient.patch()
@@ -833,7 +842,7 @@ class LobbyControllerIntegrationTest {
         @Test
         fun `должен вернуть 409 если игра уже запущена`() {
             val request = UpdateRoomSettingsRequest(timeForAnswer = 30)
-            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws 
+            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws
                 InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "update settings")
 
             webTestClient.patch()
@@ -879,7 +888,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 403 если не хост`() {
-            coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws
                 UnauthorizedRoomActionException(testUserId, "delete room", "Only the host can delete the room")
 
             webTestClient.delete()
@@ -891,7 +900,7 @@ class LobbyControllerIntegrationTest {
 
         @Test
         fun `должен вернуть 404 если комната не найдена`() {
-            coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws 
+            coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws
                 RoomNotFoundException(testRoomId)
 
             webTestClient.delete()

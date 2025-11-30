@@ -22,6 +22,10 @@ object ApiRoutes {
         const val START = "$BASE/{id}/start"
 
         const val SETTINGS = "$BASE/{id}/settings"
+
+        const val KICK = "$BASE/{id}/kick"
+
+        const val TRANSFER_HOST = "$BASE/{id}/transfer-host"
     }
 
     object Public {

@@ -254,5 +254,109 @@ class RoomMembershipService(
             maxPlayers = room.maxPlayers
         )
     }
+
+    @Transactional
+    suspend fun kickPlayer(roomId: UUID, hostId: UUID, targetUserId: UUID) {
+        logger.info { "Host $hostId kicking player $targetUserId from room $roomId" }
+
+        val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
+            ?: throw RoomNotFoundException(roomId)
+
+        if (room.hostId != hostId) {
+            throw UnauthorizedRoomActionException(hostId, "kick player", "Only the host can kick players")
+        }
+
+        if (room.getStatusEnum() != RoomStatus.WAITING) {
+            throw InvalidRoomStateException(roomId, room.getStatusEnum(), "kick player")
+        }
+
+        if (targetUserId == hostId) {
+            throw CannotKickSelfException(hostId)
+        }
+
+        if (targetUserId == room.hostId) {
+            throw CannotKickHostException(roomId)
+        }
+
+        val player = roomPlayerRepository.findByRoomIdAndUserId(roomId, targetUserId).awaitFirstOrNull()
+            ?: throw PlayerNotInRoomException(targetUserId, roomId)
+
+        if (player.leftAt != null) {
+            throw PlayerNotInRoomException(targetUserId, roomId)
+        }
+
+        val updatedPlayer = player.copy(leftAt = LocalDateTime.now())
+        roomPlayerRepository.save(updatedPlayer).awaitFirstOrNull()
+
+        roomCacheService.deleteUserCurrentRoom(targetUserId)
+        roomCacheService.removeRoomPlayer(roomId, targetUserId)
+
+        lobbyMetrics.recordPlayerLeft()
+
+        val currentPlayersCount = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
+        roomCacheService.cacheRoomData(room, currentPlayersCount)
+
+        kafkaEventPublisher.publishPlayerLeft(
+            roomId = roomId,
+            userId = targetUserId,
+            username = player.username,
+            reason = "kicked",
+            currentPlayers = currentPlayersCount
+        )
+    }
+
+    @Transactional
+    suspend fun transferHostManually(roomId: UUID, currentHostId: UUID, newHostId: UUID) {
+        logger.info { "Host $currentHostId transferring host role to $newHostId in room $roomId" }
+
+        val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
+            ?: throw RoomNotFoundException(roomId)
+
+        if (room.hostId != currentHostId) {
+            throw UnauthorizedRoomActionException(currentHostId, "transfer host", "Only the host can transfer host role")
+        }
+
+        if (room.getStatusEnum() != RoomStatus.WAITING) {
+            throw InvalidRoomStateException(roomId, room.getStatusEnum(), "transfer host")
+        }
+
+        if (newHostId == currentHostId) {
+            throw IllegalArgumentException("Cannot transfer host to yourself")
+        }
+
+        val newHostPlayer = roomPlayerRepository.findByRoomIdAndUserId(roomId, newHostId).awaitFirstOrNull()
+            ?: throw PlayerNotInRoomException(newHostId, roomId)
+
+        if (newHostPlayer.leftAt != null) {
+            throw PlayerNotInRoomException(newHostId, roomId)
+        }
+
+        val currentHostPlayer = roomPlayerRepository.findByRoomIdAndUserId(roomId, currentHostId).awaitFirstOrNull()
+
+        // Обновляем роль старого хоста на player
+        if (currentHostPlayer != null) {
+            val updatedOldHost = currentHostPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER))
+            roomPlayerRepository.save(updatedOldHost).awaitFirstOrNull()
+        }
+
+        // Обновляем роль нового хоста
+        val updatedNewHost = newHostPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST))
+        roomPlayerRepository.save(updatedNewHost).awaitFirstOrNull()
+
+        // Обновляем комнату
+        val updatedRoom = room.copy(hostId = newHostId)
+        gameRoomRepository.save(updatedRoom).awaitFirstOrNull()
+
+        val currentPlayersCount = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
+        roomCacheService.cacheRoomData(updatedRoom, currentPlayersCount)
+
+        // Публикуем событие о смене хоста
+        kafkaEventPublisher.publishHostTransferred(
+            roomId = roomId,
+            oldHostId = currentHostId,
+            newHostId = newHostId,
+            newHostUsername = newHostPlayer.username
+        )
+    }
 }
 

@@ -20,7 +20,8 @@ enum class LobbyEventType {
     PLAYER_JOINED,
     PLAYER_LEFT,
     ROOM_STARTED,
-    ROOM_CANCELLED
+    ROOM_CANCELLED,
+    HOST_TRANSFERRED
 }
 
 data class LobbyEvent(
@@ -154,6 +155,25 @@ class KafkaEventPublisher(
             payload = mapOf(
                 "room_id" to roomId.toString(),
                 "reason" to reason
+            )
+        )
+        publishEvent(roomId, event)
+    }
+
+    suspend fun publishHostTransferred(
+        roomId: UUID,
+        oldHostId: UUID,
+        newHostId: UUID,
+        newHostUsername: String
+    ) {
+        val event = LobbyEvent(
+            event_type = LobbyEventType.HOST_TRANSFERRED.name,
+            timestamp = currentTimestamp(),
+            payload = mapOf(
+                "room_id" to roomId.toString(),
+                "old_host_id" to oldHostId.toString(),
+                "new_host_id" to newHostId.toString(),
+                "new_host_username" to newHostUsername
             )
         )
         publishEvent(roomId, event)

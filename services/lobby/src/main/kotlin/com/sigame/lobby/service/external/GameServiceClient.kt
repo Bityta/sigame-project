@@ -17,7 +17,6 @@ private val logger = KotlinLogging.logger {}
 @Service
 class GameServiceClient(
     private val gameServiceConfig: GameServiceConfig,
-    private val authServiceClient: AuthServiceClient,
     private val webClient: WebClient = WebClient.builder().build()
 ) {
     
@@ -31,12 +30,10 @@ class GameServiceClient(
             val createGameUrl = "${gameServiceConfig.baseUrl}/api/game/create"
             logger.info { "Creating game session at $createGameUrl for room $roomId" }
             
-            // Подготовка данных игроков с их username
             val playerData = players.map { player ->
-                val userInfo = authServiceClient.getUserInfo(player.userId)
                 mapOf(
                     "user_id" to player.userId.toString(),
-                    "username" to (userInfo?.username ?: "Unknown"),
+                    "username" to (player.username),
                     "role" to player.role
                 )
             }
