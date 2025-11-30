@@ -4,9 +4,9 @@ FROM golang:1.23-alpine AS builder
 # Install build dependencies including protoc
 RUN apk add --no-cache git make protoc protobuf-dev
 
-# Install protoc plugins
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2 && \
-    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+# Install protoc plugins (versions compatible with grpc v1.60.1 in go.mod)
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0 && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
 # Set working directory
 WORKDIR /app
