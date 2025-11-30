@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { useRoom, useLeaveRoom, useStartGame, useRoomEvents } from '@/entities/room';
+import { useRoom, useLeaveRoom, useStartGame, useRoomEvents, useKickPlayer, useTransferHost } from '@/entities/room';
 import { useCurrentUser } from '@/entities/user';
 import { RoomSettingsComponent } from '@/features/room';
 import { Button, Card, Spinner } from '@/shared/ui';
@@ -20,6 +20,8 @@ export const RoomPage = () => {
       navigate(ROUTES.GAME(response.gameId));
     },
   });
+  const kickPlayerMutation = useKickPlayer();
+  const transferHostMutation = useTransferHost();
 
   useRoomEvents(roomId, {
     onGameStarted: (event) => {
@@ -45,6 +47,18 @@ export const RoomPage = () => {
   const handleStart = () => {
     if (roomId) {
       startGameMutation.mutate(roomId);
+    }
+  };
+
+  const handleKickPlayer = (targetUserId: string) => {
+    if (roomId) {
+      kickPlayerMutation.mutate({ roomId, targetUserId });
+    }
+  };
+
+  const handleTransferHost = (newHostId: string) => {
+    if (roomId && window.confirm('Вы уверены, что хотите передать роль хоста?')) {
+      transferHostMutation.mutate({ roomId, newHostId });
     }
   };
 
@@ -138,6 +152,26 @@ export const RoomPage = () => {
                     {player.username}
                     {player.role === 'host' && ' 👑'}
                   </span>
+                  {isHost && player.userId !== user?.id && room.status === 'waiting' && (
+                    <div className="room-page__player-actions">
+                      <button
+                        className="room-page__player-action room-page__player-action--transfer"
+                        onClick={() => handleTransferHost(player.userId)}
+                        disabled={transferHostMutation.isPending}
+                        title="Передать хоста"
+                      >
+                        👑
+                      </button>
+                      <button
+                        className="room-page__player-action room-page__player-action--kick"
+                        onClick={() => handleKickPlayer(player.userId)}
+                        disabled={kickPlayerMutation.isPending}
+                        title="Выгнать"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

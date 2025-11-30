@@ -64,3 +64,11 @@ export interface StartGameResponse {
   websocketUrl: string;
 }
 
+export interface KickPlayerRequest {
+  targetUserId: string;
+}
+
+export interface TransferHostRequest {
+  newHostId: string;
+}
+

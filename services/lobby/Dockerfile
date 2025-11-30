@@ -8,7 +8,7 @@ COPY proto/ /proto/
 COPY services/lobby/ .
 
 # Update proto source path in build.gradle.kts for Docker context
-RUN sed -i 's|srcDir("../../../proto")|srcDir("/proto")|g' build.gradle.kts
+RUN sed -i 's|srcDir("../../proto")|srcDir("/proto")|g' build.gradle.kts
 
 # Build (proto generation happens automatically via Gradle plugin)
 RUN gradle build --no-daemon -x test
