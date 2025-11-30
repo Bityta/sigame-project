@@ -134,9 +134,10 @@ if GRPC_AVAILABLE:
                 duration = time.time() - start_time
                 metrics.record_grpc_request("ValidatePackExists", "OK", duration)
                 
+                # For mock/public packs, always return is_owner=True to allow anyone to use them
                 return pack_pb2.ValidatePackResponse(
                     exists=exists,
-                    is_owner=False,
+                    is_owner=True if exists else False,
                     status="approved" if exists else ""
                 )
             except Exception as e:
