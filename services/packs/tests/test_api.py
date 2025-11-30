@@ -4,54 +4,63 @@ from app.api.routes import router
 from fastapi import FastAPI
 
 app = FastAPI()
-app.include_router(router, prefix="/api")
+app.include_router(router)
 
 client = TestClient(app)
 
 
 def test_health_check():
     """Test health check endpoint"""
-    response = client.get("/api/health")
+    response = client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "service" in data
+    assert "version" in data
 
 
-def test_get_packs():
+def test_get_packs_list():
     """Test get all packs endpoint"""
     response = client.get("/api/packs")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert "packs" in data
+    assert "total" in data
+    assert isinstance(data["packs"], list)
 
 
 def test_get_pack_by_id():
     """Test get pack by ID endpoint"""
-    # First create a pack
+    # Get a pack from the list first
     response = client.get("/api/packs")
-    if len(response.json()) > 0:
-        pack_id = response.json()[0]["id"]
+    packs = response.json()["packs"]
+    
+    if len(packs) > 0:
+        pack_id = packs[0]["id"]
         response = client.get(f"/api/packs/{pack_id}")
-        assert response.status_code in [200, 404]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == pack_id
+        assert "name" in data
+        assert "author" in data
 
 
-def test_create_pack():
-    """Test create pack endpoint"""
-    pack_data = {
-        "title": "Test Pack",
-        "description": "Test description",
-        "difficulty": "medium",
-        "category": "test"
-    }
-    response = client.post("/api/packs", json=pack_data)
-    assert response.status_code in [200, 201, 422]  # 422 if validation fails
+def test_get_pack_not_found():
+    """Test get non-existent pack"""
+    response = client.get("/api/packs/non-existent-id")
+    assert response.status_code == 404
 
 
-def test_get_pack_questions():
-    """Test get pack questions endpoint"""
+def test_get_pack_content():
+    """Test get pack content endpoint"""
+    # Get a pack from the list first
     response = client.get("/api/packs")
-    if len(response.json()) > 0:
-        pack_id = response.json()[0]["id"]
-        response = client.get(f"/api/packs/{pack_id}/questions")
-        assert response.status_code in [200, 404]
-        if response.status_code == 200:
-            assert isinstance(response.json(), list)
-
+    packs = response.json()["packs"]
+    
+    if len(packs) > 0:
+        pack_id = packs[0]["id"]
+        response = client.get(f"/api/packs/{pack_id}/content")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == pack_id
+        assert "rounds" in data
