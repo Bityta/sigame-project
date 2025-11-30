@@ -1,14 +1,30 @@
 # Build stage
 FROM golang:1.23-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache git
+# Install build dependencies including protoc
+RUN apk add --no-cache git make protoc protobuf-dev
+
+# Install protoc plugins (versions compatible with grpc v1.60.1 in go.mod)
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0 && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
 # Set working directory
 WORKDIR /app
 
-# Copy service source (includes pre-generated proto files)
+# Copy shared proto files
+COPY proto/ /proto/
+
+# Copy service source
 COPY services/auth/ .
+
+# Generate proto from shared proto files
+RUN mkdir -p proto && \
+    protoc --proto_path=/proto \
+    --go_out=proto --go_opt=paths=source_relative \
+    --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
+    /proto/auth/auth.proto && \
+    mv proto/auth/*.go proto/ && \
+    rmdir proto/auth
 
 # Download dependencies
 RUN go mod tidy && go mod download

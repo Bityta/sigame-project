@@ -57,6 +57,24 @@ jobs:
         with:
           go-version: '1.23'
       
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
+      
+      - name: Generate proto
+        working-directory: services/auth
+        run: |
+          mkdir -p proto
+          protoc --proto_path=../../proto \
+            --go_out=proto --go_opt=paths=source_relative \
+            --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
+            ../../proto/auth/auth.proto
+          mv proto/auth/*.go proto/
+          rmdir proto/auth
+      
       - name: Download dependencies
         working-directory: services/auth
         run: |

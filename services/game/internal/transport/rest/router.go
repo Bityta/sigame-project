@@ -16,6 +16,7 @@ func SetupRouter(handler *Handler, wsHandler *websocket.Handler) *gin.Engine {
 
 	// Health check
 	r.GET("/health", handler.Health)
+	r.HEAD("/health", handler.Health)
 
 	// API routes
 	api := r.Group("/api/game")

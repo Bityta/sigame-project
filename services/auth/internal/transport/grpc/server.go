@@ -2,9 +2,10 @@ package grpc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
-	
+
 	"github.com/sigame/auth/internal/domain"
 	"github.com/sigame/auth/internal/service"
 	pb "github.com/sigame/auth/proto"
@@ -41,9 +42,10 @@ func (s *Server) ValidateToken(ctx context.Context, req *pb.ValidateTokenRequest
 	}
 
 	return &pb.ValidateTokenResponse{
-		Valid:    true,
-		UserId:   claims.UserID.String(),
-		Username: claims.Username,
+		Valid:     true,
+		UserId:    claims.UserID.String(),
+		Username:  claims.Username,
+		AvatarUrl: "", // No avatar support yet
 	}, nil
 }
 
@@ -51,6 +53,7 @@ func (s *Server) ValidateToken(ctx context.Context, req *pb.ValidateTokenRequest
 func (s *Server) GetUserInfo(ctx context.Context, req *pb.GetUserInfoRequest) (*pb.GetUserInfoResponse, error) {
 	if req.UserId == "" {
 		return &pb.GetUserInfoResponse{
+			Found: false,
 			Error: "user_id is required",
 		}, nil
 	}
@@ -58,6 +61,7 @@ func (s *Server) GetUserInfo(ctx context.Context, req *pb.GetUserInfoRequest) (*
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
 		return &pb.GetUserInfoResponse{
+			Found: false,
 			Error: "invalid user ID format",
 		}, nil
 	}
@@ -66,17 +70,21 @@ func (s *Server) GetUserInfo(ctx context.Context, req *pb.GetUserInfoRequest) (*
 	if err != nil {
 		if err == domain.ErrUserNotFound {
 			return &pb.GetUserInfoResponse{
+				Found: false,
 				Error: "user not found",
 			}, nil
 		}
 		return &pb.GetUserInfoResponse{
+			Found: false,
 			Error: err.Error(),
 		}, nil
 	}
 
 	return &pb.GetUserInfoResponse{
+		Found:     true,
 		UserId:    user.ID.String(),
 		Username:  user.Username,
-		CreatedAt: user.CreatedAt.Unix(),
+		AvatarUrl: "", // No avatar support yet
+		CreatedAt: user.CreatedAt.Format(time.RFC3339),
 	}, nil
 }
