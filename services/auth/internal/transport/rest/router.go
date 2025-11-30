@@ -20,6 +20,7 @@ func SetupRouter(handler *Handler, jwtMiddleware gin.HandlerFunc, metrics *metri
 
 	// Health check endpoint (no auth required)
 	router.GET("/health", handler.Health)
+	router.HEAD("/health", handler.Health)
 
 	// Auth routes
 	auth := router.Group("/auth")
