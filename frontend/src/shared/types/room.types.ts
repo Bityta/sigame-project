@@ -48,7 +48,7 @@ export interface CreateRoomRequest {
 }
 
 export interface JoinRoomRequest {
-  role: PlayerRole;
+  role?: PlayerRole;
   password?: string;
 }
 
