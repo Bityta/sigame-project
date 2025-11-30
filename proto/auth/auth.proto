@@ -15,12 +15,10 @@ service AuthService {
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
 }
 
-// ValidateTokenRequest contains the token to validate
 message ValidateTokenRequest {
   string token = 1;
 }
 
-// ValidateTokenResponse contains validation result and user information
 message ValidateTokenResponse {
   bool valid = 1;
   string user_id = 2;
@@ -29,12 +27,10 @@ message ValidateTokenResponse {
   string error = 5;
 }
 
-// GetUserInfoRequest contains the user ID to look up
 message GetUserInfoRequest {
   string user_id = 1;
 }
 
-// GetUserInfoResponse contains user information
 message GetUserInfoResponse {
   bool found = 1;
   string user_id = 2;

@@ -18,10 +18,6 @@ service PackService {
   rpc ValidatePackExists(ValidatePackRequest) returns (ValidatePackResponse);
 }
 
-// ═══════════════════════════════════════════════════════════
-// ValidatePackExists - проверка существования пака
-// ═══════════════════════════════════════════════════════════
-
 message ValidatePackRequest {
   string pack_id = 1;   // UUID пака
   string user_id = 2;   // UUID владельца (опционально)
@@ -33,10 +29,6 @@ message ValidatePackResponse {
   string status = 3;    // "processing" | "approved" | "failed"
   string error = 4;     // Текст ошибки
 }
-
-// ═══════════════════════════════════════════════════════════
-// GetPackInfo - метаданные пака
-// ═══════════════════════════════════════════════════════════
 
 message GetPackInfoRequest {
   string pack_id = 1;  // UUID пака
@@ -55,10 +47,6 @@ message PackInfoResponse {
   string created_at = 10;
   string error = 11;
 }
-
-// ═══════════════════════════════════════════════════════════
-// GetPackContent - полный контент пака для игры
-// ═══════════════════════════════════════════════════════════
 
 message GetPackContentRequest {
   string pack_id = 1;  // UUID пака

@@ -13,7 +13,9 @@ import com.sigame.lobby.grpc.auth.AuthServiceClient
 import com.sigame.lobby.grpc.auth.UserInfo
 import com.sigame.lobby.metrics.HttpMetrics
 import com.sigame.lobby.metrics.HttpMetricsFilter
+import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.security.CurrentUserArgumentResolver
+import com.sigame.lobby.sse.service.RoomEventPublisher
 import com.sigame.lobby.service.domain.RoomLifecycleService
 import com.sigame.lobby.service.domain.RoomMembershipService
 import com.sigame.lobby.service.domain.RoomQueryService
@@ -69,8 +71,14 @@ class LobbyControllerIntegrationTest {
     @MockkBean
     private lateinit var httpMetrics: HttpMetrics
 
-    @MockkBean
+    @MockkBean(relaxed = true)
     private lateinit var asyncLogWriter: com.sigame.lobby.logging.AsyncLogWriter
+
+    @MockkBean(relaxed = true)
+    private lateinit var roomEventPublisher: RoomEventPublisher
+
+    @MockkBean(relaxed = true)
+    private lateinit var lobbyMetrics: LobbyMetrics
 
     private val testUserId = UUID.randomUUID()
     private val testUsername = "testPlayer"
