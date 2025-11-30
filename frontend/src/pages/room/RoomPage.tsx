@@ -101,20 +101,6 @@ export const RoomPage = () => {
     }
   };
 
-  const handleCopyLink = async () => {
-    if (!room) return;
-    
-    const roomUrl = `${window.location.origin}${ROUTES.ROOM(room.id)}`;
-    
-    try {
-      await navigator.clipboard.writeText(roomUrl);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="room-page">
@@ -142,27 +128,14 @@ export const RoomPage = () => {
     <div className="room-page">
       <header className="room-page__header">
         <h1 className="room-page__title">{room.name}</h1>
-        <div className="room-page__share">
-          <div 
-            className="room-page__code"
-            onClick={handleCopyCode}
-            title="Нажмите, чтобы скопировать код"
-          >
-            {TEXTS.ROOM.ROOM_CODE} 
-            <span className="room-page__code-value">
-              {room.roomCode}
-              {copySuccess && <span className="room-page__copy-hint"> ✓</span>}
-            </span>
-          </div>
-          {room.isPublic && (
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={handleCopyLink}
-            >
-              {copySuccess ? '✓ Скопировано' : '🔗 Поделиться ссылкой'}
-            </Button>
-          )}
+        <div 
+          className={`room-page__code ${copySuccess ? 'room-page__code--copied' : ''}`}
+          onClick={handleCopyCode}
+          title="Нажмите, чтобы скопировать код"
+        >
+          <span className="room-page__code-label">{TEXTS.ROOM.ROOM_CODE}</span>
+          <span className="room-page__code-value">{room.roomCode}</span>
+          <span className="room-page__code-icon">{copySuccess ? '✓' : '📋'}</span>
         </div>
       </header>
 
