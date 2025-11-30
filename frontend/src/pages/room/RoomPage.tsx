@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { useRoom, useLeaveRoom, useStartGame } from '@/entities/room';
+import { useRoom, useLeaveRoom, useStartGame, useRoomEvents } from '@/entities/room';
 import { useCurrentUser } from '@/entities/user';
 import { RoomSettingsComponent } from '@/features/room';
 import { Button, Card, Spinner } from '@/shared/ui';
@@ -12,14 +12,21 @@ export const RoomPage = () => {
   const navigate = useNavigate();
   const [copySuccess, setCopySuccess] = useState(false);
   
-  const { data: room, isLoading, refetch } = useRoom(roomId!, {
-    refetchInterval: 3000,
-  });
+  const { data: room, isLoading } = useRoom(roomId!);
   const { data: user } = useCurrentUser();
   const leaveRoomMutation = useLeaveRoom();
   const startGameMutation = useStartGame({
     onSuccess: (response) => {
       navigate(ROUTES.GAME(response.gameSessionId));
+    },
+  });
+
+  useRoomEvents(roomId, {
+    onGameStarted: (event) => {
+      navigate(ROUTES.GAME(event.gameId));
+    },
+    onRoomClosed: () => {
+      navigate(ROUTES.LOBBY);
     },
   });
 

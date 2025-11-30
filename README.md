@@ -61,7 +61,7 @@
 | **Pack Service** | Python, FastAPI, gRPC |
 | **Databases** | PostgreSQL 16, Redis 7 |
 | **Storage** | MinIO (S3-compatible) |
-| **Messaging** | Apache Kafka |
+| **Real-time** | SSE, WebSocket |
 | **Monitoring** | Prometheus, Grafana, Loki |
 
 ---
@@ -108,13 +108,6 @@ flowchart TB
     end
 
     subgraph LAYER6 [" "]
-        direction LR
-        KAFKA1[[lobby.events]]
-        KAFKA2[[game.events]]
-        KAFKA3[[game.actions]]
-    end
-
-    subgraph LAYER7 [" "]
         MINIO[(MinIO S3)]
     end
 
@@ -131,11 +124,10 @@ flowchart TB
     LOBBY --> REDIS1
     GAME --> REDIS2
 
-    LOBBY --> KAFKA1
-    GAME --> KAFKA2
-    GAME --> KAFKA3
-
     PACK --> MINIO
+    
+    FE -.SSE.-> LOBBY
+    FE -.WebSocket.-> GAME
 
     style USER fill:#E3F2FD,stroke:#1976D2
     style FE fill:#42A5F5,color:#fff
@@ -147,9 +139,6 @@ flowchart TB
     style REDIS0 fill:#DC382D,color:#fff
     style REDIS1 fill:#DC382D,color:#fff
     style REDIS2 fill:#DC382D,color:#fff
-    style KAFKA1 fill:#231F20,color:#fff
-    style KAFKA2 fill:#231F20,color:#fff
-    style KAFKA3 fill:#231F20,color:#fff
     style MINIO fill:#C72C48,color:#fff
     style DB1 fill:#336791,color:#fff
     style DB2 fill:#336791,color:#fff
@@ -167,7 +156,6 @@ flowchart TB
 | **⚙️ Сервисы** | Auth, Lobby, Game, Pack | :8001-8005 |
 | **🗄️ PostgreSQL** | 4 базы данных | :5432 |
 | **⚡ Redis** | 3 логические БД (DB0, DB1, DB2) | :6379 |
-| **📨 Kafka** | 3 топика | :9092 |
 | **📁 MinIO** | S3 хранилище | :9000 |
 
 ### 2.1.2 Redis — разделение по базам
@@ -180,53 +168,30 @@ flowchart TB
 
 
 
-### 2.1.3 Kafka — топики
+### 2.1.3 SSE — real-time обновления комнат
 
-| Топик | Producer | Consumer | Назначение |
-|-------|----------|----------|------------|
-| `lobby.events` | Lobby | Game | События комнат |
-| `game.events` | Game | Lobby | События игры |
-| `game.actions` | Game | Game (replay) | Действия игроков |
+Server-Sent Events для мгновенных уведомлений в комнате ожидания.
 
-**Детализация потоков:**
+| Endpoint | События | Назначение |
+|----------|---------|------------|
+| `GET /api/lobby/rooms/{id}/events` | player_joined, player_left, game_started, room_closed | Real-time обновления для фронтенда |
 
 ```mermaid
-flowchart LR
-    subgraph producers [Producers]
-        LOBBY[🚪 Lobby]
-        GAME[🎮 Game]
-    end
-
-    subgraph kafka [Kafka Topics]
-        T1[[lobby.events]]
-        T2[[game.events]]
-        T3[[game.actions]]
-    end
-
-    subgraph consumers [Consumers]
-        GAME2[🎮 Game]
-        LOBBY2[🚪 Lobby]
-        REPLAY[📼 Game Replay]
-    end
-
-    LOBBY -->|publish| T1
-    GAME -->|publish| T2
-    GAME -->|publish| T3
-
-    T1 -->|consume| GAME2
-    T2 -->|consume| LOBBY2
-    T3 -->|consume| REPLAY
-
-    style T1 fill:#231F20,color:#fff
-    style T2 fill:#231F20,color:#fff
-    style T3 fill:#231F20,color:#fff
+sequenceDiagram
+    participant F as Frontend
+    participant L as Lobby Service
+    
+    F->>L: GET /rooms/{id}/events (SSE)
+    activate L
+    Note over L: Держит соединение
+    
+    L-->>F: event: player_joined
+    L-->>F: event: player_left
+    L-->>F: event: game_started
+    deactivate L
+    
+    F->>F: Redirect to Game
 ```
-
-| Топик | События | Кто пишет | Кто читает | Зачем читает |
-|-------|---------|-----------|------------|--------------|
-| `lobby.events` | ROOM_CREATED, PLAYER_JOINED, PLAYER_LEFT, ROOM_STARTED | Lobby | **Game** | Узнать о старте игры, получить список игроков |
-| `game.events` | GAME_FINISHED, SCORES_UPDATED | Game | **Lobby** | Обновить статус комнаты на "finished" |
-| `game.actions` | QUESTION_SELECTED, BUTTON_PRESSED, ANSWER_SUBMITTED | Game | **Game** | Сохранение для replay/аналитики |
 
 ### 2.2 Связи между сервисами
 
@@ -236,7 +201,7 @@ flowchart LR
     FE[🖥️ Frontend]
     
     FE -->|REST| AUTH
-    FE -->|REST| LOBBY  
+    FE -->|REST + SSE| LOBBY  
     FE -->|REST + WS| GAME
     FE -->|REST| PACK
 
@@ -465,7 +430,7 @@ X-RateLimit-Remaining: 0
 |----|------------|----------|
 | NFR-SCALE-01 | Горизонтальное масштабирование | Сервисы stateless, масштабируются независимо |
 | NFR-SCALE-02 | Сессии в Redis | Позволяет балансировку между инстансами |
-| NFR-SCALE-03 | Очереди в Kafka | Асинхронная обработка событий |
+| NFR-SCALE-03 | SSE для real-time | Push-уведомления без polling |
 
 ### 4.6 Совместимость (NFR-COMPAT)
 
@@ -1898,12 +1863,11 @@ message GetUserInfoResponse {
 - 👥 Управление игроками (присоединение/выход)
 - ⚙️ Настройка параметров игры
 - 🚀 Запуск игры (триггер Game Service)
-- 📢 Публикация событий в Kafka
+- 📢 SSE события для real-time обновлений
 
 **Зависимости:**
 - PostgreSQL (lobby_db) — хранение комнат
 - Redis (DB1) — кэширование комнат
-- Kafka — публикация событий
 - Auth Service (gRPC) — валидация токенов
 - Pack Service (gRPC) — проверка паков
 - Game Service (HTTP) — создание игр
@@ -2176,86 +2140,35 @@ message GetUserInfoResponse {
 
 ---
 
-### 10.3 Kafka Events
+### 10.3 SSE Events
 
-| Event | Topic | Описание |
-|-------|-------|----------|
-| `ROOM_CREATED` | lobby.events | Комната создана |
-| `PLAYER_JOINED` | lobby.events | Игрок присоединился |
-| `PLAYER_LEFT` | lobby.events | Игрок вышел |
-| `ROOM_STARTED` | lobby.events | Игра запущена |
-| `ROOM_CANCELLED` | lobby.events | Комната отменена |
+Lobby Service использует Server-Sent Events (SSE) для real-time обновлений в комнатах.
 
-**Схемы событий:**
+**Endpoint:** `GET /api/lobby/rooms/{roomId}/events`
 
-```typescript
-// ROOM_CREATED — комната создана
-{
-  "event_type": "ROOM_CREATED",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "payload": {
-    "room_id": "uuid",
-    "room_code": "ABC123",
-    "host_id": "uuid",
-    "host_username": "player1",
-    "pack_id": "uuid",
-    "pack_name": "Общие знания",
-    "max_players": 6,
-    "is_public": true
-  }
-}
+| Event | Описание | Данные |
+|-------|----------|--------|
+| `player_joined` | Игрок присоединился | userId, username, currentPlayers |
+| `player_left` | Игрок вышел | userId, username, reason, currentPlayers |
+| `game_started` | Игра запущена | gameId, websocketUrl |
+| `room_closed` | Комната закрыта | reason |
+| `settings_updated` | Настройки изменены | — |
 
-// PLAYER_JOINED — игрок присоединился
-{
-  "event_type": "PLAYER_JOINED",
-  "timestamp": "2024-01-15T10:31:00Z",
-  "payload": {
-    "room_id": "uuid",
-    "user_id": "uuid",
-    "username": "player2",
-    "avatar_url": "https://...",
-    "current_players": 3,
-    "max_players": 6
-  }
-}
+**Пример использования (JavaScript):**
 
-// PLAYER_LEFT — игрок вышел
-{
-  "event_type": "PLAYER_LEFT",
-  "timestamp": "2024-01-15T10:32:00Z",
-  "payload": {
-    "room_id": "uuid",
-    "user_id": "uuid",
-    "username": "player2",
-    "reason": "left",         // "left" | "kicked" | "disconnected"
-    "current_players": 2
-  }
-}
+```javascript
+const eventSource = new EventSource(`/api/lobby/rooms/${roomId}/events`);
 
-// ROOM_STARTED — игра запущена
-{
-  "event_type": "ROOM_STARTED",
-  "timestamp": "2024-01-15T10:35:00Z",
-  "payload": {
-    "room_id": "uuid",
-    "game_id": "uuid",
-    "players": [
-      {"user_id": "uuid", "username": "player1", "role": "host"},
-      {"user_id": "uuid", "username": "player2", "role": "player"}
-    ],
-    "pack_id": "uuid"
-  }
-}
+eventSource.addEventListener('player_joined', (e) => {
+  const data = JSON.parse(e.data);
+  console.log(`${data.username} joined (${data.currentPlayers} players)`);
+});
 
-// ROOM_CANCELLED — комната отменена
-{
-  "event_type": "ROOM_CANCELLED",
-  "timestamp": "2024-01-15T10:40:00Z",
-  "payload": {
-    "room_id": "uuid",
-    "reason": "host_left"     // "host_left" | "timeout" | "manual"
-  }
-}
+eventSource.addEventListener('game_started', (e) => {
+  const data = JSON.parse(e.data);
+  // Redirect to game with WebSocket URL
+  window.location.href = `/game/${data.gameId}?ws=${data.websocketUrl}`;
+});
 ```
 
 ---
@@ -2281,7 +2194,6 @@ message GetUserInfoResponse {
 **Зависимости:**
 - PostgreSQL (game_db) — история игр
 - Redis (DB2) — состояние игр в реальном времени
-- Kafka — публикация событий
 - Pack Service (gRPC) — загрузка паков вопросов
 
 ---
@@ -3012,106 +2924,7 @@ func (g *Game) DetermineWinner() string {
 }
 ```
 
-### 11.6 Kafka Events
-
-Game Service публикует события в топики и потребляет события из Lobby:
-
-**Producer (Game → Kafka):**
-
-| Topic | Event | Когда |
-|-------|-------|-------|
-| `game.events` | `GAME_STARTED` | Игра началась |
-| `game.events` | `GAME_FINISHED` | Игра завершена |
-| `game.events` | `SCORES_UPDATED` | Очки изменились |
-| `game.actions` | `QUESTION_SELECTED` | Выбран вопрос |
-| `game.actions` | `BUTTON_PRESSED` | Нажата кнопка |
-| `game.actions` | `ANSWER_SUBMITTED` | Отправлен ответ |
-| `game.actions` | `ANSWER_JUDGED` | Ответ оценён |
-
-**Consumer (Kafka → Game):**
-
-| Topic | Event | Действие |
-|-------|-------|----------|
-| `lobby.events` | `ROOM_STARTED` | Создать игровую сессию |
-
-**Схемы событий:**
-
-```typescript
-// GAME_STARTED
-{
-  "event_type": "GAME_STARTED",
-  "timestamp": "2024-01-15T10:35:00Z",
-  "payload": {
-    "game_id": "uuid",
-    "room_id": "uuid",
-    "pack_id": "uuid",
-    "players": [
-      {"user_id": "uuid", "username": "player1", "role": "host"},
-      {"user_id": "uuid", "username": "player2", "role": "player"}
-    ]
-  }
-}
-
-// GAME_FINISHED
-{
-  "event_type": "GAME_FINISHED",
-  "timestamp": "2024-01-15T11:20:00Z",
-  "payload": {
-    "game_id": "uuid",
-    "room_id": "uuid",
-    "duration_minutes": 45,
-    "final_scores": [
-      {"user_id": "uuid", "username": "player1", "score": 4500, "place": 1},
-      {"user_id": "uuid", "username": "player2", "score": 3200, "place": 2}
-    ],
-    "winner_id": "uuid"
-  }
-}
-
-// QUESTION_SELECTED (для replay/аналитики)
-{
-  "event_type": "QUESTION_SELECTED",
-  "timestamp": "2024-01-15T10:36:00Z",
-  "payload": {
-    "game_id": "uuid",
-    "round": 1,
-    "theme_index": 0,
-    "question_index": 2,
-    "price": 300,
-    "selector_id": "uuid"
-  }
-}
-
-// BUTTON_PRESSED (для replay/аналитики)
-{
-  "event_type": "BUTTON_PRESSED",
-  "timestamp": "2024-01-15T10:36:05Z",
-  "payload": {
-    "game_id": "uuid",
-    "question_id": "uuid",
-    "winner_id": "uuid",
-    "all_presses": [
-      {"user_id": "uuid", "adjusted_time_ms": 60},
-      {"user_id": "uuid", "adjusted_time_ms": 90}
-    ]
-  }
-}
-
-// ANSWER_JUDGED (для replay/аналитики)
-{
-  "event_type": "ANSWER_JUDGED",
-  "timestamp": "2024-01-15T10:36:20Z",
-  "payload": {
-    "game_id": "uuid",
-    "question_id": "uuid",
-    "user_id": "uuid",
-    "correct": true,
-    "score_delta": 300
-  }
-}
-```
-
-### 11.7 Логика подсчёта очков
+### 11.6 Логика подсчёта очков
 
 | Ситуация | Очки |
 |----------|------|
@@ -4041,7 +3854,6 @@ flowchart TB
         subgraph infraserver [💾 Infrastructure Server]
             PG[PostgreSQL x4]
             REDIS[Redis]
-            KAFKA[Kafka]
             MINIO[MinIO :9000]
             GRAF[Grafana :3000]
         end
