@@ -80,6 +80,14 @@ dependencies {
     testImplementation("com.ninja-squad:springmockk:4.0.2")
 }
 
+sourceSets {
+    main {
+        proto {
+            srcDir("../../../proto")
+        }
+    }
+}
+
 protobuf {
     protoc {
         artifact = "com.google.protobuf:protoc:3.25.0"

@@ -9,6 +9,7 @@ import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
+import com.sigame.lobby.grpc.AuthServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.service.KafkaEventPublisher
 import com.sigame.lobby.service.cache.RoomCacheService
@@ -34,6 +35,7 @@ class RoomMembershipService(
     private val roomPlayerRepository: RoomPlayerRepository,
     private val roomCacheService: RoomCacheService,
     private val kafkaEventPublisher: KafkaEventPublisher,
+    private val authServiceClient: AuthServiceClient,
     private val lobbyMetrics: LobbyMetrics,
     private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
 ) {
@@ -102,8 +104,18 @@ class RoomMembershipService(
         // Метрики
         lobbyMetrics.recordPlayerJoined()
         
+        // Получаем информацию о пользователе для события
+        val userInfo = authServiceClient.getUserInfo(userId)
+        
         // Публикуем событие
-        kafkaEventPublisher.publishPlayerJoined(roomId, userId, roleStr)
+        kafkaEventPublisher.publishPlayerJoined(
+            roomId = roomId,
+            userId = userId,
+            username = userInfo?.username ?: "Unknown",
+            avatarUrl = userInfo?.avatarUrl,
+            currentPlayers = currentPlayers + 1,
+            maxPlayers = room.maxPlayers
+        )
         
         // Возвращаем обновленную информацию о комнате
         // Используем прямой запрос вместо roomQueryService для избежания circular dependency
@@ -167,8 +179,18 @@ class RoomMembershipService(
             handlePlayerLeaving(room, roomId)
         }
         
+        // Получаем информацию о пользователе для события
+        val userInfo = authServiceClient.getUserInfo(userId)
+        val currentPlayersCount = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
+        
         // Публикуем событие
-        kafkaEventPublisher.publishPlayerLeft(roomId, userId)
+        kafkaEventPublisher.publishPlayerLeft(
+            roomId = roomId,
+            userId = userId,
+            username = userInfo?.username ?: "Unknown",
+            reason = "left",
+            currentPlayers = currentPlayersCount
+        )
     }
     
     /**
@@ -217,7 +239,7 @@ class RoomMembershipService(
         lobbyMetrics.recordRoomCancelled(room.getStatusEnum())
         
         // Публикуем событие
-        kafkaEventPublisher.publishRoomCancelled(roomId)
+        kafkaEventPublisher.publishRoomCancelled(roomId, "no_players")
     }
     
     /**
@@ -238,8 +260,18 @@ class RoomMembershipService(
         // Обновляем кэш
         roomCacheService.cacheRoomData(updatedRoom, activePlayers.size)
         
+        // Получаем информацию о новом хосте
+        val newHostInfo = authServiceClient.getUserInfo(newHost.userId)
+        
         // Публикуем событие о смене хоста
-        kafkaEventPublisher.publishPlayerJoined(roomId, newHost.userId, "host")
+        kafkaEventPublisher.publishPlayerJoined(
+            roomId = roomId,
+            userId = newHost.userId,
+            username = newHostInfo?.username ?: "Unknown",
+            avatarUrl = newHostInfo?.avatarUrl,
+            currentPlayers = activePlayers.size,
+            maxPlayers = room.maxPlayers
+        )
     }
 }
 

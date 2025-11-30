@@ -3,32 +3,31 @@ package com.sigame.lobby.domain.dto
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
-import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
-import jakarta.validation.constraints.Size
 
 /**
  * Запрос на обновление настроек комнаты
- * Все поля необязательны - обновляются только переданные
+ * Согласно README: timeForAnswer, timeForChoice, allowWrongAnswer, showRightAnswer
+ * Все поля необязательны - обновляются только переданные (PATCH семантика)
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class UpdateRoomSettingsRequest(
-    @field:Min(value = 2, message = "Minimum 2 players required")
-    @field:Max(value = 12, message = "Maximum 12 players allowed")
-    @JsonProperty("maxPlayers")
-    val maxPlayers: Int? = null,
+    @field:Min(value = 10, message = "Minimum 10 seconds for answer")
+    @field:Max(value = 120, message = "Maximum 120 seconds for answer")
+    @JsonProperty("timeForAnswer")
+    val timeForAnswer: Int? = null,
     
-    @JsonProperty("isPublic")
-    val isPublic: Boolean? = null,
+    @field:Min(value = 10, message = "Minimum 10 seconds for choice")
+    @field:Max(value = 180, message = "Maximum 180 seconds for choice")
+    @JsonProperty("timeForChoice")
+    val timeForChoice: Int? = null,
     
-    @field:Size(min = 4, max = 50, message = "Password must be between 4 and 50 characters")
-    @JsonProperty("password")
-    val password: String? = null,
+    @JsonProperty("allowWrongAnswer")
+    val allowWrongAnswer: Boolean? = null,
     
-    @field:Valid
-    @JsonProperty("settings")
-    val settings: RoomSettingsDto? = null
+    @JsonProperty("showRightAnswer")
+    val showRightAnswer: Boolean? = null
 )
 

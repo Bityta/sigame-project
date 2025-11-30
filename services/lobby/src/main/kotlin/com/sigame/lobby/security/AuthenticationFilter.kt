@@ -1,5 +1,6 @@
 package com.sigame.lobby.security
 
+import com.sigame.lobby.controller.ApiRoutes
 import com.sigame.lobby.grpc.AuthServiceClient
 import kotlinx.coroutines.reactor.mono
 import mu.KotlinLogging
@@ -13,7 +14,6 @@ import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
-import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
@@ -29,22 +29,8 @@ class AuthenticationFilter(
 ) : WebFilter {
     
     companion object {
-        private val PUBLIC_PATHS = setOf(
-            "/api/lobby/health",
-            "/actuator/health",
-            "/actuator/prometheus",
-            "/actuator/metrics",
-            "/actuator/info",
-            "/metrics",
-            "/api-docs",
-            "/swagger-ui",
-            "/swagger-ui.html",
-            "/v3/api-docs"
-        )
-        
-        private val PUBLIC_METHOD_PATHS = mapOf(
-            "GET" to setOf("/api/lobby/rooms")
-        )
+        private val PUBLIC_PATHS = ApiRoutes.Public.PATHS
+        private val PUBLIC_GET_PATHS = ApiRoutes.Public.GET_PATHS
     }
     
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
@@ -61,11 +47,9 @@ class AuthenticationFilter(
             return chain.filter(exchange)
         }
         
-        // Skip authentication for specific method + path combinations
-        PUBLIC_METHOD_PATHS[method]?.let { paths ->
-            if (paths.any { path.startsWith(it) }) {
-                return chain.filter(exchange)
-            }
+        // Skip authentication for GET requests to public paths
+        if (method == "GET" && PUBLIC_GET_PATHS.any { path.startsWith(it) }) {
+            return chain.filter(exchange)
         }
         
         // Validate JWT token

@@ -35,23 +35,29 @@ class RoomQueryService(
     /**
      * Получает список комнат с фильтрацией и пагинацией
      * Оптимизировано с помощью batch операций для избежания N+1 проблемы
+     * 
+     * @param page номер страницы (0-based)
+     * @param size размер страницы
+     * @param status строковое значение статуса (WAITING, PLAYING, FINISHED) - регистронезависимо
+     * @param hasSlots фильтр по наличию свободных мест
      */
     suspend fun getRooms(
         page: Int,
         size: Int,
-        status: RoomStatus?,
+        status: String?,
         hasSlots: Boolean?
     ): RoomListResponse {
         val offset = page * size
+        val statusEnum = parseRoomStatus(status)
         
         val rooms = when {
-            status != null -> gameRoomRepository.findByStatus(status.name.lowercase(), size, offset)
+            statusEnum != null -> gameRoomRepository.findByStatus(statusEnum.name.lowercase(), size, offset)
             hasSlots == true -> gameRoomRepository.findPublicWaitingRooms(size, offset)
             else -> gameRoomRepository.findPublicWaitingRooms(size, offset)
         }.asFlow().toList()
         
         val total = when {
-            status != null -> gameRoomRepository.countByStatus(status.name.lowercase()).awaitFirst()
+            statusEnum != null -> gameRoomRepository.countByStatus(statusEnum.name.lowercase()).awaitFirst()
             hasSlots == true -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
             else -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
         }
@@ -68,11 +74,15 @@ class RoomQueryService(
             roomMapper.toDtoWithCache(room, playerCount, userInfoMap, packInfoMap)
         }
         
+        // Вычисляем totalPages согласно README
+        val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 0
+        
         return RoomListResponse(
             rooms = roomDtos,
-            total = total,
             page = page,
-            size = size
+            size = size,
+            totalElements = total,
+            totalPages = totalPages
         )
     }
     
@@ -124,6 +134,22 @@ class RoomQueryService(
             players = players,
             settings = settings
         )
+    }
+    
+    /**
+     * Парсит строковое значение статуса в enum RoomStatus
+     * @param status строковое значение статуса (регистронезависимо)
+     * @return RoomStatus или null если значение невалидно
+     */
+    private fun parseRoomStatus(status: String?): RoomStatus? {
+        if (status.isNullOrBlank()) return null
+        
+        return try {
+            RoomStatus.valueOf(status.uppercase())
+        } catch (e: IllegalArgumentException) {
+            logger.warn { "Invalid room status value: '$status'. Valid values: ${RoomStatus.entries.joinToString()}" }
+            null
+        }
     }
 }
 

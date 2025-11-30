@@ -4,19 +4,22 @@ import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
  * Ответ со списком комнат с пагинацией
- * Все поля обязательны
+ * Согласно README: rooms, page, size, totalElements, totalPages
  */
 data class RoomListResponse(
     @JsonProperty("rooms")
     val rooms: List<RoomDto>,
     
-    @JsonProperty("total")
-    val total: Long,
-    
     @JsonProperty("page")
     val page: Int,
     
     @JsonProperty("size")
-    val size: Int
+    val size: Int,
+    
+    @JsonProperty("totalElements")
+    val totalElements: Long,
+    
+    @JsonProperty("totalPages")
+    val totalPages: Int
 )
 

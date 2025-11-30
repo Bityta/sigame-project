@@ -24,6 +24,7 @@ message ValidateTokenResponse {
   string user_id = 2;
   string username = 3;
   string error = 4;
+  string avatar_url = 5;
 }
 
 // GetUserInfoRequest contains the user ID to look up
@@ -37,5 +38,6 @@ message GetUserInfoResponse {
   string username = 2;
   int64 created_at = 3; // Unix timestamp
   string error = 4;
+  string avatar_url = 5;
 }
 

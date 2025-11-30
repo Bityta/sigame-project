@@ -2,8 +2,10 @@ package com.sigame.lobby.service.domain
 
 import com.sigame.lobby.domain.dto.CreateRoomRequest
 import com.sigame.lobby.domain.dto.RoomDto
+import com.sigame.lobby.domain.dto.RoomSettingsDto
 import com.sigame.lobby.domain.dto.StartGameResponse
 import com.sigame.lobby.domain.dto.UpdateRoomSettingsRequest
+import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
 import com.sigame.lobby.domain.enums.PlayerRole
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.exception.*
@@ -13,9 +15,11 @@ import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
+import com.sigame.lobby.grpc.AuthServiceClient
 import com.sigame.lobby.grpc.PackServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.service.KafkaEventPublisher
+import com.sigame.lobby.service.PlayerEventData
 import com.sigame.lobby.service.RoomCodeGenerator
 import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.external.GameServiceClient
@@ -45,6 +49,7 @@ class RoomLifecycleService(
     private val roomCodeGenerator: RoomCodeGenerator,
     private val roomCacheService: RoomCacheService,
     private val kafkaEventPublisher: KafkaEventPublisher,
+    private val authServiceClient: AuthServiceClient,
     private val packServiceClient: PackServiceClient,
     private val gameServiceClient: GameServiceClient,
     private val lobbyMetrics: LobbyMetrics,
@@ -121,12 +126,20 @@ class RoomLifecycleService(
         roomCacheService.setUserCurrentRoom(hostId, roomId)
         roomCacheService.addRoomPlayer(roomId, hostId)
         
+        // Получаем информацию для события
+        val hostInfo = authServiceClient.getUserInfo(hostId)
+        val packInfo = packServiceClient.getPackInfo(request.packId)
+        
         // Публикуем событие
         kafkaEventPublisher.publishRoomCreated(
             roomId = roomId,
+            roomCode = roomCode,
             hostId = hostId,
+            hostUsername = hostInfo?.username ?: "Unknown",
             packId = request.packId,
-            maxPlayers = request.maxPlayers
+            packName = packInfo?.name,
+            maxPlayers = request.maxPlayers,
+            isPublic = request.isPublic
         )
         
         // Метрики
@@ -175,13 +188,6 @@ class RoomLifecycleService(
         // Метрики
         lobbyMetrics.recordRoomStarted()
         
-        // Публикуем событие
-        kafkaEventPublisher.publishRoomStarted(
-            roomId = roomId,
-            packId = room.packId,
-            players = activePlayers.map { it.userId }
-        )
-        
         // Создаем игровую сессию
         try {
             val settings = roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
@@ -206,9 +212,25 @@ class RoomLifecycleService(
             gameRoomRepository.save(playingRoom).awaitFirstOrNull()
             roomCacheService.cacheRoomData(playingRoom, activePlayers.size)
             
+            // Публикуем событие ROOM_STARTED после успешного создания игры
+            val playerEventDataList = activePlayers.map { player ->
+                val userInfo = authServiceClient.getUserInfo(player.userId)
+                PlayerEventData(
+                    user_id = player.userId.toString(),
+                    username = userInfo?.username ?: "Unknown",
+                    role = player.role
+                )
+            }
+            kafkaEventPublisher.publishRoomStarted(
+                roomId = roomId,
+                gameId = gameSessionResponse.gameSessionId,
+                packId = room.packId,
+                players = playerEventDataList
+            )
+            
             return StartGameResponse(
-                gameSessionId = gameSessionResponse.gameSessionId,
-                wsUrl = gameSessionResponse.wsUrl
+                gameId = gameSessionResponse.gameSessionId,
+                websocketUrl = gameSessionResponse.wsUrl
             )
             
         } catch (e: Exception) {
@@ -228,13 +250,14 @@ class RoomLifecycleService(
     
     /**
      * Обновляет настройки комнаты
+     * Возвращает только обновлённые настройки согласно README
      */
     @Transactional
     suspend fun updateRoomSettings(
         roomId: UUID,
         userId: UUID,
         request: UpdateRoomSettingsRequest
-    ): RoomDto {
+    ): UpdateRoomSettingsResponse {
         logger.info { "Updating room $roomId settings by user $userId" }
         
         val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
@@ -250,43 +273,52 @@ class RoomLifecycleService(
             throw InvalidRoomStateException(roomId, room.getStatusEnum(), "update settings")
         }
         
-        // Обновляем комнату
-        val passwordHash = request.password?.let { passwordEncoder.encode(it) }
-        val updatedRoom = room.copy(
-            maxPlayers = request.maxPlayers ?: room.maxPlayers,
-            isPublic = request.isPublic ?: room.isPublic,
-            passwordHash = if (request.password != null) passwordHash else room.passwordHash
-        )
-        val savedRoom = gameRoomRepository.save(updatedRoom).awaitFirst()
+        // Получаем текущие настройки
+        val currentSettings = roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
         
-        // Обновляем настройки игры
-        if (request.settings != null) {
-            val settings = roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
-            if (settings != null) {
-                val updatedSettings = settings.copy(
-                    timeForAnswer = request.settings.timeForAnswer,
-                    timeForChoice = request.settings.timeForChoice,
-                    allowWrongAnswer = request.settings.allowWrongAnswer,
-                    showRightAnswer = request.settings.showRightAnswer
-                )
-                roomSettingsRepository.save(updatedSettings).awaitFirstOrNull()
-            } else {
-                // Если настроек нет (странная ситуация), создаём через INSERT
-                roomSettingsRepository.insertRoomSettings(
-                    roomId = roomId,
-                    timeForAnswer = request.settings.timeForAnswer,
-                    timeForChoice = request.settings.timeForChoice,
-                    allowWrongAnswer = request.settings.allowWrongAnswer,
-                    showRightAnswer = request.settings.showRightAnswer
-                ).awaitFirstOrNull()
-            }
+        // Обновляем настройки игры (PATCH - только переданные поля)
+        val updatedSettings = if (currentSettings != null) {
+            currentSettings.copy(
+                timeForAnswer = request.timeForAnswer ?: currentSettings.timeForAnswer,
+                timeForChoice = request.timeForChoice ?: currentSettings.timeForChoice,
+                allowWrongAnswer = request.allowWrongAnswer ?: currentSettings.allowWrongAnswer,
+                showRightAnswer = request.showRightAnswer ?: currentSettings.showRightAnswer
+            )
+        } else {
+            // Создаём новые настройки с дефолтами
+            RoomSettings(
+                roomId = roomId,
+                timeForAnswer = request.timeForAnswer ?: 30,
+                timeForChoice = request.timeForChoice ?: 60,
+                allowWrongAnswer = request.allowWrongAnswer ?: true,
+                showRightAnswer = request.showRightAnswer ?: true
+            )
+        }
+        
+        if (currentSettings != null) {
+            roomSettingsRepository.save(updatedSettings).awaitFirstOrNull()
+        } else {
+            roomSettingsRepository.insertRoomSettings(
+                roomId = roomId,
+                timeForAnswer = updatedSettings.timeForAnswer,
+                timeForChoice = updatedSettings.timeForChoice,
+                allowWrongAnswer = updatedSettings.allowWrongAnswer,
+                showRightAnswer = updatedSettings.showRightAnswer
+            ).awaitFirstOrNull()
         }
         
         // Обновляем кэш
         val currentPlayers = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
-        roomCacheService.cacheRoomData(savedRoom, currentPlayers)
+        roomCacheService.cacheRoomData(room, currentPlayers)
         
-        return buildRoomDto(savedRoom)
+        return UpdateRoomSettingsResponse(
+            settings = RoomSettingsDto(
+                timeForAnswer = updatedSettings.timeForAnswer,
+                timeForChoice = updatedSettings.timeForChoice,
+                allowWrongAnswer = updatedSettings.allowWrongAnswer,
+                showRightAnswer = updatedSettings.showRightAnswer
+            )
+        )
     }
     
     /**
@@ -324,7 +356,7 @@ class RoomLifecycleService(
         }
         
         // Публикуем событие
-        kafkaEventPublisher.publishRoomCancelled(roomId)
+        kafkaEventPublisher.publishRoomCancelled(roomId, "manual")
     }
     
     /**

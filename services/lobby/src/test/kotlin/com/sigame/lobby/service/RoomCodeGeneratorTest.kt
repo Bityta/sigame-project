@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.mockito.kotlin.any
 import reactor.core.publisher.Mono
 
 class RoomCodeGeneratorTest {
@@ -28,7 +29,7 @@ class RoomCodeGeneratorTest {
 
     @Test
     fun `should generate code with correct length`() = runBlocking {
-        whenever(gameRoomRepository.existsByCode(org.mockito.kotlin.any())).thenReturn(Mono.just(false))
+        whenever(gameRoomRepository.findByRoomCode(any())).thenReturn(Mono.empty())
 
         val code = roomCodeGenerator.generateUniqueCode()
         
@@ -37,7 +38,7 @@ class RoomCodeGeneratorTest {
 
     @Test
     fun `should generate code with valid characters`() = runBlocking {
-        whenever(gameRoomRepository.existsByCode(org.mockito.kotlin.any())).thenReturn(Mono.just(false))
+        whenever(gameRoomRepository.findByRoomCode(any())).thenReturn(Mono.empty())
 
         val code = roomCodeGenerator.generateUniqueCode()
         
@@ -46,7 +47,7 @@ class RoomCodeGeneratorTest {
 
     @Test
     fun `should generate unique codes`() = runBlocking {
-        whenever(gameRoomRepository.existsByCode(org.mockito.kotlin.any())).thenReturn(Mono.just(false))
+        whenever(gameRoomRepository.findByRoomCode(any())).thenReturn(Mono.empty())
 
         val codes = mutableSetOf<String>()
         repeat(100) {

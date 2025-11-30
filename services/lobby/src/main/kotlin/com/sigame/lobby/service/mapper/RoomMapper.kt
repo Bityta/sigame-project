@@ -103,11 +103,12 @@ class RoomMapper(
         val userInfoMap = batchOperationService.getUserInfoBatch(userIds)
         
         return players.map { player ->
+            val userInfo = userInfoMap[player.userId]
             PlayerDto(
                 userId = player.userId,
-                username = userInfoMap[player.userId]?.username ?: "Unknown",
-                role = player.role,
-                joinedAt = player.joinedAt
+                username = userInfo?.username ?: "Unknown",
+                avatarUrl = userInfo?.avatarUrl,
+                role = player.role
             )
         }
     }
@@ -120,11 +121,12 @@ class RoomMapper(
         userInfoCache: Map<UUID, UserInfo?>
     ): List<PlayerDto> {
         return players.map { player ->
+            val userInfo = userInfoCache[player.userId]
             PlayerDto(
                 userId = player.userId,
-                username = userInfoCache[player.userId]?.username ?: "Unknown",
-                role = player.role,
-                joinedAt = player.joinedAt
+                username = userInfo?.username ?: "Unknown",
+                avatarUrl = userInfo?.avatarUrl,
+                role = player.role
             )
         }
     }

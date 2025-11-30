@@ -22,7 +22,8 @@ private val logger = KotlinLogging.logger {}
 
 data class UserInfo(
     val userId: UUID,
-    val username: String
+    val username: String,
+    val avatarUrl: String?
 )
 
 /**
@@ -94,7 +95,8 @@ class AuthServiceClient(
             if (response.valid) {
                 UserInfo(
                     userId = UUID.fromString(response.userId),
-                    username = response.username
+                    username = response.username,
+                    avatarUrl = response.avatarUrl.ifEmpty { null }
                 )
             } else {
                 logger.warn { "Token validation failed: ${response.error}" }
@@ -120,7 +122,8 @@ class AuthServiceClient(
             if (response.error.isEmpty()) {
                 UserInfo(
                     userId = UUID.fromString(response.userId),
-                    username = response.username
+                    username = response.username,
+                    avatarUrl = response.avatarUrl.ifEmpty { null }
                 )
             } else {
                 logger.warn { "Get user info failed: ${response.error}" }
