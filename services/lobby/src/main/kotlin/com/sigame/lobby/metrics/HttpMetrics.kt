@@ -4,54 +4,33 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.springframework.stereotype.Component
+import java.time.Duration
 
 @Component
 class HttpMetrics(
     private val meterRegistry: MeterRegistry
 ) {
-    
-        fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
-        val statusCode = statusCodeString(status)
-        
-        // Counter for total requests
+
+    fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
         Counter.builder("http_requests_total")
             .tag("method", method)
             .tag("endpoint", endpoint)
-            .tag("status", statusCode)
+            .tag("status", statusCodeGroup(status))
             .register(meterRegistry)
             .increment()
-        
-        // Timer for request duration
+
         Timer.builder("http_request_duration_seconds")
             .tag("method", method)
             .tag("endpoint", endpoint)
             .register(meterRegistry)
-            .record(java.time.Duration.ofMillis(durationMs))
+            .record(Duration.ofMillis(durationMs))
     }
-    
-        fun recordGrpcRequest(method: String, status: String, durationMs: Long) {
-        // Counter for total requests
-        Counter.builder("grpc_requests_total")
-            .tag("method", method)
-            .tag("status", status)
-            .register(meterRegistry)
-            .increment()
-        
-        // Timer for request duration
-        Timer.builder("grpc_request_duration_seconds")
-            .tag("method", method)
-            .register(meterRegistry)
-            .record(java.time.Duration.ofMillis(durationMs))
-    }
-    
-    private fun statusCodeString(status: Int): String {
-        return when {
-            status in 200..299 -> "2xx"
-            status in 300..399 -> "3xx"
-            status in 400..499 -> "4xx"
-            status >= 500 -> "5xx"
-            else -> "unknown"
-        }
+
+    private fun statusCodeGroup(status: Int): String = when (status) {
+        in 200..299 -> "2xx"
+        in 300..399 -> "3xx"
+        in 400..499 -> "4xx"
+        in 500..599 -> "5xx"
+        else -> "unknown"
     }
 }
-

@@ -1,7 +1,8 @@
-package com.sigame.lobby.grpc
+package com.sigame.lobby.grpc.auth
 
-import auth.AuthServiceGrpcKt
-import auth.Auth
+import com.sigame.auth.proto.AuthServiceGrpcKt
+import com.sigame.auth.proto.GetUserInfoRequest
+import com.sigame.auth.proto.ValidateTokenRequest
 import com.sigame.lobby.config.AuthServiceConfig
 import com.sigame.lobby.metrics.LobbyMetrics
 import io.grpc.ManagedChannel
@@ -20,28 +21,22 @@ import java.util.concurrent.TimeUnit
 
 private val logger = KotlinLogging.logger {}
 
-data class UserInfo(
-    val userId: UUID,
-    val username: String,
-    val avatarUrl: String?
-)
-
 @Service
 class AuthServiceClient(
     private val config: AuthServiceConfig,
     private val lobbyMetrics: LobbyMetrics
 ) {
-    
+
     private lateinit var channel: ManagedChannel
     private lateinit var stub: AuthServiceGrpcKt.AuthServiceCoroutineStub
-    
+
     companion object {
         private const val MAX_RETRIES = 3
         private const val INITIAL_BACKOFF_MS = 100L
         private const val MAX_BACKOFF_MS = 2000L
         private const val TIMEOUT_SECONDS = 5L
     }
-    
+
     @PostConstruct
     fun init() {
         channel = ManagedChannelBuilder
@@ -50,13 +45,12 @@ class AuthServiceClient(
             .keepAliveTime(30, TimeUnit.SECONDS)
             .keepAliveTimeout(10, TimeUnit.SECONDS)
             .build()
-        
-        // Don't set deadline on stub initialization - set it per-call instead
+
         stub = AuthServiceGrpcKt.AuthServiceCoroutineStub(channel)
-        
+
         logger.info { "Auth Service gRPC client initialized: ${config.host}:${config.port}" }
     }
-    
+
     @PreDestroy
     fun shutdown() {
         if (::channel.isInitialized) {
@@ -71,20 +65,19 @@ class AuthServiceClient(
             }
         }
     }
-    
-        suspend fun validateToken(token: String): UserInfo? = withRetry("validateToken") {
+
+    suspend fun validateToken(token: String): UserInfo? = withRetry("validateToken") {
         withContext(Dispatchers.IO) {
             logger.debug { "Validating token with Auth Service..." }
-            
-            val request = Auth.ValidateTokenRequest.newBuilder()
+
+            val request = ValidateTokenRequest.newBuilder()
                 .setToken(token)
                 .build()
-            
-            // Set deadline per-call, not on stub initialization
+
             val response = stub
                 .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .validateToken(request)
-            
+
             if (response.valid) {
                 UserInfo(
                     userId = UUID.fromString(response.userId),
@@ -97,18 +90,17 @@ class AuthServiceClient(
             }
         }
     }
-    
-        suspend fun getUserInfo(userId: UUID): UserInfo? = withRetry("getUserInfo") {
+
+    suspend fun getUserInfo(userId: UUID): UserInfo? = withRetry("getUserInfo") {
         withContext(Dispatchers.IO) {
-            val request = Auth.GetUserInfoRequest.newBuilder()
+            val request = GetUserInfoRequest.newBuilder()
                 .setUserId(userId.toString())
                 .build()
-            
-            // Set deadline per-call
+
             val response = stub
                 .withDeadlineAfter(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .getUserInfo(request)
-            
+
             if (response.error.isEmpty()) {
                 UserInfo(
                     userId = UUID.fromString(response.userId),
@@ -121,29 +113,27 @@ class AuthServiceClient(
             }
         }
     }
-    
-        private suspend fun <T> withRetry(
+
+    private suspend fun <T> withRetry(
         operationName: String,
         block: suspend () -> T
     ): T? {
-        var lastException: Exception? = null
         var backoffMs = INITIAL_BACKOFF_MS
-        
+
         repeat(MAX_RETRIES) { attempt ->
             try {
                 val result = block()
                 lobbyMetrics.recordGrpcCall("auth-service")
                 return result
             } catch (e: StatusException) {
-                lastException = e
-                
                 val shouldRetry = when (e.status.code) {
                     Status.Code.UNAVAILABLE,
                     Status.Code.DEADLINE_EXCEEDED,
                     Status.Code.RESOURCE_EXHAUSTED -> true
+
                     else -> false
                 }
-                
+
                 if (shouldRetry && attempt < MAX_RETRIES - 1) {
                     logger.warn { "gRPC call to Auth Service failed (attempt ${attempt + 1}/$MAX_RETRIES): ${e.status}. Retrying in ${backoffMs}ms..." }
                     delay(backoffMs)
@@ -156,11 +146,10 @@ class AuthServiceClient(
             } catch (e: Exception) {
                 logger.error(e) { "Unexpected error in gRPC call to Auth Service: $operationName" }
                 lobbyMetrics.recordGrpcError("auth-service", "UNKNOWN")
-                lastException = e
                 return null
             }
         }
-        
+
         return null
     }
 }

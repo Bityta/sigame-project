@@ -8,7 +8,6 @@ import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.service.KafkaEventPublisher
 import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.mapper.RoomMapper
 import kotlinx.coroutines.async
@@ -27,7 +26,6 @@ private val logger = KotlinLogging.logger {}
 class RoomLifecycleService(
     private val roomPlayerRepository: RoomPlayerRepository,
     private val roomCacheService: RoomCacheService,
-    private val kafkaEventPublisher: KafkaEventPublisher,
     private val roomMapper: RoomMapper,
     private val helper: RoomLifecycleHelper
 ) {
@@ -65,7 +63,6 @@ class RoomLifecycleService(
         ).last() as RoomPlayer
 
         launch { helper.updateCacheForNewRoom(savedRoom, hostId) }
-        launch { helper.publishRoomCreatedEvent(savedRoom, hostId, hostInfo, packInfo.name, request) }
         helper.recordRoomCreatedMetrics()
 
         roomMapper.toDto(
@@ -131,7 +128,7 @@ class RoomLifecycleService(
     }
 
     @Transactional
-    suspend fun deleteRoom(roomId: UUID, userId: UUID) = coroutineScope {
+    suspend fun deleteRoom(roomId: UUID, userId: UUID): Unit = coroutineScope {
         logger.info { "Deleting room $roomId by user $userId" }
 
         val roomDeferred = async { helper.findRoomOrThrow(roomId) }
@@ -146,6 +143,5 @@ class RoomLifecycleService(
         helper.recordRoomCancelledMetrics(room, players.size)
 
         launch { helper.clearRoomAndPlayersCache(roomId, players) }
-        launch { kafkaEventPublisher.publishRoomCancelled(roomId, "manual") }
     }
 }

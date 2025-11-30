@@ -22,18 +22,17 @@ import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
-import com.sigame.lobby.grpc.AuthServiceClient
-import com.sigame.lobby.grpc.PackInfo
-import com.sigame.lobby.grpc.PackServiceClient
-import com.sigame.lobby.grpc.UserInfo
+import com.sigame.lobby.grpc.auth.AuthServiceClient
+import com.sigame.lobby.grpc.auth.UserInfo
+import com.sigame.lobby.grpc.pack.PackInfo
+import com.sigame.lobby.grpc.pack.PackServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
-import com.sigame.lobby.service.KafkaEventPublisher
-import com.sigame.lobby.service.PlayerEventData
 import com.sigame.lobby.service.RoomCodeGenerator
 import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.external.GameServiceClient
-import com.sigame.lobby.service.external.GameSessionResponse
 import com.sigame.lobby.service.external.GameSettings
+import com.sigame.lobby.sse.event.GameStartedEvent
+import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -55,11 +54,11 @@ class RoomLifecycleHelper(
     private val roomSettingsRepository: RoomSettingsRepository,
     private val roomCodeGenerator: RoomCodeGenerator,
     private val roomCacheService: RoomCacheService,
-    private val kafkaEventPublisher: KafkaEventPublisher,
     private val authServiceClient: AuthServiceClient,
     private val packServiceClient: PackServiceClient,
     private val gameServiceClient: GameServiceClient,
     private val lobbyMetrics: LobbyMetrics,
+    private val roomEventPublisher: RoomEventPublisher,
     private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
 ) {
 
@@ -186,7 +185,15 @@ class RoomLifecycleHelper(
             )
 
             updateRoomToPlaying(savedRoom, activePlayers.size)
-            publishRoomStartedEvent(roomId, gameSession, room.packId, activePlayers)
+
+            roomEventPublisher.publish(
+                GameStartedEvent(
+                    eventRoomId = roomId,
+                    gameId = UUID.fromString(gameSession.gameSessionId),
+                    websocketUrl = gameSession.wsUrl
+                )
+            )
+            roomEventPublisher.closeRoom(roomId)
 
             return StartGameResponse(
                 gameId = gameSession.gameSessionId,
@@ -203,25 +210,6 @@ class RoomLifecycleHelper(
         launch { roomCacheService.cacheRoomData(room, 1) }
         launch { roomCacheService.setUserCurrentRoom(hostId, room.id) }
         launch { roomCacheService.addRoomPlayer(room.id, hostId) }
-    }
-
-    suspend fun publishRoomCreatedEvent(
-        room: GameRoom,
-        hostId: UUID,
-        hostInfo: UserInfo,
-        packName: String,
-        request: CreateRoomRequest
-    ) {
-        kafkaEventPublisher.publishRoomCreated(
-            roomId = room.id,
-            roomCode = room.roomCode,
-            hostId = hostId,
-            hostUsername = hostInfo.username,
-            packId = request.packId,
-            packName = packName,
-            maxPlayers = request.maxPlayers,
-            isPublic = request.isPublic
-        )
     }
 
     suspend fun cancelRoom(room: GameRoom) {
@@ -301,29 +289,5 @@ class RoomLifecycleHelper(
         )
         gameRoomRepository.save(rollbackRoom).awaitFirstOrNull()
         roomCacheService.cacheRoomData(rollbackRoom, playersCount)
-    }
-
-    private fun buildPlayerEventDataList(players: List<RoomPlayer>): List<PlayerEventData> =
-        players.map { player ->
-            PlayerEventData(
-                user_id = player.userId.toString(),
-                username = player.username,
-                role = player.role
-            )
-        }
-
-    private suspend fun publishRoomStartedEvent(
-        roomId: UUID,
-        gameSession: GameSessionResponse,
-        packId: UUID,
-        players: List<RoomPlayer>
-    ) {
-        val playerEventDataList = buildPlayerEventDataList(players)
-        kafkaEventPublisher.publishRoomStarted(
-            roomId = roomId,
-            gameId = gameSession.gameSessionId,
-            packId = packId,
-            players = playerEventDataList
-        )
     }
 }

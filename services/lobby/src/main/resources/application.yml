@@ -34,20 +34,6 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 2
-  
-  # ===================================================================
-  # Kafka Configuration - Event Publishing
-  # ===================================================================
-  kafka:
-    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: all
-      retries: 3
-      compression-type: snappy
-      batch-size: 16384
-      linger-ms: 10
 
 # ===================================================================
 # Server Configuration

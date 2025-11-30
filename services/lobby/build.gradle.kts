@@ -83,7 +83,7 @@ dependencies {
 sourceSets {
     main {
         proto {
-            srcDir("../../../proto")
+            srcDir("../../proto")
         }
     }
 }

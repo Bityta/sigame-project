@@ -3,20 +3,31 @@ package com.sigame.lobby.service.domain
 import com.sigame.lobby.domain.dto.RoomDto
 import com.sigame.lobby.domain.enums.PlayerRole
 import com.sigame.lobby.domain.enums.RoomStatus
-import com.sigame.lobby.domain.exception.*
+import com.sigame.lobby.domain.exception.CannotKickSelfException
+import com.sigame.lobby.domain.exception.InvalidPasswordException
+import com.sigame.lobby.domain.exception.InvalidRoomStateException
+import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
+import com.sigame.lobby.domain.exception.PlayerNotInRoomException
+import com.sigame.lobby.domain.exception.RoomFullException
+import com.sigame.lobby.domain.exception.RoomNotFoundException
+import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
+import com.sigame.lobby.domain.exception.UserInfoNotFoundException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
-import com.sigame.lobby.grpc.AuthServiceClient
-import com.sigame.lobby.grpc.PackServiceClient
-import com.sigame.lobby.grpc.UserInfo
+import com.sigame.lobby.grpc.auth.AuthServiceClient
+import com.sigame.lobby.grpc.auth.UserInfo
+import com.sigame.lobby.grpc.pack.PackServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
-import com.sigame.lobby.service.KafkaEventPublisher
 import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.mapper.RoomMapper
+import com.sigame.lobby.sse.event.PlayerJoinedEvent
+import com.sigame.lobby.sse.event.PlayerLeftEvent
+import com.sigame.lobby.sse.event.RoomClosedEvent
+import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.toList
@@ -35,11 +46,11 @@ class RoomMembershipHelper(
     private val roomPlayerRepository: RoomPlayerRepository,
     private val roomSettingsRepository: RoomSettingsRepository,
     private val roomCacheService: RoomCacheService,
-    private val kafkaEventPublisher: KafkaEventPublisher,
     private val authServiceClient: AuthServiceClient,
     private val packServiceClient: PackServiceClient,
     private val lobbyMetrics: LobbyMetrics,
     private val roomMapper: RoomMapper,
+    private val roomEventPublisher: RoomEventPublisher,
     private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
 ) {
 
@@ -105,7 +116,13 @@ class RoomMembershipHelper(
         if (targetPlayer.leftAt != null) throw PlayerNotInRoomException(targetUserId, roomId)
     }
 
-    fun validateTransfer(room: GameRoom, currentHostId: UUID, newHostId: UUID, newHostPlayer: RoomPlayer, roomId: UUID) {
+    fun validateTransfer(
+        room: GameRoom,
+        currentHostId: UUID,
+        newHostId: UUID,
+        newHostPlayer: RoomPlayer,
+        roomId: UUID
+    ) {
         validateHostAccess(room, currentHostId, "transfer host")
         validateRoomStatus(room, RoomStatus.WAITING, "transfer host")
         if (newHostId == currentHostId) throw IllegalArgumentException("Cannot transfer host to yourself")
@@ -143,11 +160,10 @@ class RoomMembershipHelper(
         launch { roomCacheService.setUserCurrentRoom(userId, room.id) }
         launch { roomCacheService.addRoomPlayer(room.id, userId) }
         launch { roomCacheService.cacheRoomData(room, newCount) }
-        launch {
-            kafkaEventPublisher.publishPlayerJoined(
-                room.id, userId, userInfo.username, userInfo.avatarUrl, newCount, room.maxPlayers
-            )
-        }
+
+        roomEventPublisher.publish(
+            PlayerJoinedEvent(room.id, userId, userInfo.username, newCount)
+        )
         lobbyMetrics.recordPlayerJoined()
     }
 
@@ -173,14 +189,17 @@ class RoomMembershipHelper(
 
         val newCount = currentPlayers - 1
         launch { roomCacheService.cacheRoomData(room, newCount) }
-        launch { publishPlayerLeft(room.id, player, "kicked", newCount) }
+
+        roomEventPublisher.publish(
+            PlayerLeftEvent(room.id, player.userId, player.username, "kicked", newCount)
+        )
     }
 
-    suspend fun onHostTransferred(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer, currentPlayers: Int) = coroutineScope {
-        val updatedRoom = transferHost(room, fromHostId, toPlayer)
-        launch { roomCacheService.cacheRoomData(updatedRoom, currentPlayers) }
-        launch { publishHostTransferred(room.id, fromHostId, toPlayer) }
-    }
+    suspend fun onHostTransferred(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer, currentPlayers: Int) =
+        coroutineScope {
+            val updatedRoom = transferHost(room, fromHostId, toPlayer)
+            launch { roomCacheService.cacheRoomData(updatedRoom, currentPlayers) }
+        }
 
     private suspend fun handleHostLeave(room: GameRoom, leftPlayer: RoomPlayer, newCount: Int) = coroutineScope {
         if (newCount == 0) {
@@ -191,8 +210,9 @@ class RoomMembershipHelper(
             val updatedRoom = transferHost(room, leftPlayer.userId, newHost)
 
             launch { roomCacheService.cacheRoomData(updatedRoom, newCount) }
-            launch { publishPlayerLeft(room.id, leftPlayer, "left", newCount) }
-            launch { publishHostTransferred(room.id, leftPlayer.userId, newHost) }
+            roomEventPublisher.publish(
+                PlayerLeftEvent(room.id, leftPlayer.userId, leftPlayer.username, "left", newCount)
+            )
         }
     }
 
@@ -201,7 +221,9 @@ class RoomMembershipHelper(
             cancelRoom(room)
         } else {
             launch { roomCacheService.cacheRoomData(room, newCount) }
-            launch { publishPlayerLeft(room.id, leftPlayer, "left", newCount) }
+            roomEventPublisher.publish(
+                PlayerLeftEvent(room.id, leftPlayer.userId, leftPlayer.username, "left", newCount)
+            )
         }
     }
 
@@ -210,7 +232,9 @@ class RoomMembershipHelper(
         gameRoomRepository.save(cancelled).awaitFirstOrNull()
         lobbyMetrics.recordRoomCancelled(room.getStatusEnum())
         launch { roomCacheService.clearRoomCache(room.id) }
-        launch { kafkaEventPublisher.publishRoomCancelled(room.id, "no_players") }
+
+        roomEventPublisher.publish(RoomClosedEvent(room.id, "no_players"))
+        roomEventPublisher.closeRoom(room.id)
     }
 
     private suspend fun removePlayer(player: RoomPlayer): RoomPlayer {
@@ -221,19 +245,12 @@ class RoomMembershipHelper(
     private suspend fun transferHost(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer): GameRoom {
         val currentHost = roomPlayerRepository.findByRoomIdAndUserId(room.id, fromHostId).awaitFirstOrNull()
         if (currentHost != null) {
-            roomPlayerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER))).awaitFirstOrNull()
+            roomPlayerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER)))
+                .awaitFirstOrNull()
         }
         roomPlayerRepository.save(toPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST))).awaitFirstOrNull()
         val updatedRoom = room.copy(hostId = toPlayer.userId)
         return gameRoomRepository.save(updatedRoom).awaitFirst()
-    }
-
-    private suspend fun publishPlayerLeft(roomId: UUID, player: RoomPlayer, reason: String, count: Int) {
-        kafkaEventPublisher.publishPlayerLeft(roomId, player.userId, player.username, reason, count)
-    }
-
-    private suspend fun publishHostTransferred(roomId: UUID, fromHostId: UUID, newHost: RoomPlayer) {
-        kafkaEventPublisher.publishHostTransferred(roomId, fromHostId, newHost.userId, newHost.username)
     }
 
     private suspend fun findRoomOrThrow(roomId: UUID): GameRoom =

@@ -2,7 +2,6 @@ package com.sigame.lobby.service.external
 
 import com.sigame.lobby.config.GameServiceConfig
 import com.sigame.lobby.domain.model.RoomPlayer
-import com.sigame.lobby.grpc.AuthServiceClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging

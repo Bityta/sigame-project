@@ -10,7 +10,7 @@ import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
-import com.sigame.lobby.grpc.PackInfo
+import com.sigame.lobby.grpc.pack.PackInfo
 import com.sigame.lobby.service.batch.BatchOperationService
 import com.sigame.lobby.service.mapper.RoomMapper
 import kotlinx.coroutines.async

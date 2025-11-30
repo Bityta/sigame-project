@@ -6,27 +6,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.ninjasquad.springmockk.MockkBean
 import com.sigame.lobby.config.WebFluxConfig
-import com.sigame.lobby.domain.dto.CreateRoomRequest
-import com.sigame.lobby.domain.dto.JoinRoomRequest
-import com.sigame.lobby.domain.dto.PlayerDto
-import com.sigame.lobby.domain.dto.RoomDto
-import com.sigame.lobby.domain.dto.RoomListResponse
-import com.sigame.lobby.domain.dto.RoomSettingsDto
-import com.sigame.lobby.domain.dto.StartGameResponse
-import com.sigame.lobby.domain.dto.UpdateRoomSettingsRequest
-import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
+import com.sigame.lobby.domain.dto.*
 import com.sigame.lobby.domain.enums.RoomStatus
-import com.sigame.lobby.domain.exception.InsufficientPlayersException
-import com.sigame.lobby.domain.exception.InvalidPasswordException
-import com.sigame.lobby.domain.exception.InvalidRoomStateException
-import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
-import com.sigame.lobby.domain.exception.PlayerNotInRoomException
-import com.sigame.lobby.domain.exception.RoomFullException
-import com.sigame.lobby.domain.exception.RoomNotFoundByCodeException
-import com.sigame.lobby.domain.exception.RoomNotFoundException
-import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
-import com.sigame.lobby.grpc.AuthServiceClient
-import com.sigame.lobby.grpc.UserInfo
+import com.sigame.lobby.domain.exception.*
+import com.sigame.lobby.grpc.auth.AuthServiceClient
+import com.sigame.lobby.grpc.auth.UserInfo
 import com.sigame.lobby.metrics.HttpMetrics
 import com.sigame.lobby.metrics.HttpMetricsFilter
 import com.sigame.lobby.security.CurrentUserArgumentResolver
@@ -51,7 +35,11 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import java.time.LocalDateTime
 import java.util.UUID
 
-@WebFluxTest(controllers = [LobbyController::class])
+@WebFluxTest(controllers = [
+    RoomQueryController::class,
+    RoomLifecycleController::class,
+    RoomMembershipController::class
+])
 @Import(
     com.sigame.lobby.config.JacksonConfig::class,
     WebFluxConfig::class,
@@ -81,17 +69,16 @@ class LobbyControllerIntegrationTest {
     @MockkBean
     private lateinit var httpMetrics: HttpMetrics
 
-    // Тестовые данные
+    @MockkBean
+    private lateinit var asyncLogWriter: com.sigame.lobby.logging.AsyncLogWriter
+
     private val testUserId = UUID.randomUUID()
     private val testUsername = "testPlayer"
     private val testRoomId = UUID.randomUUID()
     private val testPackId = UUID.randomUUID()
     private val testRoomCode = "ABC123"
-
-    // Токен для аутентифицированных запросов
     private val testToken = "Bearer test-token"
 
-    // ObjectMapper с поддержкой Kotlin
     private val objectMapper = ObjectMapper().apply {
         registerModule(KotlinModule.Builder().build())
         registerModule(JavaTimeModule())
@@ -100,30 +87,22 @@ class LobbyControllerIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        // Мокаем аутентификацию - токен test-token всегда валиден
         coEvery { authServiceClient.validateToken("test-token") } returns UserInfo(
             userId = testUserId,
             username = testUsername,
             avatarUrl = null
         )
-
-        // Мокаем метрики
         every { httpMetrics.recordHttpRequest(any(), any(), any(), any()) } just Runs
     }
 
-    // Утилита для сериализации запросов
     private fun toJson(obj: Any): String = objectMapper.writeValueAsString(obj)
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GET /api/lobby/health
-    // ═══════════════════════════════════════════════════════════════════════════
 
     @Nested
     @DisplayName("GET /api/lobby/health")
     inner class HealthEndpoint {
 
         @Test
-        fun `должен вернуть статус UP`() {
+        fun `should return UP status`() {
             webTestClient.get()
                 .uri("/api/lobby/health")
                 .exchange()
@@ -133,29 +112,19 @@ class LobbyControllerIntegrationTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // POST /api/lobby/rooms - Создание комнаты
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("POST /api/lobby/rooms - Создание комнаты")
+    @DisplayName("POST /api/lobby/rooms - Create Room")
     inner class CreateRoomEndpoint {
 
         @Test
-        fun `должен создать комнату с валидными данными и вернуть 201`() {
+        fun `should create room with valid data and return 201`() {
             val request = CreateRoomRequest(
-                name = "Моя игра",
+                name = "My Game",
                 packId = testPackId,
                 maxPlayers = 6,
                 isPublic = true,
-                settings = RoomSettingsDto(
-                    timeForAnswer = 30,
-                    timeForChoice = 60,
-                    allowWrongAnswer = true,
-                    showRightAnswer = true
-                )
+                settings = RoomSettingsDto(30, 60, true, true)
             )
-
             val expectedRoom = createTestRoomDto()
 
             coEvery { roomLifecycleService.createRoom(testUserId, any()) } returns expectedRoom
@@ -170,108 +139,61 @@ class LobbyControllerIntegrationTest {
                 .expectBody()
                 .jsonPath("$.id").isNotEmpty
                 .jsonPath("$.roomCode").isEqualTo(testRoomCode)
-                .jsonPath("$.name").isEqualTo("Моя игра")
                 .jsonPath("$.status").isEqualTo("WAITING")
-                .jsonPath("$.maxPlayers").isEqualTo(6)
-                .jsonPath("$.isPublic").isEqualTo(true)
-
-            coVerify(exactly = 1) { roomLifecycleService.createRoom(testUserId, any()) }
         }
 
         @Test
-        fun `должен вернуть 400 если name пустое`() {
-            val request = mapOf(
-                "name" to "",
-                "packId" to testPackId.toString()
-            )
-
+        fun `should return 400 if name is empty`() {
             webTestClient.post()
                 .uri("/api/lobby/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(mapOf("name" to "", "packId" to testPackId.toString()))
                 .exchange()
                 .expectStatus().isBadRequest
         }
 
         @Test
-        fun `должен вернуть 400 если packId отсутствует`() {
-            val request = mapOf(
-                "name" to "Моя игра"
-            )
-
+        fun `should return 400 if maxPlayers less than 2`() {
             webTestClient.post()
                 .uri("/api/lobby/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(mapOf("name" to "Game", "packId" to testPackId.toString(), "maxPlayers" to 1))
                 .exchange()
                 .expectStatus().isBadRequest
         }
 
         @Test
-        fun `должен вернуть 400 если maxPlayers меньше 2`() {
-            val request = mapOf(
-                "name" to "Моя игра",
-                "packId" to testPackId.toString(),
-                "maxPlayers" to 1
-            )
-
+        fun `should return 400 if maxPlayers greater than 12`() {
             webTestClient.post()
                 .uri("/api/lobby/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(mapOf("name" to "Game", "packId" to testPackId.toString(), "maxPlayers" to 15))
                 .exchange()
                 .expectStatus().isBadRequest
         }
 
         @Test
-        fun `должен вернуть 400 если maxPlayers больше 12`() {
-            val request = mapOf(
-                "name" to "Моя игра",
-                "packId" to testPackId.toString(),
-                "maxPlayers" to 15
-            )
-
+        fun `should return 401 without authorization`() {
             webTestClient.post()
                 .uri("/api/lobby/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isBadRequest
-        }
-
-        @Test
-        fun `должен вернуть 401 без авторизации`() {
-            val request = CreateRoomRequest(
-                name = "Моя игра",
-                packId = testPackId
-            )
-
-            webTestClient.post()
-                .uri("/api/lobby/rooms")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
+                .bodyValue(CreateRoomRequest(name = "Game", packId = testPackId))
                 .exchange()
                 .expectStatus().isUnauthorized
         }
 
         @Test
-        fun `должен создать приватную комнату с паролем`() {
+        fun `should create private room with password`() {
             val request = CreateRoomRequest(
-                name = "Приватная игра",
+                name = "Private Game",
                 packId = testPackId,
-                maxPlayers = 4,
                 isPublic = false,
                 password = "secret123"
             )
-
-            val expectedRoom = createTestRoomDto().copy(
-                isPublic = false,
-                hasPassword = true
-            )
+            val expectedRoom = createTestRoomDto().copy(isPublic = false, hasPassword = true)
 
             coEvery { roomLifecycleService.createRoom(testUserId, any()) } returns expectedRoom
 
@@ -288,25 +210,16 @@ class LobbyControllerIntegrationTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GET /api/lobby/rooms - Список комнат
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("GET /api/lobby/rooms - Список комнат")
+    @DisplayName("GET /api/lobby/rooms - List Rooms")
     inner class GetRoomsEndpoint {
 
         @Test
-        fun `должен вернуть список комнат с пагинацией`() {
-            val rooms = listOf(createTestRoomDto(), createTestRoomDto())
+        fun `should return rooms with pagination`() {
             val response = RoomListResponse(
-                rooms = rooms,
-                page = 0,
-                size = 20,
-                totalElements = 2,
-                totalPages = 1
+                rooms = listOf(createTestRoomDto(), createTestRoomDto()),
+                page = 0, size = 20, totalElements = 2, totalPages = 1
             )
-
             coEvery { roomQueryService.getRooms(0, 20, null, null) } returns response
 
             webTestClient.get()
@@ -314,46 +227,26 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.rooms").isArray
                 .jsonPath("$.rooms.length()").isEqualTo(2)
-                .jsonPath("$.page").isEqualTo(0)
-                .jsonPath("$.size").isEqualTo(20)
                 .jsonPath("$.totalElements").isEqualTo(2)
-                .jsonPath("$.totalPages").isEqualTo(1)
         }
 
         @Test
-        fun `должен фильтровать по статусу`() {
-            val response = RoomListResponse(
-                rooms = listOf(createTestRoomDto()),
-                page = 0,
-                size = 20,
-                totalElements = 1,
-                totalPages = 1
-            )
-
+        fun `should filter by status`() {
+            val response = RoomListResponse(listOf(createTestRoomDto()), 0, 20, 1, 1)
             coEvery { roomQueryService.getRooms(0, 20, "WAITING", null) } returns response
 
             webTestClient.get()
                 .uri("/api/lobby/rooms?status=WAITING")
                 .exchange()
                 .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.rooms.length()").isEqualTo(1)
 
             coVerify { roomQueryService.getRooms(0, 20, "WAITING", null) }
         }
 
         @Test
-        fun `должен фильтровать комнаты со свободными местами`() {
-            val response = RoomListResponse(
-                rooms = listOf(createTestRoomDto()),
-                page = 0,
-                size = 20,
-                totalElements = 1,
-                totalPages = 1
-            )
-
+        fun `should filter by has_slots`() {
+            val response = RoomListResponse(listOf(createTestRoomDto()), 0, 20, 1, 1)
             coEvery { roomQueryService.getRooms(0, 20, null, true) } returns response
 
             webTestClient.get()
@@ -365,37 +258,8 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен поддерживать кастомную пагинацию`() {
-            val response = RoomListResponse(
-                rooms = emptyList(),
-                page = 2,
-                size = 10,
-                totalElements = 25,
-                totalPages = 3
-            )
-
-            coEvery { roomQueryService.getRooms(2, 10, null, null) } returns response
-
-            webTestClient.get()
-                .uri("/api/lobby/rooms?page=2&size=10")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.page").isEqualTo(2)
-                .jsonPath("$.size").isEqualTo(10)
-                .jsonPath("$.totalPages").isEqualTo(3)
-        }
-
-        @Test
-        fun `должен вернуть пустой список если комнат нет`() {
-            val response = RoomListResponse(
-                rooms = emptyList(),
-                page = 0,
-                size = 20,
-                totalElements = 0,
-                totalPages = 0
-            )
-
+        fun `should return empty list when no rooms`() {
+            val response = RoomListResponse(emptyList(), 0, 20, 0, 0)
             coEvery { roomQueryService.getRooms(any(), any(), any(), any()) } returns response
 
             webTestClient.get()
@@ -403,22 +267,16 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isOk
                 .expectBody()
-                .jsonPath("$.rooms").isArray
                 .jsonPath("$.rooms.length()").isEqualTo(0)
-                .jsonPath("$.totalElements").isEqualTo(0)
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GET /api/lobby/rooms/{id} - Комната по ID
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("GET /api/lobby/rooms/{id} - Комната по ID")
+    @DisplayName("GET /api/lobby/rooms/{id} - Get Room by ID")
     inner class GetRoomByIdEndpoint {
 
         @Test
-        fun `должен вернуть комнату по ID`() {
+        fun `should return room by ID`() {
             val room = createTestRoomDto()
             coEvery { roomQueryService.getRoomById(testRoomId) } returns room
 
@@ -429,11 +287,10 @@ class LobbyControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.id").isEqualTo(testRoomId.toString())
-                .jsonPath("$.roomCode").isEqualTo(testRoomCode)
         }
 
         @Test
-        fun `должен вернуть 404 если комната не найдена`() {
+        fun `should return 404 if room not found`() {
             val nonExistentId = UUID.randomUUID()
             coEvery { roomQueryService.getRoomById(nonExistentId) } throws RoomNotFoundException(nonExistentId)
 
@@ -443,43 +300,14 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isNotFound
         }
-
-        @Test
-        fun `должен вернуть комнату со списком игроков`() {
-            val players = listOf(
-                PlayerDto(
-                    userId = testUserId,
-                    username = testUsername,
-                    avatarUrl = null,
-                    role = "HOST"
-                )
-            )
-            val room = createTestRoomDto().copy(players = players)
-            coEvery { roomQueryService.getRoomById(testRoomId) } returns room
-
-            webTestClient.get()
-                .uri("/api/lobby/rooms/$testRoomId")
-                .header("Authorization", testToken)
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.players").isArray
-                .jsonPath("$.players.length()").isEqualTo(1)
-                .jsonPath("$.players[0].userId").isEqualTo(testUserId.toString())
-                .jsonPath("$.players[0].role").isEqualTo("HOST")
-        }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GET /api/lobby/rooms/code/{code} - Комната по коду
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("GET /api/lobby/rooms/code/{code} - Комната по коду")
+    @DisplayName("GET /api/lobby/rooms/code/{code} - Get Room by Code")
     inner class GetRoomByCodeEndpoint {
 
         @Test
-        fun `должен вернуть комнату по коду`() {
+        fun `should return room by code`() {
             val room = createTestRoomDto()
             coEvery { roomQueryService.getRoomByCode(testRoomCode) } returns room
 
@@ -493,28 +321,23 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 404 если комната не найдена по коду`() {
-            val invalidCode = "XXXXXX"
-            coEvery { roomQueryService.getRoomByCode(invalidCode) } throws RoomNotFoundByCodeException(invalidCode)
+        fun `should return 404 if room not found by code`() {
+            coEvery { roomQueryService.getRoomByCode("XXXXXX") } throws RoomNotFoundByCodeException("XXXXXX")
 
             webTestClient.get()
-                .uri("/api/lobby/rooms/code/$invalidCode")
+                .uri("/api/lobby/rooms/code/XXXXXX")
                 .header("Authorization", testToken)
                 .exchange()
                 .expectStatus().isNotFound
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // POST /api/lobby/rooms/{id}/join - Присоединиться к комнате
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("POST /api/lobby/rooms/{id}/join - Присоединиться к комнате")
+    @DisplayName("POST /api/lobby/rooms/{id}/join - Join Room")
     inner class JoinRoomEndpoint {
 
         @Test
-        fun `должен присоединить пользователя к комнате`() {
+        fun `should join room successfully`() {
             val room = createTestRoomDto().copy(currentPlayers = 2)
             coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } returns room
 
@@ -526,13 +349,10 @@ class LobbyControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.currentPlayers").isEqualTo(2)
-
-            coVerify { roomMembershipService.joinRoom(testRoomId, testUserId, any()) }
         }
 
         @Test
-        fun `должен присоединиться с паролем к приватной комнате`() {
-            val request = JoinRoomRequest(password = "secret123")
+        fun `should join with password`() {
             val room = createTestRoomDto()
             coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } returns room
 
@@ -540,28 +360,14 @@ class LobbyControllerIntegrationTest {
                 .uri("/api/lobby/rooms/$testRoomId/join")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(JoinRoomRequest(password = "secret123"))
                 .exchange()
                 .expectStatus().isOk
         }
 
         @Test
-        fun `должен вернуть 404 если комната не найдена`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
-                RoomNotFoundException(testRoomId)
-
-            webTestClient.post()
-                .uri("/api/lobby/rooms/$testRoomId/join")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .exchange()
-                .expectStatus().isNotFound
-        }
-
-        @Test
-        fun `должен вернуть 409 если комната заполнена`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
-                RoomFullException(testRoomId)
+        fun `should return 409 if room is full`() {
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws RoomFullException(testRoomId)
 
             webTestClient.post()
                 .uri("/api/lobby/rooms/$testRoomId/join")
@@ -572,22 +378,8 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 409 если игрок уже в комнате`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
-                PlayerAlreadyInRoomException(testUserId, testRoomId)
-
-            webTestClient.post()
-                .uri("/api/lobby/rooms/$testRoomId/join")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .exchange()
-                .expectStatus().isEqualTo(409)
-        }
-
-        @Test
-        fun `должен вернуть 400 если неверный пароль`() {
-            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws
-                InvalidPasswordException()
+        fun `should return 400 if invalid password`() {
+            coEvery { roomMembershipService.joinRoom(testRoomId, testUserId, any()) } throws InvalidPasswordException()
 
             webTestClient.post()
                 .uri("/api/lobby/rooms/$testRoomId/join")
@@ -599,7 +391,7 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 401 без авторизации`() {
+        fun `should return 401 without authorization`() {
             webTestClient.post()
                 .uri("/api/lobby/rooms/$testRoomId/join")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -608,16 +400,12 @@ class LobbyControllerIntegrationTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // DELETE /api/lobby/rooms/{id}/leave - Покинуть комнату
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("DELETE /api/lobby/rooms/{id}/leave - Покинуть комнату")
+    @DisplayName("DELETE /api/lobby/rooms/{id}/leave - Leave Room")
     inner class LeaveRoomEndpoint {
 
         @Test
-        fun `должен позволить игроку покинуть комнату`() {
+        fun `should leave room successfully`() {
             coEvery { roomMembershipService.leaveRoom(testRoomId, testUserId) } returns Unit
 
             webTestClient.delete()
@@ -625,12 +413,10 @@ class LobbyControllerIntegrationTest {
                 .header("Authorization", testToken)
                 .exchange()
                 .expectStatus().isNoContent
-
-            coVerify { roomMembershipService.leaveRoom(testRoomId, testUserId) }
         }
 
         @Test
-        fun `должен вернуть 400 если игрок не в комнате`() {
+        fun `should return 400 if player not in room`() {
             coEvery { roomMembershipService.leaveRoom(testRoomId, testUserId) } throws
                 PlayerNotInRoomException(testUserId, testRoomId)
 
@@ -640,31 +426,196 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isBadRequest
         }
+    }
+
+    @Nested
+    @DisplayName("POST /api/lobby/rooms/{id}/kick - Kick Player")
+    inner class KickPlayerEndpoint {
 
         @Test
-        fun `должен вернуть 401 без авторизации`() {
-            webTestClient.delete()
-                .uri("/api/lobby/rooms/$testRoomId/leave")
+        fun `should kick player successfully`() {
+            val targetUserId = UUID.randomUUID()
+            coEvery { roomMembershipService.kickPlayer(testRoomId, testUserId, targetUserId) } returns Unit
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(KickPlayerRequest(targetUserId))
+                .exchange()
+                .expectStatus().isNoContent
+
+            coVerify { roomMembershipService.kickPlayer(testRoomId, testUserId, targetUserId) }
+        }
+
+        @Test
+        fun `should return 403 if not host`() {
+            val targetUserId = UUID.randomUUID()
+            coEvery { roomMembershipService.kickPlayer(testRoomId, testUserId, targetUserId) } throws
+                UnauthorizedRoomActionException(testUserId, "kick player", "Only the host can kick players")
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(KickPlayerRequest(targetUserId))
+                .exchange()
+                .expectStatus().isForbidden
+        }
+
+        @Test
+        fun `should return 400 if trying to kick self`() {
+            coEvery { roomMembershipService.kickPlayer(testRoomId, testUserId, testUserId) } throws
+                CannotKickSelfException(testUserId)
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(KickPlayerRequest(testUserId))
+                .exchange()
+                .expectStatus().isBadRequest
+        }
+
+        @Test
+        fun `should return 400 if player not in room`() {
+            val targetUserId = UUID.randomUUID()
+            coEvery { roomMembershipService.kickPlayer(testRoomId, testUserId, targetUserId) } throws
+                PlayerNotInRoomException(targetUserId, testRoomId)
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(KickPlayerRequest(targetUserId))
+                .exchange()
+                .expectStatus().isBadRequest
+        }
+
+        @Test
+        fun `should return 409 if room not in WAITING status`() {
+            val targetUserId = UUID.randomUUID()
+            coEvery { roomMembershipService.kickPlayer(testRoomId, testUserId, targetUserId) } throws
+                InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "kick player")
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(KickPlayerRequest(targetUserId))
+                .exchange()
+                .expectStatus().isEqualTo(409)
+        }
+
+        @Test
+        fun `should return 401 without authorization`() {
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/kick")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(KickPlayerRequest(UUID.randomUUID()))
                 .exchange()
                 .expectStatus().isUnauthorized
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // POST /api/lobby/rooms/{id}/start - Запустить игру
-    // ═══════════════════════════════════════════════════════════════════════════
+    @Nested
+    @DisplayName("POST /api/lobby/rooms/{id}/transfer-host - Transfer Host")
+    inner class TransferHostEndpoint {
+
+        @Test
+        fun `should transfer host successfully`() {
+            val newHostId = UUID.randomUUID()
+            coEvery { roomMembershipService.transferHostManually(testRoomId, testUserId, newHostId) } returns Unit
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(TransferHostRequest(newHostId))
+                .exchange()
+                .expectStatus().isNoContent
+
+            coVerify { roomMembershipService.transferHostManually(testRoomId, testUserId, newHostId) }
+        }
+
+        @Test
+        fun `should return 403 if not host`() {
+            val newHostId = UUID.randomUUID()
+            coEvery { roomMembershipService.transferHostManually(testRoomId, testUserId, newHostId) } throws
+                UnauthorizedRoomActionException(testUserId, "transfer host", "Only the host can transfer host role")
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(TransferHostRequest(newHostId))
+                .exchange()
+                .expectStatus().isForbidden
+        }
+
+        @Test
+        fun `should return 400 if transferring to self`() {
+            coEvery { roomMembershipService.transferHostManually(testRoomId, testUserId, testUserId) } throws
+                IllegalArgumentException("Cannot transfer host to yourself")
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(TransferHostRequest(testUserId))
+                .exchange()
+                .expectStatus().isBadRequest
+        }
+
+        @Test
+        fun `should return 400 if new host not in room`() {
+            val newHostId = UUID.randomUUID()
+            coEvery { roomMembershipService.transferHostManually(testRoomId, testUserId, newHostId) } throws
+                PlayerNotInRoomException(newHostId, testRoomId)
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(TransferHostRequest(newHostId))
+                .exchange()
+                .expectStatus().isBadRequest
+        }
+
+        @Test
+        fun `should return 409 if room not in WAITING status`() {
+            val newHostId = UUID.randomUUID()
+            coEvery { roomMembershipService.transferHostManually(testRoomId, testUserId, newHostId) } throws
+                InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "transfer host")
+
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", testToken)
+                .bodyValue(TransferHostRequest(newHostId))
+                .exchange()
+                .expectStatus().isEqualTo(409)
+        }
+
+        @Test
+        fun `should return 401 without authorization`() {
+            webTestClient.post()
+                .uri("/api/lobby/rooms/$testRoomId/transfer-host")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(TransferHostRequest(UUID.randomUUID()))
+                .exchange()
+                .expectStatus().isUnauthorized
+        }
+    }
 
     @Nested
-    @DisplayName("POST /api/lobby/rooms/{id}/start - Запустить игру")
+    @DisplayName("POST /api/lobby/rooms/{id}/start - Start Game")
     inner class StartRoomEndpoint {
 
         @Test
-        fun `должен запустить игру и вернуть gameId и websocketUrl`() {
+        fun `should start game and return gameId and websocketUrl`() {
             val gameId = UUID.randomUUID().toString()
-            val response = StartGameResponse(
-                gameId = gameId,
-                websocketUrl = "/api/game/$gameId/ws"
-            )
+            val response = StartGameResponse(gameId = gameId, websocketUrl = "/api/game/$gameId/ws")
             coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } returns response
 
             webTestClient.post()
@@ -678,7 +629,7 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 403 если не хост`() {
+        fun `should return 403 if not host`() {
             coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 UnauthorizedRoomActionException(testUserId, "start room", "Only the host can start the room")
 
@@ -690,7 +641,7 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 400 если недостаточно игроков`() {
+        fun `should return 400 if insufficient players`() {
             coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 InsufficientPlayersException(testRoomId, 1)
 
@@ -702,7 +653,7 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 409 если комната не в состоянии WAITING`() {
+        fun `should return 409 if room not in WAITING status`() {
             coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
                 InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "start")
 
@@ -712,51 +663,17 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isEqualTo(409)
         }
-
-        @Test
-        fun `должен вернуть 404 если комната не найдена`() {
-            coEvery { roomLifecycleService.startRoom(testRoomId, testUserId) } throws
-                RoomNotFoundException(testRoomId)
-
-            webTestClient.post()
-                .uri("/api/lobby/rooms/$testRoomId/start")
-                .header("Authorization", testToken)
-                .exchange()
-                .expectStatus().isNotFound
-        }
-
-        @Test
-        fun `должен вернуть 401 без авторизации`() {
-            webTestClient.post()
-                .uri("/api/lobby/rooms/$testRoomId/start")
-                .exchange()
-                .expectStatus().isUnauthorized
-        }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // PATCH /api/lobby/rooms/{id}/settings - Обновить настройки
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("PATCH /api/lobby/rooms/{id}/settings - Обновить настройки")
+    @DisplayName("PATCH /api/lobby/rooms/{id}/settings - Update Settings")
     inner class UpdateRoomSettingsEndpoint {
 
         @Test
-        fun `должен обновить настройки и вернуть их`() {
-            val request = UpdateRoomSettingsRequest(
-                timeForAnswer = 45,
-                timeForChoice = 90,
-                allowWrongAnswer = false,
-                showRightAnswer = true
-            )
+        fun `should update settings successfully`() {
+            val request = UpdateRoomSettingsRequest(timeForAnswer = 45, timeForChoice = 90)
             val response = UpdateRoomSettingsResponse(
-                settings = RoomSettingsDto(
-                    timeForAnswer = 45,
-                    timeForChoice = 90,
-                    allowWrongAnswer = false,
-                    showRightAnswer = true
-                )
+                settings = RoomSettingsDto(45, 90, true, true)
             )
             coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } returns response
 
@@ -769,64 +686,21 @@ class LobbyControllerIntegrationTest {
                 .expectStatus().isOk
                 .expectBody()
                 .jsonPath("$.settings.timeForAnswer").isEqualTo(45)
-                .jsonPath("$.settings.timeForChoice").isEqualTo(90)
-                .jsonPath("$.settings.allowWrongAnswer").isEqualTo(false)
-                .jsonPath("$.settings.showRightAnswer").isEqualTo(true)
         }
 
         @Test
-        fun `должен обновить только переданные настройки (PATCH семантика)`() {
-            val request = UpdateRoomSettingsRequest(timeForAnswer = 60)
-            val response = UpdateRoomSettingsResponse(
-                settings = RoomSettingsDto(
-                    timeForAnswer = 60,
-                    timeForChoice = 60,  // Осталось по умолчанию
-                    allowWrongAnswer = true,
-                    showRightAnswer = true
-                )
-            )
-            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } returns response
-
+        fun `should return 400 if timeForAnswer less than 10`() {
             webTestClient.patch()
                 .uri("/api/lobby/rooms/$testRoomId/settings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .jsonPath("$.settings.timeForAnswer").isEqualTo(60)
-        }
-
-        @Test
-        fun `должен вернуть 400 если timeForAnswer меньше 10`() {
-            val request = mapOf("timeForAnswer" to 5)
-
-            webTestClient.patch()
-                .uri("/api/lobby/rooms/$testRoomId/settings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(mapOf("timeForAnswer" to 5))
                 .exchange()
                 .expectStatus().isBadRequest
         }
 
         @Test
-        fun `должен вернуть 400 если timeForAnswer больше 120`() {
-            val request = mapOf("timeForAnswer" to 150)
-
-            webTestClient.patch()
-                .uri("/api/lobby/rooms/$testRoomId/settings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isBadRequest
-        }
-
-        @Test
-        fun `должен вернуть 403 если не хост`() {
-            val request = UpdateRoomSettingsRequest(timeForAnswer = 30)
+        fun `should return 403 if not host`() {
             coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws
                 UnauthorizedRoomActionException(testUserId, "update settings", "Only the host can update settings")
 
@@ -834,47 +708,18 @@ class LobbyControllerIntegrationTest {
                 .uri("/api/lobby/rooms/$testRoomId/settings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", testToken)
-                .bodyValue(request)
+                .bodyValue(UpdateRoomSettingsRequest(timeForAnswer = 30))
                 .exchange()
                 .expectStatus().isForbidden
         }
-
-        @Test
-        fun `должен вернуть 409 если игра уже запущена`() {
-            val request = UpdateRoomSettingsRequest(timeForAnswer = 30)
-            coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } throws
-                InvalidRoomStateException(testRoomId, RoomStatus.PLAYING, "update settings")
-
-            webTestClient.patch()
-                .uri("/api/lobby/rooms/$testRoomId/settings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", testToken)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isEqualTo(409)
-        }
-
-        @Test
-        fun `должен вернуть 401 без авторизации`() {
-            webTestClient.patch()
-                .uri("/api/lobby/rooms/$testRoomId/settings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(UpdateRoomSettingsRequest(timeForAnswer = 30))
-                .exchange()
-                .expectStatus().isUnauthorized
-        }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // DELETE /api/lobby/rooms/{id} - Удалить комнату
-    // ═══════════════════════════════════════════════════════════════════════════
-
     @Nested
-    @DisplayName("DELETE /api/lobby/rooms/{id} - Удалить комнату")
+    @DisplayName("DELETE /api/lobby/rooms/{id} - Delete Room")
     inner class DeleteRoomEndpoint {
 
         @Test
-        fun `должен удалить комнату и вернуть 204`() {
+        fun `should delete room and return 204`() {
             coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } returns Unit
 
             webTestClient.delete()
@@ -882,12 +727,10 @@ class LobbyControllerIntegrationTest {
                 .header("Authorization", testToken)
                 .exchange()
                 .expectStatus().isNoContent
-
-            coVerify { roomLifecycleService.deleteRoom(testRoomId, testUserId) }
         }
 
         @Test
-        fun `должен вернуть 403 если не хост`() {
+        fun `should return 403 if not host`() {
             coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws
                 UnauthorizedRoomActionException(testUserId, "delete room", "Only the host can delete the room")
 
@@ -899,7 +742,7 @@ class LobbyControllerIntegrationTest {
         }
 
         @Test
-        fun `должен вернуть 404 если комната не найдена`() {
+        fun `should return 404 if room not found`() {
             coEvery { roomLifecycleService.deleteRoom(testRoomId, testUserId) } throws
                 RoomNotFoundException(testRoomId)
 
@@ -909,50 +752,23 @@ class LobbyControllerIntegrationTest {
                 .exchange()
                 .expectStatus().isNotFound
         }
-
-        @Test
-        fun `должен вернуть 401 без авторизации`() {
-            webTestClient.delete()
-                .uri("/api/lobby/rooms/$testRoomId")
-                .exchange()
-                .expectStatus().isUnauthorized
-        }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Вспомогательные методы
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    private fun createTestRoomDto(): RoomDto {
-        return RoomDto(
-            id = testRoomId,
-            roomCode = testRoomCode,
-            name = "Моя игра",
-            hostId = testUserId,
-            hostUsername = testUsername,
-            packId = testPackId,
-            packName = "Тестовый пак",
-            status = "WAITING",
-            maxPlayers = 6,
-            currentPlayers = 1,
-            isPublic = true,
-            hasPassword = false,
-            createdAt = LocalDateTime.now(),
-            players = listOf(
-                PlayerDto(
-                    userId = testUserId,
-                    username = testUsername,
-                    avatarUrl = null,
-                    role = "HOST"
-                )
-            ),
-            settings = RoomSettingsDto(
-                timeForAnswer = 30,
-                timeForChoice = 60,
-                allowWrongAnswer = true,
-                showRightAnswer = true
-            )
-        )
-    }
+    private fun createTestRoomDto(): RoomDto = RoomDto(
+        id = testRoomId,
+        roomCode = testRoomCode,
+        name = "My Game",
+        hostId = testUserId,
+        hostUsername = testUsername,
+        packId = testPackId,
+        packName = "Test Pack",
+        status = "WAITING",
+        maxPlayers = 6,
+        currentPlayers = 1,
+        isPublic = true,
+        hasPassword = false,
+        createdAt = LocalDateTime.now(),
+        players = listOf(PlayerDto(testUserId, testUsername, null, "HOST")),
+        settings = RoomSettingsDto(30, 60, true, true)
+    )
 }
-

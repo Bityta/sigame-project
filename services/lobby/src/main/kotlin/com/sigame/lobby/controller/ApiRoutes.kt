@@ -26,6 +26,8 @@ object ApiRoutes {
         const val KICK = "$BASE/{id}/kick"
 
         const val TRANSFER_HOST = "$BASE/{id}/transfer-host"
+
+        const val EVENTS = "$BASE/{roomId}/events"
     }
 
     object Public {
@@ -48,7 +50,7 @@ object ApiRoutes {
     }
 
     object SkipLogging {
-        val PATHS = setOf("/health", "/metrics", "/actuator", "/swagger", "/api-docs")
+        val PATHS = setOf("/health", "/metrics", "/actuator", "/swagger", "/api-docs", "/events")
     }
 }
 

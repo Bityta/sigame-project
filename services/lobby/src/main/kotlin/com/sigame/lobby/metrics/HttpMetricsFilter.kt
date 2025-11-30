@@ -11,13 +11,12 @@ import reactor.core.publisher.Mono
 class HttpMetricsFilter(
     private val httpMetrics: HttpMetrics
 ) : WebFilter, Ordered {
-    
+
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
         val startTime = System.currentTimeMillis()
-        val request = exchange.request
-        val method = request.method.name()
-        val path = request.path.value()
-        
+        val method = exchange.request.method.name()
+        val path = exchange.request.path.value()
+
         return chain.filter(exchange)
             .doFinally {
                 val duration = System.currentTimeMillis() - startTime
@@ -25,7 +24,6 @@ class HttpMetricsFilter(
                 httpMetrics.recordHttpRequest(method, path, status, duration)
             }
     }
-    
+
     override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 10
 }
-

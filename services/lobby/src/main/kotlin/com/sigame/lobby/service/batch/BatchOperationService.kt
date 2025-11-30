@@ -1,9 +1,9 @@
 package com.sigame.lobby.service.batch
 
-import com.sigame.lobby.grpc.AuthServiceClient
-import com.sigame.lobby.grpc.PackServiceClient
-import com.sigame.lobby.grpc.UserInfo
-import com.sigame.lobby.grpc.PackInfo
+import com.sigame.lobby.grpc.auth.AuthServiceClient
+import com.sigame.lobby.grpc.auth.UserInfo
+import com.sigame.lobby.grpc.pack.PackInfo
+import com.sigame.lobby.grpc.pack.PackServiceClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import mu.KotlinLogging

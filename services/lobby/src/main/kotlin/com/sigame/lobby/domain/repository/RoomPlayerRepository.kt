@@ -18,9 +18,7 @@ interface RoomPlayerRepository : R2dbcRepository<RoomPlayer, UUID> {
     
     @Query("SELECT COUNT(*) FROM room_players WHERE room_id = :roomId AND left_at IS NULL")
     fun countActiveByRoomId(roomId: UUID): Mono<Long>
-    
-    fun findByUserId(userId: UUID): Flux<RoomPlayer>
-    
+
     @Query("SELECT * FROM room_players WHERE user_id = :userId AND left_at IS NULL")
     fun findActiveByUserId(userId: UUID): Mono<RoomPlayer>
     
