@@ -118,7 +118,7 @@ jobs:
             ../../proto/pack/pack.proto
           mv app/grpc/pack/* app/grpc/
           rmdir app/grpc/pack
-          sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
+          sed -i 's/from pack import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
       
       - name: Run tests
         working-directory: services/packs

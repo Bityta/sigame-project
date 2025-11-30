@@ -33,8 +33,8 @@ RUN mkdir -p app/grpc && \
     mv app/grpc/pack/* app/grpc/ && \
     rmdir app/grpc/pack
 
-# Fix imports in generated files
-RUN sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
+# Fix imports in generated files (replace 'from pack import' with 'from app.grpc import')
+RUN sed -i 's/from pack import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
 
 # Expose ports
 EXPOSE 8005 50055
