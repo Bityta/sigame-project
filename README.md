@@ -609,7 +609,6 @@ sequenceDiagram
     rect rgb(227, 242, 253)
         Note over U,R: Логин
         U->>A: POST /auth/login
-        A->>A: Check rate limit (in-memory)
         A->>DB: Find user
         A->>A: Verify password
         A->>A: Generate JWT
@@ -1594,7 +1593,6 @@ interface GamePlayer {
 - 🔄 Обновление токенов (refresh flow)
 - 🚪 Выход из системы (инвалидация токенов)
 - ✅ Валидация токенов для других сервисов (gRPC)
-- 🛡️ Rate limiting для защиты от брутфорса (in-memory)
 
 **Зависимости:**
 - PostgreSQL (auth_db) — хранение пользователей
