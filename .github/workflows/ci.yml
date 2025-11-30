@@ -5,7 +5,7 @@ on:
     branches: [ main, develop, feature/** ]
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.23'
   NODE_VERSION: '20'
   JAVA_VERSION: '21'
   GRADLE_VERSION: '8.5'
@@ -254,7 +254,8 @@ jobs:
           if [ "${{ matrix.service }}" = "frontend" ]; then
             docker build -t sigame-${{ matrix.service }}:test -f frontend/Dockerfile frontend/
           else
-            docker build -t sigame-${{ matrix.service }}:test -f services/${{ matrix.service }}/Dockerfile services/${{ matrix.service }}/
+            # Use project root as context because Dockerfiles expect proto/ and services/ directories
+            docker build -t sigame-${{ matrix.service }}:test -f services/${{ matrix.service }}/Dockerfile .
           fi
 
   # ==========================================

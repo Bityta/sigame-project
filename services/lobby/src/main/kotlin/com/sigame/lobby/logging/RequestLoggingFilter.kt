@@ -1,10 +1,10 @@
 package com.sigame.lobby.logging
 
-import kotlinx.coroutines.reactor.mono
-import mu.KotlinLogging
+import com.sigame.lobby.controller.ApiRoutes
 import org.slf4j.MDC
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.core.io.buffer.DataBuffer
-import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator
 import org.springframework.stereotype.Component
@@ -16,123 +16,107 @@ import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-private val logger = KotlinLogging.logger {}
-
-/**
- * Фильтр для логирования запросов и ответов с телами (асинхронно)
- */
 @Component
-class RequestLoggingFilter : WebFilter {
-    
-    private val sensitiveFields = setOf("password", "token", "accessToken", "refreshToken")
-    
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+class RequestLoggingFilter(
+    private val logWriter: AsyncLogWriter
+) : WebFilter {
+
+    companion object {
+        private val SKIP_PATHS = ApiRoutes.SkipLogging.PATHS
+        private const val MAX_BODY_SIZE = 10_000
+        private val MDC_KEYS = listOf("request_id", "trace_id", "http_method", "http_path", "user_id")
+    }
+
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
-        val requestId = exchange.request.headers.getFirst("X-Request-ID")
-            ?: UUID.randomUUID().toString()
-        
-        val userId = exchange.request.headers.getFirst("X-User-ID")
         val path = exchange.request.path.value()
-        val method = exchange.request.method.name()
-        
-        // Skip health and metrics endpoints
-        if (path.contains("/health") || path.contains("/metrics") || path.contains("/actuator")) {
+
+        if (SKIP_PATHS.any { path.contains(it, ignoreCase = true) }) {
             return chain.filter(exchange)
         }
-        
-        // Добавляем в MDC
-        MDC.put("request_id", requestId)
-        MDC.put("trace_id", requestId)
-        if (userId != null) {
-            MDC.put("user_id", userId)
-        }
-        MDC.put("request_path", path)
-        MDC.put("request_method", method)
-        
+
+        val requestId = exchange.request.headers.getFirst("X-Request-ID") ?: UUID.randomUUID().toString()
         val startTime = System.currentTimeMillis()
-        
-        // Wrap request to log body
-        val cachedBodyExchange = if (exchange.request.headers.contentLength > 0) {
-            val cachedBody = StringBuilder()
-            val decoratedRequest = object : ServerHttpRequestDecorator(exchange.request) {
-                override fun getBody(): Flux<DataBuffer> {
-                    return super.getBody().doOnNext { buffer ->
-                        // Read body asynchronously
-                        mono {
-                            val bytes = ByteArray(buffer.readableByteCount())
-                            buffer.read(bytes)
-                            DataBufferUtils.release(buffer)
-                            val bodyString = String(bytes, StandardCharsets.UTF_8)
-                            cachedBody.append(bodyString)
-                        }.subscribe()
-                    }.doOnComplete {
-                        // Log request with body
-                        logger.debug { "Request body: ${sanitizeBody(cachedBody.toString())}" }
-                    }
-                }
-            }
-            exchange.mutate().request(decoratedRequest).build()
-        } else {
-            logger.debug { "Incoming request: $method $path (no body)" }
-            exchange
-        }
-        
-        // Wrap response to log body
-        val responseBody = StringBuilder()
-        val decoratedResponse = object : ServerHttpResponseDecorator(cachedBodyExchange.response) {
-            override fun writeWith(body: org.reactivestreams.Publisher<out DataBuffer>): Mono<Void> {
-                return super.writeWith(
-                    Flux.from(body).doOnNext { buffer ->
-                        // Read response body asynchronously
-                        mono {
-                            val readableBytes = buffer.readableByteCount()
-                            if (readableBytes > 0) {
-                                val bytes = ByteArray(readableBytes)
-                                buffer.asByteBuffer().get(bytes)
-                                val bodyString = String(bytes, StandardCharsets.UTF_8)
-                                responseBody.append(bodyString)
-                            }
-                        }.subscribe()
-                    }
+        val requestBody = BodyCapture(MAX_BODY_SIZE)
+        val responseBody = BodyCapture(MAX_BODY_SIZE)
+
+        setupMdc(exchange, requestId)
+        logWriter.logRequest(exchange.request, requestId)
+
+        val decoratedExchange = decorateExchange(exchange, requestBody, responseBody)
+
+        return chain.filter(decoratedExchange)
+            .doOnSuccess {
+                logWriter.logResponse(
+                    request = decoratedExchange.request,
+                    response = decoratedExchange.response,
+                    requestId = requestId,
+                    requestBody = requestBody.content,
+                    responseBody = responseBody.content,
+                    durationMs = System.currentTimeMillis() - startTime,
+                    error = null
                 )
             }
-        }
-        
-        val responseExchange = cachedBodyExchange.mutate().response(decoratedResponse).build()
-        
-        return chain.filter(responseExchange)
+            .doOnError { error ->
+                logWriter.logResponse(
+                    request = decoratedExchange.request,
+                    response = decoratedExchange.response,
+                    requestId = requestId,
+                    requestBody = requestBody.content,
+                    responseBody = responseBody.content,
+                    durationMs = System.currentTimeMillis() - startTime,
+                    error = error
+                )
+            }
             .doFinally {
-                val duration = System.currentTimeMillis() - startTime
-                val statusCode = responseExchange.response.statusCode?.value() ?: 0
-                
-                // Log response asynchronously
-                mono {
-                    if (responseBody.isNotEmpty()) {
-                        logger.debug { "Response body: ${sanitizeBody(responseBody.toString())}" }
-                    }
-                logger.info { "Request completed: $method $path - status=$statusCode duration=${duration}ms" }
-                }.subscribe()
-                
-                // Очищаем MDC
-                MDC.remove("request_id")
-                MDC.remove("trace_id")
-                MDC.remove("user_id")
-                MDC.remove("request_path")
-                MDC.remove("request_method")
+                MDC_KEYS.forEach(MDC::remove)
             }
     }
-    
-    private fun sanitizeBody(body: String): String {
-        if (body.isBlank()) return body
-        
-        var sanitized = body
-        sensitiveFields.forEach { field ->
-            // Simple regex to hide sensitive values
-            sanitized = sanitized.replace(
-                Regex(""""$field"\s*:\s*"[^"]*""""),
-                """"$field":"***HIDDEN***""""
-            )
+
+    private fun setupMdc(exchange: ServerWebExchange, requestId: String) {
+        MDC.put("request_id", requestId)
+        MDC.put("trace_id", requestId)
+        MDC.put("http_method", exchange.request.method.name())
+        MDC.put("http_path", exchange.request.path.value())
+        exchange.request.headers.getFirst("X-User-ID")?.let { MDC.put("user_id", it) }
+    }
+
+    private fun decorateExchange(
+        exchange: ServerWebExchange,
+        requestBody: BodyCapture,
+        responseBody: BodyCapture
+    ): ServerWebExchange {
+        val decoratedRequest = object : ServerHttpRequestDecorator(exchange.request) {
+            override fun getBody(): Flux<DataBuffer> =
+                super.getBody().doOnNext { requestBody.capture(it) }
         }
-        return sanitized
+
+        val decoratedResponse = object : ServerHttpResponseDecorator(exchange.response) {
+            override fun writeWith(body: org.reactivestreams.Publisher<out DataBuffer>): Mono<Void> =
+                super.writeWith(Flux.from(body).doOnNext { responseBody.capture(it) })
+        }
+
+        return exchange.mutate()
+            .request(decoratedRequest)
+            .response(decoratedResponse)
+            .build()
     }
 }
 
+private class BodyCapture(private val maxSize: Int) {
+    private val buffer = StringBuilder()
+
+    val content: String get() = buffer.toString()
+
+    @Synchronized
+    fun capture(dataBuffer: DataBuffer) {
+        val readableBytes = dataBuffer.readableByteCount()
+        if (readableBytes > 0 && buffer.length < maxSize) {
+            val bytesToRead = minOf(readableBytes, maxSize - buffer.length)
+            val bytes = ByteArray(bytesToRead)
+            @Suppress("DEPRECATION")
+            dataBuffer.toByteBuffer().get(bytes)
+            buffer.append(String(bytes, StandardCharsets.UTF_8))
+        }
+    }
+}

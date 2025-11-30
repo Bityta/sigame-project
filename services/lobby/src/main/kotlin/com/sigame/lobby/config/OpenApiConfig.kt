@@ -10,9 +10,6 @@ import io.swagger.v3.oas.models.Components
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-/**
- * Конфигурация OpenAPI/Swagger документации
- */
 @Configuration
 class OpenApiConfig {
     

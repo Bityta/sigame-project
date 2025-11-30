@@ -25,9 +25,6 @@ data class ErrorResponse(
     val details: Map<String, String>? = null
 )
 
-/**
- * Глобальный обработчик исключений для API
- */
 @RestControllerAdvice
 class GlobalExceptionHandler {
     
@@ -139,7 +136,11 @@ class GlobalExceptionHandler {
         InvalidPasswordException::class,
         PlayerNotInRoomException::class,
         PackNotFoundException::class,
-        InsufficientPlayersException::class
+        PackNotApprovedException::class,
+        PackNotOwnedException::class,
+        InsufficientPlayersException::class,
+        CannotKickHostException::class,
+        CannotKickSelfException::class
     )
     fun handleBadRequestException(ex: RuntimeException): ResponseEntity<ErrorResponse> {
         val errorResponse = ErrorResponse(
@@ -186,6 +187,18 @@ class GlobalExceptionHandler {
         
         logger.warn { "NoSuchElementException: ${ex.message}" }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse)
+    }
+    
+    @ExceptionHandler(UserInfoNotFoundException::class)
+    fun handleUserInfoNotFoundException(ex: UserInfoNotFoundException): ResponseEntity<ErrorResponse> {
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
+            error = "Internal Server Error",
+            message = "Failed to retrieve user information"
+        )
+        
+        logger.error { "UserInfoNotFoundException: ${ex.message}" }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse)
     }
     
     @ExceptionHandler(Exception::class)

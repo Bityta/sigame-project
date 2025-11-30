@@ -11,12 +11,14 @@ func TestLoad(t *testing.T) {
 	os.Setenv("POSTGRES_USER", "testuser")
 	os.Setenv("POSTGRES_PASSWORD", "testpass")
 	os.Setenv("REDIS_HOST", "localhost")
+	os.Setenv("PACK_SERVICE_HOST", "localhost")
 	
 	defer func() {
 		os.Unsetenv("POSTGRES_HOST")
 		os.Unsetenv("POSTGRES_USER")
 		os.Unsetenv("POSTGRES_PASSWORD")
 		os.Unsetenv("REDIS_HOST")
+		os.Unsetenv("PACK_SERVICE_HOST")
 	}()
 
 	cfg, err := Load()
@@ -59,6 +61,10 @@ func TestConfig_Validate(t *testing.T) {
 				},
 				Redis: RedisConfig{
 					Host: "localhost",
+				},
+				PackService: PackServiceConfig{
+					Host: "localhost",
+					Port: "50055",
 				},
 			},
 			wantErr: false,

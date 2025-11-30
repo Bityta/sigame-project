@@ -12,7 +12,6 @@ type Config struct {
 	Server      ServerConfig
 	Database    DatabaseConfig
 	Redis       RedisConfig
-	Kafka       KafkaConfig
 	PackService PackServiceConfig
 }
 
@@ -42,12 +41,6 @@ type RedisConfig struct {
 	Port     string
 	Password string
 	DB       int
-}
-
-// KafkaConfig holds Kafka messaging configuration
-type KafkaConfig struct {
-	Brokers []string
-	Topic   string
 }
 
 // PackServiceConfig holds pack service gRPC connection configuration
@@ -99,10 +92,6 @@ func Load() (*Config, error) {
 			Password: viper.GetString("REDIS_PASSWORD"),
 			DB:       viper.GetInt("REDIS_DB"),
 		},
-		Kafka: KafkaConfig{
-			Brokers: viper.GetStringSlice("KAFKA_BROKERS"),
-			Topic:   viper.GetString("KAFKA_TOPIC"),
-		},
 		PackService: PackServiceConfig{
 			Host: viper.GetString("PACK_SERVICE_HOST"),
 			Port: viper.GetString("PACK_SERVICE_PORT"),
@@ -139,10 +128,6 @@ func setDefaults() {
 	viper.SetDefault("REDIS_PASSWORD", "")
 	viper.SetDefault("REDIS_DB", 2)
 
-	// Kafka
-	viper.SetDefault("KAFKA_BROKERS", []string{"localhost:9092"})
-	viper.SetDefault("KAFKA_TOPIC", "game.events")
-
 	// Pack Service
 	viper.SetDefault("PACK_SERVICE_HOST", "localhost")
 	viper.SetDefault("PACK_SERVICE_PORT", "50055")
@@ -164,10 +149,6 @@ func (c *Config) Validate() error {
 
 	if c.Redis.Host == "" {
 		return fmt.Errorf("REDIS_HOST is required")
-	}
-
-	if len(c.Kafka.Brokers) == 0 {
-		return fmt.Errorf("KAFKA_BROKERS is required")
 	}
 
 	if c.PackService.Host == "" {

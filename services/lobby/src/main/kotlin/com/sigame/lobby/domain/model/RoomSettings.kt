@@ -5,9 +5,6 @@ import org.springframework.data.relational.core.mapping.Table
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Настройки игровой комнаты
- */
 @Table("room_settings")
 data class RoomSettings(
     @Id

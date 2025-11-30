@@ -8,9 +8,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
 
-/**
- * Репозиторий для работы с игровыми комнатами
- */
 @Repository
 interface GameRoomRepository : R2dbcRepository<GameRoom, UUID> {
     

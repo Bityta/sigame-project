@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/sigame/auth/proto";
+option java_package = "com.sigame.auth.proto";
+option java_multiple_files = true;
+
+// AuthService provides authentication and user information services
+service AuthService {
+  // ValidateToken validates a JWT access token and returns user information
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // GetUserInfo retrieves user information by user ID
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string username = 3;
+  string avatar_url = 4;  // URL аватарки пользователя (может быть пустым)
+  string error = 5;
+}
+
+message GetUserInfoRequest {
+  string user_id = 1;
+}
+
+message GetUserInfoResponse {
+  bool found = 1;
+  string user_id = 2;
+  string username = 3;
+  string avatar_url = 4;  // URL аватарки пользователя (может быть пустым)
+  string created_at = 5;  // ISO8601 timestamp
+  string error = 6;
+}
+

@@ -35,6 +35,8 @@ export const API_CONFIG = {
       LEAVE_ROOM: (id: string) => `/api/lobby/rooms/${id}/leave`,
       START_ROOM: (id: string) => `/api/lobby/rooms/${id}/start`,
       UPDATE_SETTINGS: (id: string) => `/api/lobby/rooms/${id}/settings`,
+      KICK_PLAYER: (id: string) => `/api/lobby/rooms/${id}/kick`,
+      TRANSFER_HOST: (id: string) => `/api/lobby/rooms/${id}/transfer-host`,
     },
     // Game
     GAME: {

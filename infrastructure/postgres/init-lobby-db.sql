@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS room_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     room_id UUID NOT NULL REFERENCES game_rooms(id) ON DELETE CASCADE,
     user_id UUID NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    avatar_url VARCHAR(500),
     role VARCHAR(20) NOT NULL DEFAULT 'player',
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,

@@ -1,17 +1,17 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git make protoc protobuf-dev
+RUN apk add --no-cache git
 
 # Set working directory
 WORKDIR /app
 
-# Copy all source code
-COPY . .
+# Copy service source (includes pre-generated proto files)
+COPY services/game/ .
 
-# Download dependencies and generate go.sum
-RUN go mod download && go mod tidy
+# Download dependencies
+RUN go mod tidy && go mod download
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
@@ -36,4 +36,3 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
 
 # Run the binary
 CMD ["./server"]
-

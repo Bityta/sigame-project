@@ -1,4 +1,4 @@
-.PHONY: help init start stop restart status logs reset shell seed test
+.PHONY: help init start stop restart status logs reset shell seed test proto proto-auth proto-game proto-packs proto-lobby
 
 # Default target
 .DEFAULT_GOAL := help
@@ -121,6 +121,29 @@ seed: ## Load test data into databases (TODO: implement seed scripts)
 
 test: ## Run integration tests (TODO: implement tests)
 	@echo "$(YELLOW)⚠ Test functionality not yet implemented$(NC)"
+
+# Proto generation
+
+proto: ## Generate proto files for all services
+	@echo "$(BLUE)Generating proto files...$(NC)"
+	@bash scripts/generate-proto.sh
+	@echo "$(GREEN)✓ Proto generation complete$(NC)"
+
+proto-auth: ## Generate proto files for auth service
+	@echo "$(BLUE)Generating proto for auth service...$(NC)"
+	@cd services/auth && bash generate-proto.sh
+
+proto-game: ## Generate proto files for game service
+	@echo "$(BLUE)Generating proto for game service...$(NC)"
+	@cd services/game && bash generate-proto.sh
+
+proto-packs: ## Generate proto files for packs service
+	@echo "$(BLUE)Generating proto for packs service...$(NC)"
+	@cd services/packs && bash generate-proto.sh
+
+proto-lobby: ## Generate proto files for lobby service (via Gradle)
+	@echo "$(BLUE)Generating proto for lobby service...$(NC)"
+	@cd services/lobby && ./gradlew generateProto
 
 ps: ## Alias for status
 	@$(MAKE) status

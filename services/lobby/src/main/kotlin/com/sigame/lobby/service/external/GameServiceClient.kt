@@ -2,7 +2,6 @@ package com.sigame.lobby.service.external
 
 import com.sigame.lobby.config.GameServiceConfig
 import com.sigame.lobby.domain.model.RoomPlayer
-import com.sigame.lobby.grpc.AuthServiceClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
@@ -14,20 +13,13 @@ import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-/**
- * Клиент для взаимодействия с Game Service
- */
 @Service
 class GameServiceClient(
     private val gameServiceConfig: GameServiceConfig,
-    private val authServiceClient: AuthServiceClient,
     private val webClient: WebClient = WebClient.builder().build()
 ) {
     
-    /**
-     * Создает игровую сессию в Game Service
-     */
-    suspend fun createGameSession(
+        suspend fun createGameSession(
         roomId: UUID,
         packId: UUID,
         players: List<RoomPlayer>,
@@ -37,12 +29,10 @@ class GameServiceClient(
             val createGameUrl = "${gameServiceConfig.baseUrl}/api/game/create"
             logger.info { "Creating game session at $createGameUrl for room $roomId" }
             
-            // Подготовка данных игроков с их username
             val playerData = players.map { player ->
-                val userInfo = authServiceClient.getUserInfo(player.userId)
                 mapOf(
                     "user_id" to player.userId.toString(),
-                    "username" to (userInfo?.username ?: "Unknown"),
+                    "username" to (player.username),
                     "role" to player.role
                 )
             }
@@ -82,9 +72,6 @@ class GameServiceClient(
     }
 }
 
-/**
- * Настройки игры
- */
 data class GameSettings(
     val timeForAnswer: Int = 30,
     val timeForChoice: Int = 60,
@@ -92,9 +79,6 @@ data class GameSettings(
     val showRightAnswer: Boolean = true
 )
 
-/**
- * Ответ от Game Service при создании сессии
- */
 data class GameSessionResponse(
     val gameSessionId: String,
     val wsUrl: String

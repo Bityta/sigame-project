@@ -101,10 +101,54 @@
   padding: 0.75rem;
   background-color: #f3f4f6;
   border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .room-page__player-name {
   font-weight: 500;
+}
+
+.room-page__player-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.room-page__player-action {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.room-page__player-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.room-page__player-action--transfer {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.room-page__player-action--transfer:hover:not(:disabled) {
+  background-color: #fde68a;
+}
+
+.room-page__player-action--kick {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.room-page__player-action--kick:hover:not(:disabled) {
+  background-color: #fecaca;
 }
 
 .room-page__actions {

@@ -20,7 +20,6 @@ class JacksonConfig {
     @Bean
     fun objectMapper(): ObjectMapper {
         return ObjectMapper().apply {
-            // Register Kotlin module
             registerModule(
                 KotlinModule.Builder()
                     .withReflectionCacheSize(512)

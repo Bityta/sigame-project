@@ -15,7 +15,6 @@ import (
 	
 	"github.com/sigame/game/internal/config"
 	grpcClient "github.com/sigame/game/internal/grpc"
-	"github.com/sigame/game/internal/kafka"
 	"github.com/sigame/game/internal/metrics"
 	"github.com/sigame/game/internal/repository/postgres"
 	"github.com/sigame/game/internal/repository/redis"
@@ -87,11 +86,6 @@ func main() {
 	}
 	defer packClient.Close()
 	log.Printf("✓ Connected to Pack Service at %s", cfg.GetPackServiceAddress())
-
-	// Initialize Kafka producer
-	kafkaProducer := kafka.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic)
-	defer kafkaProducer.Close()
-	log.Printf("✓ Kafka producer initialized")
 
 	// Create WebSocket hub
 	hub := websocket.NewHub()

@@ -7,10 +7,6 @@ import com.sigame.lobby.domain.enums.RoomStatus
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * DTO комнаты для API ответов
- * Все поля обязательны кроме: hostUsername, packName, players, settings
- */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class RoomDto(
     @JsonProperty("id")
@@ -58,10 +54,4 @@ data class RoomDto(
     
     @JsonProperty("settings")
     val settings: RoomSettingsDto? = null
-) {
-    /**
-     * Получить статус комнаты как enum
-     */
-    fun getStatusEnum(): RoomStatus = RoomStatus.valueOf(status.uppercase())
-}
-
+)

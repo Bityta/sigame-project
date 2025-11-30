@@ -1,4 +1,4 @@
-# Pack Service - Mock Implementation
+# Pack Service
 
 FROM python:3.11-slim
 
@@ -11,24 +11,30 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Copy requirements first for better caching
+COPY services/packs/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy proto files
+COPY proto/ /proto/
 
-# Generate gRPC code from proto files
-RUN python -m grpc_tools.protoc \
-    -I./proto \
+# Copy application code
+COPY services/packs/ .
+
+# Generate gRPC code from shared proto files
+RUN mkdir -p app/grpc && \
+    python -m grpc_tools.protoc \
+    -I/proto \
     --python_out=./app/grpc \
     --grpc_python_out=./app/grpc \
-    ./proto/pack.proto
+    /proto/pack/pack.proto && \
+    mv app/grpc/pack/* app/grpc/ && \
+    rmdir app/grpc/pack
 
 # Fix imports in generated files
-RUN python fix_grpc_imports.py
+RUN sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
 
 # Expose ports
 EXPOSE 8005 50055
@@ -39,4 +45,3 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
 
 # Run the application
 CMD ["python", "main.py"]
-

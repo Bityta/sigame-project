@@ -8,9 +8,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
 
-/**
- * Репозиторий для работы с игроками в комнатах
- */
 @Repository
 interface RoomPlayerRepository : R2dbcRepository<RoomPlayer, UUID> {
     
@@ -21,9 +18,7 @@ interface RoomPlayerRepository : R2dbcRepository<RoomPlayer, UUID> {
     
     @Query("SELECT COUNT(*) FROM room_players WHERE room_id = :roomId AND left_at IS NULL")
     fun countActiveByRoomId(roomId: UUID): Mono<Long>
-    
-    fun findByUserId(userId: UUID): Flux<RoomPlayer>
-    
+
     @Query("SELECT * FROM room_players WHERE user_id = :userId AND left_at IS NULL")
     fun findActiveByUserId(userId: UUID): Mono<RoomPlayer>
     
@@ -32,5 +27,8 @@ interface RoomPlayerRepository : R2dbcRepository<RoomPlayer, UUID> {
     
     @Query("SELECT * FROM room_players WHERE left_at IS NULL")
     fun findByLeftAtIsNull(): Flux<RoomPlayer>
+
+    @Query("SELECT * FROM room_players WHERE room_id IN (:roomIds) AND left_at IS NULL")
+    fun findActiveByRoomIds(roomIds: List<UUID>): Flux<RoomPlayer>
 }
 

@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package pack;
+
+option go_package = "github.com/sigame/pack/proto";
+option java_package = "com.sigame.pack.proto";
+option java_multiple_files = true;
+
+// PackService - gRPC API для работы с паками вопросов
+service PackService {
+  // GetPackInfo - получение метаданных пака
+  rpc GetPackInfo(GetPackInfoRequest) returns (PackInfoResponse);
+  
+  // GetPackContent - получение полного контента пака для игры
+  rpc GetPackContent(GetPackContentRequest) returns (PackContentResponse);
+  
+  // ValidatePackExists - проверка существования пака
+  rpc ValidatePackExists(ValidatePackRequest) returns (ValidatePackResponse);
+}
+
+message ValidatePackRequest {
+  string pack_id = 1;   // UUID пака
+  string user_id = 2;   // UUID владельца (опционально)
+}
+
+message ValidatePackResponse {
+  bool exists = 1;      // true если пак существует
+  bool is_owner = 2;    // true если user_id владелец
+  string status = 3;    // "processing" | "approved" | "failed"
+  string error = 4;     // Текст ошибки
+}
+
+message GetPackInfoRequest {
+  string pack_id = 1;  // UUID пака
+}
+
+message PackInfoResponse {
+  bool found = 1;
+  string pack_id = 2;
+  string name = 3;
+  string author = 4;
+  string description = 5;
+  int32 rounds_count = 6;
+  int32 questions_count = 7;
+  bool has_media = 8;
+  string status = 9;
+  string created_at = 10;
+  string error = 11;
+}
+
+message GetPackContentRequest {
+  string pack_id = 1;  // UUID пака
+}
+
+message PackContentResponse {
+  bool found = 1;
+  string pack_id = 2;
+  string name = 3;
+  repeated Round rounds = 4;
+  string error = 5;
+}
+
+message Round {
+  string id = 1;
+  int32 round_number = 2;
+  string name = 3;
+  string type = 4;            // "normal" | "final"
+  repeated Theme themes = 5;
+}
+
+message Theme {
+  string id = 1;
+  string name = 2;
+  repeated Question questions = 3;
+}
+
+message Question {
+  string id = 1;
+  int32 price = 2;
+  string type = 3;            // "standard" | "secret" | "stake" | "forAll"
+  string text = 4;
+  string answer = 5;
+  repeated string alt_answers = 6;  // Альтернативные ответы
+  string media_type = 7;      // "text" | "image" | "audio" | "video"
+  string media_url = 8;       // URL медиа файла
+  int32 media_duration_ms = 9; // Длительность медиа
+  SecretParams secret_params = 10; // Для type="secret"
+  StakeParams stake_params = 11;   // Для type="stake"
+}
+
+message SecretParams {
+  string selection_mode = 1;  // "any" | "exceptCurrent"
+  string theme = 2;           // Секретная тема
+  int32 min_price = 3;
+  int32 max_price = 4;
+  int32 price_step = 5;
+}
+
+message StakeParams {
+  int32 min_stake = 1;
+  int32 max_stake = 2;
+}
+

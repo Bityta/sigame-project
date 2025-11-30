@@ -1,0 +1,125 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Build all services
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build all services with Docker Compose
+      - name: Build Docker images
+        run: |
+          docker compose build auth-service
+          docker compose build pack-service
+          docker compose build lobby-service
+          docker compose build game-service
+          docker compose build frontend
+
+  # Test Lobby Service (Kotlin)
+  test-lobby:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      
+      - name: Run tests
+        working-directory: services/lobby
+        run: |
+          # Update proto path for local build
+          ./gradlew test
+
+  # Test Auth Service (Go)  
+  test-auth:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      
+      - name: Download dependencies
+        working-directory: services/auth
+        run: |
+          go mod tidy
+          go mod download
+      
+      - name: Run tests
+        working-directory: services/auth
+        run: go test ./...
+
+  # Test Game Service (Go)
+  test-game:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      
+      - name: Download dependencies
+        working-directory: services/game
+        run: |
+          go mod tidy
+          go mod download
+      
+      - name: Run tests
+        working-directory: services/game
+        run: go test ./...
+
+  # Test Packs Service (Python)
+  test-packs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        working-directory: services/packs
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+      
+      - name: Generate proto
+        working-directory: services/packs
+        run: |
+          mkdir -p app/grpc
+          python -m grpc_tools.protoc \
+            -I../../proto \
+            --python_out=./app/grpc \
+            --grpc_python_out=./app/grpc \
+            ../../proto/pack/pack.proto
+          mv app/grpc/pack/* app/grpc/
+          rmdir app/grpc/pack
+          sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
+      
+      - name: Run tests
+        working-directory: services/packs
+        run: pytest tests/
