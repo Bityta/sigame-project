@@ -90,7 +90,7 @@ class RoomLifecycleHelper(
 
     fun validateRoomInStatus(room: GameRoom, expectedStatus: RoomStatus, action: String) {
         if (room.getStatusEnum() != expectedStatus) {
-            throw InvalidRoomStateException(room.id, room.getStatusEnum(), action)
+            throw InvalidRoomStateException(room.requireId(), room.getStatusEnum(), action)
         }
     }
 
@@ -208,8 +208,8 @@ class RoomLifecycleHelper(
 
     suspend fun updateCacheForNewRoom(room: GameRoom, hostId: UUID) = coroutineScope {
         launch { roomCacheService.cacheRoomData(room, 1) }
-        launch { roomCacheService.setUserCurrentRoom(hostId, room.id) }
-        launch { roomCacheService.addRoomPlayer(room.id, hostId) }
+        launch { roomCacheService.setUserCurrentRoom(hostId, room.requireId()) }
+        launch { roomCacheService.addRoomPlayer(room.requireId(), hostId) }
     }
 
     suspend fun cancelRoom(room: GameRoom) {

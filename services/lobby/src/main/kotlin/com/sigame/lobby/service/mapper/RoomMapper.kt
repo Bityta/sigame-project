@@ -30,7 +30,7 @@ class RoomMapper {
         }
 
         return RoomDto(
-            id = room.id,
+            id = room.requireId(),
             roomCode = room.roomCode,
             name = room.name,
             hostId = room.hostId,
@@ -67,7 +67,7 @@ class RoomMapper {
         }
 
         return RoomDto(
-            id = room.id,
+            id = room.requireId(),
             roomCode = room.roomCode,
             name = room.name,
             hostId = room.hostId,

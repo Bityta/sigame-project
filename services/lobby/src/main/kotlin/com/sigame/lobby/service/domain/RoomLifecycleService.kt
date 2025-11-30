@@ -48,13 +48,13 @@ class RoomLifecycleService(
         val hostPlayer = awaitAll(
             async {
                 helper.createRoomSettings(
-                    roomId = savedRoom.id,
+                    roomId = savedRoom.requireId(),
                     settings = request.settings
                 )
             },
             async {
                 helper.createHostPlayer(
-                    roomId = savedRoom.id,
+                    roomId = savedRoom.requireId(),
                     hostId = hostId,
                     username = hostInfo.username,
                     avatarUrl = hostInfo.avatarUrl
