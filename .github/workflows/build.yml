@@ -57,23 +57,11 @@ jobs:
         with:
           go-version: '1.23'
       
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-      
-      - name: Generate proto
+      - name: Download dependencies
         working-directory: services/auth
         run: |
-          mkdir -p proto
-          protoc --proto_path=../../proto \
-            --go_out=proto --go_opt=paths=source_relative \
-            --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
-            ../../proto/auth/auth.proto
-          mv proto/auth/*.go proto/
-          rmdir proto/auth
+          go mod tidy
+          go mod download
       
       - name: Run tests
         working-directory: services/auth
@@ -91,23 +79,11 @@ jobs:
         with:
           go-version: '1.23'
       
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-      
-      - name: Generate proto
+      - name: Download dependencies
         working-directory: services/game
         run: |
-          mkdir -p proto
-          protoc --proto_path=../../proto \
-            --go_out=proto --go_opt=paths=source_relative \
-            --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
-            ../../proto/pack/pack.proto
-          mv proto/pack/*.go proto/
-          rmdir proto/pack
+          go mod tidy
+          go mod download
       
       - name: Run tests
         working-directory: services/game
@@ -140,9 +116,10 @@ jobs:
             --python_out=./app/grpc \
             --grpc_python_out=./app/grpc \
             ../../proto/pack/pack.proto
+          mv app/grpc/pack/* app/grpc/
+          rmdir app/grpc/pack
           sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
       
       - name: Run tests
         working-directory: services/packs
         run: pytest tests/
-
