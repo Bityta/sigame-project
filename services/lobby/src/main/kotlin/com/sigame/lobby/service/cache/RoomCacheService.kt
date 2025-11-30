@@ -34,12 +34,12 @@ class RoomCacheService(
                 put("max_players", room.maxPlayers.toString())
             }
 
-            setRoomMeta(room.id, metadata)
+            setRoomMeta(room.requireId(), metadata)
 
             if (room.getStatusEnum() == RoomStatus.WAITING) {
-                addActiveRoom(room.id, room.createdAt.toEpochSecond(java.time.ZoneOffset.UTC))
+                addActiveRoom(room.requireId(), room.createdAt.toEpochSecond(java.time.ZoneOffset.UTC))
             } else {
-                removeActiveRoom(room.id)
+                removeActiveRoom(room.requireId())
             }
         } catch (e: Exception) {
             logger.error(e) { "Failed to cache room data for room ${room.id}" }

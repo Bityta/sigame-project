@@ -157,12 +157,12 @@ class RoomMembershipHelper(
     }
 
     suspend fun onPlayerJoined(userId: UUID, room: GameRoom, userInfo: UserInfo, newCount: Int) = coroutineScope {
-        launch { roomCacheService.setUserCurrentRoom(userId, room.id) }
-        launch { roomCacheService.addRoomPlayer(room.id, userId) }
+        launch { roomCacheService.setUserCurrentRoom(userId, room.requireId()) }
+        launch { roomCacheService.addRoomPlayer(room.requireId(), userId) }
         launch { roomCacheService.cacheRoomData(room, newCount) }
 
         roomEventPublisher.publish(
-            PlayerJoinedEvent(room.id, userId, userInfo.username, newCount)
+            PlayerJoinedEvent(room.requireId(), userId, userInfo.username, newCount)
         )
         lobbyMetrics.recordPlayerJoined()
     }
@@ -170,7 +170,7 @@ class RoomMembershipHelper(
     suspend fun handleLeave(room: GameRoom, player: RoomPlayer, currentPlayers: Int) = coroutineScope {
         removePlayer(player)
         launch { roomCacheService.deleteUserCurrentRoom(player.userId) }
-        launch { roomCacheService.removeRoomPlayer(room.id, player.userId) }
+        launch { roomCacheService.removeRoomPlayer(room.requireId(), player.userId) }
         lobbyMetrics.recordPlayerLeft()
 
         val newCount = currentPlayers - 1
@@ -184,14 +184,14 @@ class RoomMembershipHelper(
     suspend fun onPlayerKicked(room: GameRoom, player: RoomPlayer, currentPlayers: Int) = coroutineScope {
         removePlayer(player)
         launch { roomCacheService.deleteUserCurrentRoom(player.userId) }
-        launch { roomCacheService.removeRoomPlayer(room.id, player.userId) }
+        launch { roomCacheService.removeRoomPlayer(room.requireId(), player.userId) }
         lobbyMetrics.recordPlayerLeft()
 
         val newCount = currentPlayers - 1
         launch { roomCacheService.cacheRoomData(room, newCount) }
 
         roomEventPublisher.publish(
-            PlayerLeftEvent(room.id, player.userId, player.username, "kicked", newCount)
+            PlayerLeftEvent(room.requireId(), player.userId, player.username, "kicked", newCount)
         )
     }
 
@@ -205,13 +205,13 @@ class RoomMembershipHelper(
         if (newCount == 0) {
             cancelRoom(room)
         } else {
-            val activePlayers = getActivePlayers(room.id)
+            val activePlayers = getActivePlayers(room.requireId())
             val newHost = activePlayers.first()
             val updatedRoom = transferHost(room, leftPlayer.userId, newHost)
 
             launch { roomCacheService.cacheRoomData(updatedRoom, newCount) }
             roomEventPublisher.publish(
-                PlayerLeftEvent(room.id, leftPlayer.userId, leftPlayer.username, "left", newCount)
+                PlayerLeftEvent(room.requireId(), leftPlayer.userId, leftPlayer.username, "left", newCount)
             )
         }
     }
@@ -222,7 +222,7 @@ class RoomMembershipHelper(
         } else {
             launch { roomCacheService.cacheRoomData(room, newCount) }
             roomEventPublisher.publish(
-                PlayerLeftEvent(room.id, leftPlayer.userId, leftPlayer.username, "left", newCount)
+                PlayerLeftEvent(room.requireId(), leftPlayer.userId, leftPlayer.username, "left", newCount)
             )
         }
     }
@@ -231,10 +231,10 @@ class RoomMembershipHelper(
         val cancelled = room.copy(status = GameRoom.statusFromEnum(RoomStatus.CANCELLED))
         gameRoomRepository.save(cancelled).awaitFirstOrNull()
         lobbyMetrics.recordRoomCancelled(room.getStatusEnum())
-        launch { roomCacheService.clearRoomCache(room.id) }
+        launch { roomCacheService.clearRoomCache(room.requireId()) }
 
-        roomEventPublisher.publish(RoomClosedEvent(room.id, "no_players"))
-        roomEventPublisher.closeRoom(room.id)
+        roomEventPublisher.publish(RoomClosedEvent(room.requireId(), "no_players"))
+        roomEventPublisher.closeRoom(room.requireId())
     }
 
     private suspend fun removePlayer(player: RoomPlayer): RoomPlayer {
@@ -243,7 +243,7 @@ class RoomMembershipHelper(
     }
 
     private suspend fun transferHost(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer): GameRoom = coroutineScope {
-        val currentHost = roomPlayerRepository.findByRoomIdAndUserId(room.id, fromHostId).awaitFirstOrNull()
+        val currentHost = roomPlayerRepository.findByRoomIdAndUserId(room.requireId(), fromHostId).awaitFirstOrNull()
         
         val demoteJob = if (currentHost != null) {
             launch { 
@@ -290,7 +290,7 @@ class RoomMembershipHelper(
 
     private fun validateRoomStatus(room: GameRoom, expected: RoomStatus, action: String) {
         if (room.getStatusEnum() != expected) {
-            throw InvalidRoomStateException(room.id, room.getStatusEnum(), action)
+            throw InvalidRoomStateException(room.requireId(), room.getStatusEnum(), action)
         }
     }
 

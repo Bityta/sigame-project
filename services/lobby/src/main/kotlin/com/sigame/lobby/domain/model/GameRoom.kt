@@ -36,6 +36,8 @@ data class GameRoom(
     @Column("finished_at")
     val finishedAt: LocalDateTime? = null
 ) {
+    fun requireId(): UUID = id ?: throw IllegalStateException("GameRoom not persisted: id is null")
+    
     fun getStatusEnum(): RoomStatus = RoomStatus.valueOf(status.uppercase())
 
     companion object {

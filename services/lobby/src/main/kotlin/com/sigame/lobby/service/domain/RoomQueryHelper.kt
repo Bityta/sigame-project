@@ -59,7 +59,7 @@ class RoomQueryHelper(
             return@coroutineScope RoomListData(emptyList(), 0, emptyMap(), emptyMap())
         }
 
-        val roomIds = rooms.map { it.id }
+        val roomIds = rooms.mapNotNull { it.id }
         val packIds = rooms.map { it.packId }
 
         val playersD = async { loadPlayersByRoomIds(roomIds) }
@@ -88,7 +88,7 @@ class RoomQueryHelper(
 
     fun buildRoomDtoList(data: RoomListData): List<RoomDto> =
         data.rooms.map { room ->
-            val players = data.playersByRoom[room.id] ?: emptyList()
+            val players = data.playersByRoom[room.requireId()] ?: emptyList()
             roomMapper.toDtoWithCache(room, players.size, data.packInfoMap[room.packId]?.name, players)
         }
 
@@ -106,8 +106,8 @@ class RoomQueryHelper(
         if (size > 0) ((total + size - 1) / size).toInt() else 0
 
     private suspend fun fetchRoomDetails(room: GameRoom): RoomDetailData = coroutineScope {
-        val playersD = async { roomPlayerRepository.findActiveByRoomId(room.id).asFlow().toList() }
-        val settingsD = async { roomSettingsRepository.findByRoomId(room.id).awaitFirstOrNull() }
+        val playersD = async { roomPlayerRepository.findActiveByRoomId(room.requireId()).asFlow().toList() }
+        val settingsD = async { roomSettingsRepository.findByRoomId(room.requireId()).awaitFirstOrNull() }
         val packInfoD = async { batchOperationService.getPackInfoBatch(listOf(room.packId))[room.packId] }
 
         RoomDetailData(room, playersD.await(), settingsD.await(), packInfoD.await()?.name)
