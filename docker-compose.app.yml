@@ -124,8 +124,12 @@ services:
       # Logging
       LOG_LEVEL: info
       LOGGING_PATTERN_CONSOLE: '{"timestamp":"%d{ISO8601}","level":"%p","trace_id":"%X{traceId}","span_id":"%X{spanId}","service":"lobby-service","thread":"%t","logger":"%c{1}","message":"%m"}%n'
+      
+      # Remote Debug (connect from IDEA on port 5005)
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     ports:
       - "8082:8082"
+      - "5005:5005"  # JVM Remote Debug port
     networks:
       - sigame-network
     healthcheck:
