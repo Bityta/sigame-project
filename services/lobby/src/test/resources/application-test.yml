@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: lobby-service-test
+  
+  # Отключаем R2DBC для тестов (используем моки)
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: 
+  
+  # Отключаем Redis для тестов
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  
+  # Отключаем Kafka для тестов
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+# Настройки сервиса
+room:
+  code:
+    length: 6
+    charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+# gRPC клиенты (замокены)
+grpc:
+  auth-service:
+    host: localhost
+    port: 50051
+  pack-service:
+    host: localhost
+    port: 50055
+
+# Отключаем метрики для тестов
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: false
+
+logging:
+  level:
+    com.sigame.lobby: DEBUG
+    org.springframework.web: DEBUG
+
