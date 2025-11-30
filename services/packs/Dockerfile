@@ -29,7 +29,9 @@ RUN mkdir -p app/grpc && \
     -I/proto \
     --python_out=./app/grpc \
     --grpc_python_out=./app/grpc \
-    /proto/pack/pack.proto
+    /proto/pack/pack.proto && \
+    mv app/grpc/pack/* app/grpc/ && \
+    rmdir app/grpc/pack
 
 # Fix imports in generated files
 RUN sed -i 's/import pack_pb2/from app.grpc import pack_pb2/g' app/grpc/pack_pb2_grpc.py
