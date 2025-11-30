@@ -143,12 +143,12 @@ jobs:
   # 4. DEPLOY TO SERVER
   # ==========================================
   deploy:
-    name: 🚀 Deploy to ${{ inputs.environment }}
+    name: 🚀 Deploy to ${{ inputs.environment || 'production' }}
     runs-on: ubuntu-latest
     needs: [backup, build]
     if: always() && (needs.backup.result == 'success' || needs.backup.result == 'skipped')
     environment:
-      name: ${{ inputs.environment }}
+      name: ${{ inputs.environment || 'production' }}
     
     steps:
       - name: 📥 Checkout code
@@ -174,12 +174,18 @@ jobs:
             set -e
             cd ${{ env.DEPLOY_PATH }}
             
+            # Дефолтные значения для push-триггера (когда inputs пустые)
+            SERVICES="${{ inputs.services }}"
+            if [ -z "$SERVICES" ]; then
+              SERVICES="all"
+            fi
+            
             echo "=========================================="
             echo "  🚀 НАЧАЛО ДЕПЛОЯ"
             echo "=========================================="
             echo "Branch: ${{ github.ref_name }}"
             echo "Commit: ${{ github.sha }}"
-            echo "Services: ${{ inputs.services }}"
+            echo "Services: $SERVICES"
             echo ""
             
             # Получаем последние изменения
@@ -187,9 +193,6 @@ jobs:
             git fetch origin
             git checkout ${{ github.ref_name }}
             git pull origin ${{ github.ref_name }}
-            
-            # Определяем какие сервисы деплоить
-            SERVICES="${{ inputs.services }}"
             
             if [ "$SERVICES" = "all" ]; then
               echo "🔄 Деплой ВСЕХ сервисов..."
