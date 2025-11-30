@@ -68,6 +68,14 @@ resource "yandex_vpc_security_group" "app_server_sg" {
     port           = 3000
   }
 
+  # JVM Remote Debug (Lobby Service)
+  ingress {
+    protocol       = "TCP"
+    description    = "JVM Remote Debug"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+    port           = 5005
+  }
+
   # Allow all outgoing traffic
   egress {
     protocol       = "ANY"
