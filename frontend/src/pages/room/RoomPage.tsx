@@ -17,7 +17,7 @@ export const RoomPage = () => {
   const leaveRoomMutation = useLeaveRoom();
   const startGameMutation = useStartGame({
     onSuccess: (response) => {
-      navigate(ROUTES.GAME(response.gameSessionId));
+      navigate(ROUTES.GAME(response.gameId));
     },
   });
 

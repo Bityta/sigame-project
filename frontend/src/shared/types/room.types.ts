@@ -60,7 +60,7 @@ export interface RoomListQuery {
 }
 
 export interface StartGameResponse {
-  gameSessionId: string;
-  wsUrl: string;
+  gameId: string;
+  websocketUrl: string;
 }
 

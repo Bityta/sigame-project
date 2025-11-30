@@ -63,10 +63,20 @@ class AuthenticationFilter(
         PUBLIC_PATHS.any { path.startsWith(it) } ||
             (method == "GET" && PUBLIC_GET_PATHS.any { path.startsWith(it) })
 
-    private fun extractToken(exchange: ServerWebExchange): String? =
-        exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)
+    private fun extractToken(exchange: ServerWebExchange): String? {
+        val headerToken = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)
             ?.takeIf { it.startsWith("Bearer ") }
             ?.substring(7)
+        
+        if (headerToken != null) return headerToken
+        
+        val path = exchange.request.path.value()
+        if (path.contains("/events")) {
+            return exchange.request.queryParams.getFirst("token")
+        }
+        
+        return null
+    }
 
     private fun unauthorized(exchange: ServerWebExchange): Mono<Void> {
         exchange.response.statusCode = HttpStatus.UNAUTHORIZED

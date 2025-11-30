@@ -1,7 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_CONFIG } from '@/shared/config';
+import { TokenStorage } from '@/shared/lib';
 import { roomKeys } from './queries';
+import type { RoomSettings } from '@/shared/types';
 
 export interface RoomEvent {
   type: string;
@@ -35,13 +37,19 @@ export interface RoomClosedEvent extends RoomEvent {
   reason: string;
 }
 
-type AnyRoomEvent = PlayerJoinedEvent | PlayerLeftEvent | GameStartedEvent | RoomClosedEvent;
+export interface SettingsUpdatedEvent extends RoomEvent {
+  type: 'settings_updated';
+  settings: RoomSettings;
+}
+
+type AnyRoomEvent = PlayerJoinedEvent | PlayerLeftEvent | GameStartedEvent | RoomClosedEvent | SettingsUpdatedEvent;
 
 interface UseRoomEventsOptions {
   onPlayerJoined?: (event: PlayerJoinedEvent) => void;
   onPlayerLeft?: (event: PlayerLeftEvent) => void;
   onGameStarted?: (event: GameStartedEvent) => void;
   onRoomClosed?: (event: RoomClosedEvent) => void;
+  onSettingsUpdated?: (event: SettingsUpdatedEvent) => void;
   onError?: (error: Event) => void;
 }
 
@@ -58,7 +66,13 @@ export const useRoomEvents = (roomId: string | undefined, options: UseRoomEvents
   useEffect(() => {
     if (!roomId) return;
 
-    const url = `${API_CONFIG.LOBBY_BASE_URL}/api/lobby/rooms/${roomId}/events`;
+    const token = TokenStorage.getAccessToken();
+    if (!token) {
+      console.warn('[RoomEvents] No access token available for SSE connection');
+      return;
+    }
+
+    const url = `${API_CONFIG.LOBBY_BASE_URL}/api/lobby/rooms/${roomId}/events?token=${encodeURIComponent(token)}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -82,6 +96,12 @@ export const useRoomEvents = (roomId: string | undefined, options: UseRoomEvents
     eventSource.addEventListener('room_closed', (e) => {
       const event = JSON.parse(e.data) as RoomClosedEvent;
       options.onRoomClosed?.(event);
+    });
+
+    eventSource.addEventListener('settings_updated', (e) => {
+      const event = JSON.parse(e.data) as SettingsUpdatedEvent;
+      invalidateRoom();
+      options.onSettingsUpdated?.(event);
     });
 
     eventSource.onerror = (error) => {
