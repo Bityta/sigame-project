@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Table("room_settings")
-data class RoomSettings(
+class RoomSettings(
     @Id
     @Column("room_id")
     val roomId: UUID,
@@ -24,13 +24,31 @@ data class RoomSettings(
     @Column("created_at")
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Column("updated_at")
-    val updatedAt: LocalDateTime = LocalDateTime.now(),
-    @Transient
-    private val isNewEntity: Boolean = true
+    val updatedAt: LocalDateTime = LocalDateTime.now()
 ) : Persistable<UUID> {
+    
+    @Transient
+    private var isNewEntity: Boolean = true
     
     override fun getId(): UUID = roomId
     override fun isNew(): Boolean = isNewEntity
     
-    fun markPersisted(): RoomSettings = copy(isNewEntity = false)
+    fun markPersisted(): RoomSettings {
+        isNewEntity = false
+        return this
+    }
+    
+    fun copy(
+        roomId: UUID = this.roomId,
+        timeForAnswer: Int = this.timeForAnswer,
+        timeForChoice: Int = this.timeForChoice,
+        allowWrongAnswer: Boolean = this.allowWrongAnswer,
+        showRightAnswer: Boolean = this.showRightAnswer,
+        createdAt: LocalDateTime = this.createdAt,
+        updatedAt: LocalDateTime = this.updatedAt
+    ): RoomSettings {
+        val copy = RoomSettings(roomId, timeForAnswer, timeForChoice, allowWrongAnswer, showRightAnswer, createdAt, updatedAt)
+        copy.isNewEntity = this.isNewEntity
+        return copy
+    }
 }

@@ -10,9 +10,8 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Table("game_rooms")
-data class GameRoom(
+class GameRoom(
     @Id
-    @get:JvmName("getId_")
     val id: UUID = UUID.randomUUID(),
     @Column("room_code")
     val roomCode: String,
@@ -37,17 +36,41 @@ data class GameRoom(
     @Column("started_at")
     val startedAt: LocalDateTime? = null,
     @Column("finished_at")
-    val finishedAt: LocalDateTime? = null,
-    @Transient
-    private val isNewEntity: Boolean = true
+    val finishedAt: LocalDateTime? = null
 ) : Persistable<UUID> {
+    
+    @Transient
+    private var isNewEntity: Boolean = true
     
     override fun getId(): UUID = id
     override fun isNew(): Boolean = isNewEntity
     
+    fun markPersisted(): GameRoom {
+        isNewEntity = false
+        return this
+    }
+    
     fun getStatusEnum(): RoomStatus = RoomStatus.valueOf(status.uppercase())
     
-    fun markPersisted(): GameRoom = copy(isNewEntity = false)
+    fun copy(
+        id: UUID = this.id,
+        roomCode: String = this.roomCode,
+        hostId: UUID = this.hostId,
+        packId: UUID = this.packId,
+        name: String = this.name,
+        status: String = this.status,
+        maxPlayers: Int = this.maxPlayers,
+        isPublic: Boolean = this.isPublic,
+        passwordHash: String? = this.passwordHash,
+        createdAt: LocalDateTime = this.createdAt,
+        updatedAt: LocalDateTime = this.updatedAt,
+        startedAt: LocalDateTime? = this.startedAt,
+        finishedAt: LocalDateTime? = this.finishedAt
+    ): GameRoom {
+        val copy = GameRoom(id, roomCode, hostId, packId, name, status, maxPlayers, isPublic, passwordHash, createdAt, updatedAt, startedAt, finishedAt)
+        copy.isNewEntity = this.isNewEntity
+        return copy
+    }
 
     companion object {
         fun statusFromEnum(status: RoomStatus): String = status.name.lowercase()
