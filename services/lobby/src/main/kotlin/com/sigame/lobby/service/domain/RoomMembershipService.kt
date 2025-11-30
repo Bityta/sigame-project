@@ -76,15 +76,25 @@ class RoomMembershipService(
         
         val roleStr = request.role.lowercase()
         
+        // Получаем информацию о пользователе (для денормализации и Kafka)
+        val userInfo = authServiceClient.getUserInfo(userId)
+        
         if (existingPlayer != null) {
             // Пользователь возвращается в комнату
-            val rejoinedPlayer = existingPlayer.copy(leftAt = null, joinedAt = LocalDateTime.now())
+            val rejoinedPlayer = existingPlayer.copy(
+                leftAt = null,
+                joinedAt = LocalDateTime.now(),
+                username = userInfo?.username ?: existingPlayer.username,
+                avatarUrl = userInfo?.avatarUrl ?: existingPlayer.avatarUrl
+            )
             roomPlayerRepository.save(rejoinedPlayer).awaitFirstOrNull()
         } else {
             // Новый игрок
             val player = RoomPlayer(
                 roomId = roomId,
                 userId = userId,
+                username = userInfo?.username ?: "Unknown",
+                avatarUrl = userInfo?.avatarUrl,
                 role = roleStr
             )
             roomPlayerRepository.save(player).awaitFirstOrNull()
@@ -97,9 +107,6 @@ class RoomMembershipService(
         
         // Метрики
         lobbyMetrics.recordPlayerJoined()
-        
-        // Получаем информацию о пользователе для события
-        val userInfo = authServiceClient.getUserInfo(userId)
         
         // Публикуем событие
         kafkaEventPublisher.publishPlayerJoined(
@@ -120,7 +127,7 @@ class RoomMembershipService(
         val currentPlayersCount = updatedPlayers.size
         
         return RoomDto(
-            id = updatedRoom.id!!,
+            id = updatedRoom.id,
             roomCode = updatedRoom.roomCode,
             name = updatedRoom.name,
             hostId = updatedRoom.hostId,
@@ -170,15 +177,13 @@ class RoomMembershipService(
             handlePlayerLeaving(room, roomId)
         }
         
-        // Получаем информацию о пользователе для события
-        val userInfo = authServiceClient.getUserInfo(userId)
         val currentPlayersCount = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
         
-        // Публикуем событие
+        // Публикуем событие (username из денормализованных данных)
         kafkaEventPublisher.publishPlayerLeft(
             roomId = roomId,
             userId = userId,
-            username = userInfo?.username ?: "Unknown",
+            username = player.username,
             reason = "left",
             currentPlayers = currentPlayersCount
         )
@@ -239,15 +244,12 @@ class RoomMembershipService(
         // Обновляем кэш
         roomCacheService.cacheRoomData(updatedRoom, activePlayers.size)
         
-        // Получаем информацию о новом хосте
-        val newHostInfo = authServiceClient.getUserInfo(newHost.userId)
-        
-        // Публикуем событие о смене хоста
+        // Публикуем событие о смене хоста (username из денормализованных данных)
         kafkaEventPublisher.publishPlayerJoined(
             roomId = roomId,
             userId = newHost.userId,
-            username = newHostInfo?.username ?: "Unknown",
-            avatarUrl = newHostInfo?.avatarUrl,
+            username = newHost.username,
+            avatarUrl = newHost.avatarUrl,
             currentPlayers = activePlayers.size,
             maxPlayers = room.maxPlayers
         )

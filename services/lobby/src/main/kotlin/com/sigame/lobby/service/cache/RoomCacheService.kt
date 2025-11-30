@@ -34,7 +34,7 @@ class RoomCacheService(
                 "max_players" to room.maxPlayers.toString()
             )
             
-            setRoomMeta(room.id!!, metadata)
+            setRoomMeta(room.id, metadata)
             
             // Добавляем в sorted set активных комнат только если статус WAITING
             if (room.getStatusEnum() == RoomStatus.WAITING) {

@@ -16,6 +16,7 @@ import com.sigame.lobby.domain.exception.PackNotOwnedException
 import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
 import com.sigame.lobby.domain.exception.RoomNotFoundException
 import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
+import com.sigame.lobby.domain.exception.UserInfoNotFoundException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
@@ -24,6 +25,7 @@ import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.AuthServiceClient
 import com.sigame.lobby.grpc.PackServiceClient
+import com.sigame.lobby.grpc.UserInfo
 import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.service.KafkaEventPublisher
 import com.sigame.lobby.service.PlayerEventData
@@ -32,7 +34,10 @@ import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.external.GameServiceClient
 import com.sigame.lobby.service.external.GameSettings
 import com.sigame.lobby.service.mapper.RoomMapper
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
@@ -62,22 +67,33 @@ class RoomLifecycleService(
 ) {
 
     @Transactional
-    suspend fun createRoom(hostId: UUID, request: CreateRoomRequest): RoomDto {
+    suspend fun createRoom(hostId: UUID, request: CreateRoomRequest): RoomDto = coroutineScope {
         logger.info { "Creating room for host $hostId with pack ${request.packId}" }
 
-        validatePackForRoom(request.packId, hostId)
-        validateUserNotInRoom(hostId)
+        val packValidation = async { validatePackForRoom(request.packId, hostId) }
+        val userValidation = async { validateUserNotInRoom(hostId) }
+        val hostInfoDeferred = async { authServiceClient.getUserInfo(hostId) }
+        val packInfoDeferred = async { packServiceClient.getPackInfo(request.packId) }
+
+        packValidation.await()
+        userValidation.await()
+        val hostInfo = getRequiredUserInfo(hostInfoDeferred.await(), hostId)
+        val packInfo = packInfoDeferred.await()
 
         val savedRoom = createGameRoom(hostId, request)
-        val roomId = savedRoom.id!!
+        createRoomSettings(savedRoom.id, request.settings)
+        val hostPlayer = createHostPlayer(savedRoom.id, hostId, hostInfo.username, hostInfo.avatarUrl)
 
-        createRoomSettings(roomId, request.settings)
-        addHostAsPlayer(roomId, hostId)
-        updateCacheForNewRoom(savedRoom, hostId)
-        publishRoomCreatedEvent(savedRoom, hostId, request)
+        launch { updateCacheForNewRoom(savedRoom, hostId) }
+        launch { publishRoomCreatedEvent(savedRoom, hostId, hostInfo, packInfo?.name, request) }
         recordRoomCreatedMetrics()
 
-        return roomMapper.toDto(savedRoom, 1)
+        roomMapper.toDto(
+            room = savedRoom,
+            currentPlayers = 1,
+            players = listOf(hostPlayer),
+            packName = packInfo?.name
+        )
     }
 
     @Transactional
@@ -87,7 +103,6 @@ class RoomLifecycleService(
         val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
             ?: throw RoomNotFoundException(roomId)
 
-        // Проверяем, что пользователь - хост
         if (room.hostId != userId) {
             throw UnauthorizedRoomActionException(userId, "start room", "Only the host can start the room")
         }
@@ -200,15 +215,13 @@ class RoomLifecycleService(
         val currentSettings = roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
 
         // Обновляем настройки игры (PATCH - только переданные поля)
-        val updatedSettings = if (currentSettings != null) {
-            currentSettings.copy(
-                timeForAnswer = request.timeForAnswer ?: currentSettings.timeForAnswer,
-                timeForChoice = request.timeForChoice ?: currentSettings.timeForChoice,
-                allowWrongAnswer = request.allowWrongAnswer ?: currentSettings.allowWrongAnswer,
-                showRightAnswer = request.showRightAnswer ?: currentSettings.showRightAnswer
-            )
-        } else {
-            // Создаём новые настройки с дефолтами
+        val updatedSettings = currentSettings?.copy(
+            timeForAnswer = request.timeForAnswer ?: currentSettings.timeForAnswer,
+            timeForChoice = request.timeForChoice ?: currentSettings.timeForChoice,
+            allowWrongAnswer = request.allowWrongAnswer ?: currentSettings.allowWrongAnswer,
+            showRightAnswer = request.showRightAnswer ?: currentSettings.showRightAnswer
+        )
+            ?: // Создаём новые настройки с дефолтами
             RoomSettings(
                 roomId = roomId,
                 timeForAnswer = request.timeForAnswer ?: 30,
@@ -216,7 +229,6 @@ class RoomLifecycleService(
                 allowWrongAnswer = request.allowWrongAnswer ?: true,
                 showRightAnswer = request.showRightAnswer ?: true
             )
-        }
 
         if (currentSettings != null) {
             roomSettingsRepository.save(updatedSettings).awaitFirstOrNull()
@@ -279,18 +291,6 @@ class RoomLifecycleService(
         kafkaEventPublisher.publishRoomCancelled(roomId, "manual")
     }
 
-    private suspend fun buildRoomDto(room: GameRoom): RoomDto {
-        val players = roomPlayerRepository.findActiveByRoomId(room.id!!).asFlow().toList()
-        val settings = roomSettingsRepository.findByRoomId(room.id).awaitFirstOrNull()
-
-        return roomMapper.toDto(
-            room = room,
-            currentPlayers = players.size,
-            players = players,
-            settings = settings
-        )
-    }
-
     private suspend fun validatePackForRoom(packId: UUID, userId: UUID) {
         val validation = packServiceClient.validatePack(packId, userId)
             ?: throw PackNotFoundException(packId)
@@ -334,36 +334,49 @@ class RoomLifecycleService(
         ).awaitFirstOrNull()
     }
 
-    private suspend fun addHostAsPlayer(roomId: UUID, hostId: UUID) {
+    private suspend fun createHostPlayer(
+        roomId: UUID,
+        hostId: UUID,
+        username: String,
+        avatarUrl: String?
+    ): RoomPlayer {
         val hostPlayer = RoomPlayer(
             roomId = roomId,
             userId = hostId,
+            username = username,
+            avatarUrl = avatarUrl,
             role = RoomPlayer.roleFromEnum(PlayerRole.HOST)
         )
-        roomPlayerRepository.save(hostPlayer).awaitFirstOrNull()
+        return roomPlayerRepository.save(hostPlayer).awaitFirst()
     }
 
     private suspend fun updateCacheForNewRoom(room: GameRoom, hostId: UUID) {
         roomCacheService.cacheRoomData(room, 1)
-        roomCacheService.setUserCurrentRoom(hostId, room.id!!)
+        roomCacheService.setUserCurrentRoom(hostId, room.id)
         roomCacheService.addRoomPlayer(room.id, hostId)
     }
 
-    private suspend fun publishRoomCreatedEvent(room: GameRoom, hostId: UUID, request: CreateRoomRequest) {
-        val hostInfo = authServiceClient.getUserInfo(hostId)
-        val packInfo = packServiceClient.getPackInfo(request.packId)
-
+    private suspend fun publishRoomCreatedEvent(
+        room: GameRoom,
+        hostId: UUID,
+        hostInfo: UserInfo?,
+        packName: String?,
+        request: CreateRoomRequest
+    ) {
         kafkaEventPublisher.publishRoomCreated(
-            roomId = room.id!!,
+            roomId = room.id,
             roomCode = room.roomCode,
             hostId = hostId,
             hostUsername = hostInfo?.username ?: "Unknown",
             packId = request.packId,
-            packName = packInfo?.name,
+            packName = packName,
             maxPlayers = request.maxPlayers,
             isPublic = request.isPublic
         )
     }
+
+    private fun getRequiredUserInfo(userInfo: UserInfo?, userId: UUID): UserInfo =
+        userInfo ?: throw UserInfoNotFoundException(userId)
 
     private fun recordRoomCreatedMetrics() {
         lobbyMetrics.recordRoomCreated()

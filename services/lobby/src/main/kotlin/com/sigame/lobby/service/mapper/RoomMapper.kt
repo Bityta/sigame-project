@@ -6,41 +6,37 @@ import com.sigame.lobby.domain.dto.RoomSettingsDto
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
-import com.sigame.lobby.grpc.AuthServiceClient
-import com.sigame.lobby.grpc.PackInfo
-import com.sigame.lobby.grpc.PackServiceClient
-import com.sigame.lobby.grpc.UserInfo
-import com.sigame.lobby.service.batch.BatchOperationService
 import org.springframework.stereotype.Component
-import java.util.UUID
 
 @Component
-class RoomMapper(
-    private val authServiceClient: AuthServiceClient,
-    private val packServiceClient: PackServiceClient,
-    private val batchOperationService: BatchOperationService
-) {
-    
-        suspend fun toDto(
+class RoomMapper {
+
+    fun toDto(
         room: GameRoom,
         currentPlayers: Int,
-        players: List<RoomPlayer>? = null,
-        settings: RoomSettings? = null
+        players: List<RoomPlayer> = emptyList(),
+        settings: RoomSettings? = null,
+        packName: String? = null
     ): RoomDto {
-        val hostInfo = authServiceClient.getUserInfo(room.hostId)
-        val packInfo = packServiceClient.getPackInfo(room.packId)
+        val hostPlayer = players.find { it.userId == room.hostId }
         
-        val playerDtos = players?.let { buildPlayerDtos(it) }
-        val settingsDto = settings?.let { toSettingsDto(it) }
-        
+        val playerDtos = players.map { player ->
+            PlayerDto(
+                userId = player.userId,
+                username = player.username,
+                avatarUrl = player.avatarUrl,
+                role = player.role
+            )
+        }
+
         return RoomDto(
-            id = room.id!!,
+            id = room.id,
             roomCode = room.roomCode,
             name = room.name,
             hostId = room.hostId,
-            hostUsername = hostInfo?.username,
+            hostUsername = hostPlayer?.username,
             packId = room.packId,
-            packName = packInfo?.name,
+            packName = packName,
             status = room.status,
             maxPlayers = room.maxPlayers,
             currentPlayers = currentPlayers,
@@ -48,32 +44,36 @@ class RoomMapper(
             hasPassword = room.passwordHash != null,
             createdAt = room.createdAt,
             players = playerDtos,
-            settings = settingsDto
+            settings = settings?.let { toSettingsDto(it) }
         )
     }
-    
-        suspend fun toDtoWithCache(
+
+    fun toDtoWithCache(
         room: GameRoom,
         currentPlayers: Int,
-        userInfoCache: Map<UUID, UserInfo?> = emptyMap(),
-        packInfoCache: Map<UUID, PackInfo?> = emptyMap(),
+        packName: String? = null,
         players: List<RoomPlayer>? = null,
         settings: RoomSettings? = null
     ): RoomDto {
-        val hostInfo = userInfoCache[room.hostId]
-        val packInfo = packInfoCache[room.packId]
+        val hostPlayer = players?.find { it.userId == room.hostId }
         
-        val playerDtos = players?.let { buildPlayerDtosWithCache(it, userInfoCache) }
-        val settingsDto = settings?.let { toSettingsDto(it) }
-        
+        val playerDtos = players?.map { player ->
+            PlayerDto(
+                userId = player.userId,
+                username = player.username,
+                avatarUrl = player.avatarUrl,
+                role = player.role
+            )
+        }
+
         return RoomDto(
-            id = room.id!!,
+            id = room.id,
             roomCode = room.roomCode,
             name = room.name,
             hostId = room.hostId,
-            hostUsername = hostInfo?.username,
+            hostUsername = hostPlayer?.username,
             packId = room.packId,
-            packName = packInfo?.name,
+            packName = packName,
             status = room.status,
             maxPlayers = room.maxPlayers,
             currentPlayers = currentPlayers,
@@ -81,42 +81,11 @@ class RoomMapper(
             hasPassword = room.passwordHash != null,
             createdAt = room.createdAt,
             players = playerDtos,
-            settings = settingsDto
+            settings = settings?.let { toSettingsDto(it) }
         )
     }
-    
-        private suspend fun buildPlayerDtos(players: List<RoomPlayer>): List<PlayerDto> {
-        // Используем batch операцию для оптимизации
-        val userIds = players.map { it.userId }
-        val userInfoMap = batchOperationService.getUserInfoBatch(userIds)
-        
-        return players.map { player ->
-            val userInfo = userInfoMap[player.userId]
-            PlayerDto(
-                userId = player.userId,
-                username = userInfo?.username ?: "Unknown",
-                avatarUrl = userInfo?.avatarUrl,
-                role = player.role
-            )
-        }
-    }
-    
-        private fun buildPlayerDtosWithCache(
-        players: List<RoomPlayer>,
-        userInfoCache: Map<UUID, UserInfo?>
-    ): List<PlayerDto> {
-        return players.map { player ->
-            val userInfo = userInfoCache[player.userId]
-            PlayerDto(
-                userId = player.userId,
-                username = userInfo?.username ?: "Unknown",
-                avatarUrl = userInfo?.avatarUrl,
-                role = player.role
-            )
-        }
-    }
-    
-        private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
+
+    private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
         return RoomSettingsDto(
             timeForAnswer = settings.timeForAnswer,
             timeForChoice = settings.timeForChoice,
@@ -125,4 +94,3 @@ class RoomMapper(
         )
     }
 }
-

@@ -50,16 +50,19 @@ class RoomQueryService(
             else -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
         }
         
-        // Batch загрузка данных для оптимизации N+1 проблемы
-        val hostIds = rooms.map { it.hostId }
+        // Batch загрузка паков
         val packIds = rooms.map { it.packId }
-        
-        val userInfoMap = batchOperationService.getUserInfoBatch(hostIds)
         val packInfoMap = batchOperationService.getPackInfoBatch(packIds)
         
         val roomDtos = rooms.map { room ->
-            val playerCount = roomPlayerRepository.countActiveByRoomId(room.id!!).awaitFirst().toInt()
-            roomMapper.toDtoWithCache(room, playerCount, userInfoMap, packInfoMap)
+            val playerCount = roomPlayerRepository.countActiveByRoomId(room.id).awaitFirst().toInt()
+            val players = roomPlayerRepository.findActiveByRoomId(room.id).asFlow().toList()
+            roomMapper.toDtoWithCache(
+                room = room,
+                currentPlayers = playerCount,
+                packName = packInfoMap[room.packId]?.name,
+                players = players
+            )
         }
         
         // Вычисляем totalPages согласно README
@@ -101,14 +104,16 @@ class RoomQueryService(
     }
     
         private suspend fun buildDetailedRoomDto(room: com.sigame.lobby.domain.model.GameRoom): RoomDto {
-        val players = roomPlayerRepository.findActiveByRoomId(room.id!!).asFlow().toList()
+        val players = roomPlayerRepository.findActiveByRoomId(room.id).asFlow().toList()
         val settings = roomSettingsRepository.findByRoomId(room.id).awaitFirstOrNull()
+        val packInfo = batchOperationService.getPackInfoBatch(listOf(room.packId))[room.packId]
         
         return roomMapper.toDto(
             room = room,
             currentPlayers = players.size,
             players = players,
-            settings = settings
+            settings = settings,
+            packName = packInfo?.name
         )
     }
     

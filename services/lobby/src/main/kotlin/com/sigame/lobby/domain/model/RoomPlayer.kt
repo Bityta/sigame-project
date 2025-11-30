@@ -12,6 +12,8 @@ data class RoomPlayer(
     val id: UUID? = null,
     val roomId: UUID,
     val userId: UUID,
+    val username: String,
+    val avatarUrl: String? = null,
     val role: String = "player",
     val joinedAt: LocalDateTime = LocalDateTime.now(),
     val leftAt: LocalDateTime? = null
