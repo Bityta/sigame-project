@@ -98,7 +98,7 @@ class PackServiceClient(
             PackValidationResult(
                 exists = response.exists,
                 isOwner = response.isOwner,
-                status = response.status.ifEmpty { "approved" }, // default для обратной совместимости
+                status = response.status.ifEmpty { "approved" },
                 error = response.error.ifEmpty { null }
             )
         }

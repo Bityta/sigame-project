@@ -57,7 +57,7 @@ class KafkaEventPublisher(
         hostId: UUID,
         hostUsername: String,
         packId: UUID,
-        packName: String?,
+        packName: String,
         maxPlayers: Int,
         isPublic: Boolean
     ) {
@@ -70,7 +70,7 @@ class KafkaEventPublisher(
                 "host_id" to hostId.toString(),
                 "host_username" to hostUsername,
                 "pack_id" to packId.toString(),
-                "pack_name" to (packName ?: "Unknown"),
+                "pack_name" to packName,
                 "max_players" to maxPlayers,
                 "is_public" to isPublic
             )

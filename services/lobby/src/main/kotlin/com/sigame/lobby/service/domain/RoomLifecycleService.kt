@@ -16,6 +16,7 @@ import com.sigame.lobby.domain.exception.PackNotOwnedException
 import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
 import com.sigame.lobby.domain.exception.RoomNotFoundException
 import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
+import com.sigame.lobby.domain.exception.PackInfoNotFoundException
 import com.sigame.lobby.domain.exception.UserInfoNotFoundException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
@@ -24,6 +25,7 @@ import com.sigame.lobby.domain.repository.GameRoomRepository
 import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.AuthServiceClient
+import com.sigame.lobby.grpc.PackInfo
 import com.sigame.lobby.grpc.PackServiceClient
 import com.sigame.lobby.grpc.UserInfo
 import com.sigame.lobby.metrics.LobbyMetrics
@@ -72,12 +74,12 @@ class RoomLifecycleService(
 
         val packValidation = async { validatePackForRoom(request.packId, hostId) }
         val userValidation = async { validateUserNotInRoom(hostId) }
-        val hostInfoDeferred = async { authServiceClient.getUserInfo(hostId) }
-        val packInfoDeferred = async { packServiceClient.getPackInfo(request.packId) }
+        val hostInfoDeferred = async { fetchRequiredUserInfo(hostId) }
+        val packInfoDeferred = async { fetchRequiredPackInfo(request.packId) }
 
         packValidation.await()
         userValidation.await()
-        val hostInfo = getRequiredUserInfo(hostInfoDeferred.await(), hostId)
+        val hostInfo = hostInfoDeferred.await()
         val packInfo = packInfoDeferred.await()
 
         val savedRoom = createGameRoom(hostId, request)
@@ -85,14 +87,14 @@ class RoomLifecycleService(
         val hostPlayer = createHostPlayer(savedRoom.id, hostId, hostInfo.username, hostInfo.avatarUrl)
 
         launch { updateCacheForNewRoom(savedRoom, hostId) }
-        launch { publishRoomCreatedEvent(savedRoom, hostId, hostInfo, packInfo?.name, request) }
+        launch { publishRoomCreatedEvent(savedRoom, hostId, hostInfo, packInfo.name, request) }
         recordRoomCreatedMetrics()
 
         roomMapper.toDto(
             room = savedRoom,
             currentPlayers = 1,
             players = listOf(hostPlayer),
-            packName = packInfo?.name
+            packName = packInfo.name
         )
     }
 
@@ -359,15 +361,15 @@ class RoomLifecycleService(
     private suspend fun publishRoomCreatedEvent(
         room: GameRoom,
         hostId: UUID,
-        hostInfo: UserInfo?,
-        packName: String?,
+        hostInfo: UserInfo,
+        packName: String,
         request: CreateRoomRequest
     ) {
         kafkaEventPublisher.publishRoomCreated(
             roomId = room.id,
             roomCode = room.roomCode,
             hostId = hostId,
-            hostUsername = hostInfo?.username ?: "Unknown",
+            hostUsername = hostInfo.username,
             packId = request.packId,
             packName = packName,
             maxPlayers = request.maxPlayers,
@@ -375,8 +377,13 @@ class RoomLifecycleService(
         )
     }
 
-    private fun getRequiredUserInfo(userInfo: UserInfo?, userId: UUID): UserInfo =
-        userInfo ?: throw UserInfoNotFoundException(userId)
+    private suspend fun fetchRequiredUserInfo(userId: UUID): UserInfo =
+        authServiceClient.getUserInfo(userId)
+            ?: throw UserInfoNotFoundException(userId)
+
+    private suspend fun fetchRequiredPackInfo(packId: UUID): PackInfo =
+        packServiceClient.getPackInfo(packId)
+            ?: throw PackInfoNotFoundException(packId)
 
     private fun recordRoomCreatedMetrics() {
         lobbyMetrics.recordRoomCreated()
