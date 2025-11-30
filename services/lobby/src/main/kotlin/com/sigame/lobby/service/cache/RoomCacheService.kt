@@ -3,6 +3,8 @@ package com.sigame.lobby.service.cache
 import com.sigame.lobby.config.RoomConfig
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.model.GameRoom
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import mu.KotlinLogging
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -22,15 +24,15 @@ class RoomCacheService(
 
     suspend fun cacheRoomData(room: GameRoom, currentPlayers: Int) {
         try {
-            val metadata = mapOf(
-                "room_code" to room.roomCode,
-                "host_id" to room.hostId.toString(),
-                "pack_id" to room.packId.toString(),
-                "name" to room.name,
-                "status" to room.status,
-                "player_count" to currentPlayers.toString(),
-                "max_players" to room.maxPlayers.toString()
-            )
+            val metadata = buildMap<String, String>(7) {
+                put("room_code", room.roomCode)
+                put("host_id", room.hostId.toString())
+                put("pack_id", room.packId.toString())
+                put("name", room.name)
+                put("status", room.status)
+                put("player_count", currentPlayers.toString())
+                put("max_players", room.maxPlayers.toString())
+            }
 
             setRoomMeta(room.id, metadata)
 
@@ -136,10 +138,10 @@ class RoomCacheService(
         }
     }
 
-    suspend fun clearRoomCache(roomId: UUID) {
-        removeActiveRoom(roomId)
-        deleteRoomMeta(roomId)
-        deleteRoomPlayers(roomId)
+    suspend fun clearRoomCache(roomId: UUID) = coroutineScope {
+        launch { removeActiveRoom(roomId) }
+        launch { deleteRoomMeta(roomId) }
+        launch { deleteRoomPlayers(roomId) }
     }
 }
 

@@ -59,7 +59,7 @@ class RoomLifecycleHelper(
     private val gameServiceClient: GameServiceClient,
     private val lobbyMetrics: LobbyMetrics,
     private val roomEventPublisher: RoomEventPublisher,
-    private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
+    private val passwordEncoder: BCryptPasswordEncoder
 ) {
 
     suspend fun validatePackForRoom(packId: UUID, userId: UUID) {

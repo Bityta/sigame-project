@@ -20,6 +20,8 @@ class LobbyMetrics(
     private val activeRooms = AtomicInteger(0)
     private val activePlayers = AtomicInteger(0)
     private val roomsByStatus = ConcurrentHashMap<RoomStatus, AtomicInteger>()
+    private val grpcCallCounters = ConcurrentHashMap<String, Counter>()
+    private val grpcErrorCounters = ConcurrentHashMap<String, Counter>()
 
     init {
         Counter.builder("lobby_rooms_created_total")
@@ -106,18 +108,21 @@ class LobbyMetrics(
     }
 
     fun recordGrpcCall(serviceName: String) {
-        Counter.builder("lobby_grpc_calls_total")
-            .tag("service", serviceName)
-            .register(meterRegistry)
-            .increment()
+        grpcCallCounters.computeIfAbsent(serviceName) {
+            Counter.builder("lobby_grpc_calls_total")
+                .tag("service", serviceName)
+                .register(meterRegistry)
+        }.increment()
     }
 
     fun recordGrpcError(serviceName: String, errorType: String) {
-        Counter.builder("lobby_grpc_errors_total")
-            .tag("service", serviceName)
-            .tag("error_type", errorType)
-            .register(meterRegistry)
-            .increment()
+        val key = "$serviceName:$errorType"
+        grpcErrorCounters.computeIfAbsent(key) {
+            Counter.builder("lobby_grpc_errors_total")
+                .tag("service", serviceName)
+                .tag("error_type", errorType)
+                .register(meterRegistry)
+        }.increment()
     }
 
     fun setActiveRooms(count: Int) {

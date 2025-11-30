@@ -51,7 +51,7 @@ class RoomMembershipHelper(
     private val lobbyMetrics: LobbyMetrics,
     private val roomMapper: RoomMapper,
     private val roomEventPublisher: RoomEventPublisher,
-    private val passwordEncoder: BCryptPasswordEncoder = BCryptPasswordEncoder(12)
+    private val passwordEncoder: BCryptPasswordEncoder
 ) {
 
     data class JoinContext(
@@ -242,15 +242,25 @@ class RoomMembershipHelper(
         return roomPlayerRepository.save(updated).awaitFirst()
     }
 
-    private suspend fun transferHost(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer): GameRoom {
+    private suspend fun transferHost(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer): GameRoom = coroutineScope {
         val currentHost = roomPlayerRepository.findByRoomIdAndUserId(room.id, fromHostId).awaitFirstOrNull()
-        if (currentHost != null) {
-            roomPlayerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER)))
-                .awaitFirstOrNull()
+        
+        val demoteJob = if (currentHost != null) {
+            launch { 
+                roomPlayerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER)))
+                    .awaitFirstOrNull() 
+            }
+        } else null
+        
+        launch { 
+            roomPlayerRepository.save(toPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST)))
+                .awaitFirstOrNull() 
         }
-        roomPlayerRepository.save(toPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST))).awaitFirstOrNull()
+        
+        demoteJob?.join()
+        
         val updatedRoom = room.copy(hostId = toPlayer.userId)
-        return gameRoomRepository.save(updatedRoom).awaitFirst()
+        gameRoomRepository.save(updatedRoom).awaitFirst()
     }
 
     private suspend fun findRoomOrThrow(roomId: UUID): GameRoom =

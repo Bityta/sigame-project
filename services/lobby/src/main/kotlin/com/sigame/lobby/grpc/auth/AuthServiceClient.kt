@@ -68,8 +68,6 @@ class AuthServiceClient(
 
     suspend fun validateToken(token: String): UserInfo? = withRetry("validateToken") {
         withContext(Dispatchers.IO) {
-            logger.debug { "Validating token with Auth Service..." }
-
             val request = ValidateTokenRequest.newBuilder()
                 .setToken(token)
                 .build()
