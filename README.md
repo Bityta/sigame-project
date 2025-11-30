@@ -1455,13 +1455,136 @@ sequenceDiagram
 
 ---
 
+## 📋 Общие типы и форматы
+
+### Формат ошибок (все сервисы)
+
+```typescript
+// Стандартный формат ошибки
+{
+  "error": "ERROR_CODE",           // Код ошибки (UPPER_SNAKE_CASE)
+  "message": "Human readable text", // Описание для пользователя
+  "details": { ... }               // Дополнительные данные (опционально)
+}
+
+// Пример
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Username must be 5-50 characters",
+  "details": {
+    "field": "username",
+    "min_length": 5,
+    "max_length": 50
+  }
+}
+```
+
+### HTTP статус-коды
+
+| Код | Когда |
+|-----|-------|
+| `200 OK` | Успешный запрос |
+| `201 Created` | Ресурс создан (POST) |
+| `204 No Content` | Успешно, без тела (DELETE) |
+| `400 Bad Request` | Ошибка валидации |
+| `401 Unauthorized` | Не авторизован / невалидный токен |
+| `403 Forbidden` | Нет прав доступа |
+| `404 Not Found` | Ресурс не найден |
+| `409 Conflict` | Конфликт состояния |
+| `413 Payload Too Large` | Файл слишком большой |
+| `429 Too Many Requests` | Rate limit |
+| `500 Internal Server Error` | Внутренняя ошибка |
+
+### Общие типы данных
+
+```typescript
+// User — пользователь
+interface User {
+  id: string;           // UUID
+  username: string;     // 5-50 символов, [a-zA-Z0-9_-]
+  avatar_url: string | null;  // URL или null
+  created_at: string;   // ISO8601
+}
+
+// Room — игровая комната
+interface Room {
+  id: string;
+  roomCode: string;     // 6 символов, [A-Z0-9]
+  name: string;
+  hostId: string;
+  packId: string;
+  status: "WAITING" | "STARTING" | "PLAYING" | "FINISHED" | "CANCELLED";
+  maxPlayers: number;   // 2-12
+  currentPlayers: number;
+  isPublic: boolean;
+  hasPassword: boolean;
+  players: RoomPlayer[];
+  settings: RoomSettings;
+  createdAt: string;
+}
+
+// RoomPlayer — игрок в комнате
+interface RoomPlayer {
+  userId: string;
+  username: string;
+  avatar_url: string | null;
+  role: "HOST" | "PLAYER";
+}
+
+// RoomSettings — настройки комнаты
+interface RoomSettings {
+  timeForAnswer: number;      // 10-120 сек
+  timeForChoice: number;      // 10-180 сек
+  allowWrongAnswer: boolean;  // Штраф за неверный ответ
+  showRightAnswer: boolean;   // Показывать правильный ответ
+}
+
+// Pack — пак вопросов
+interface Pack {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  rounds_count: number;
+  questions_count: number;
+  status: "processing" | "approved" | "failed";
+  has_media: boolean;
+  created_at: string;
+}
+
+// Game — игровая сессия
+interface Game {
+  game_id: string;
+  room_id: string;
+  pack_id: string;
+  status: "created" | "playing" | "finished";
+  current_round: number;
+  players: GamePlayer[];
+  started_at: string;
+  finished_at: string | null;
+}
+
+// GamePlayer — игрок в игре
+interface GamePlayer {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  role: "host" | "player";
+  score: number;
+  is_active: boolean;
+  is_connected: boolean;
+}
+```
+
+---
+
 ## 🔐 9. Auth Service
 
 [⬆️ К оглавлению](#-оглавление)
 
 > **Go 1.21** | **Gin** | **:8001 (HTTP)** | **:50051 (gRPC)**
 
-### 6.1 Описание сервиса
+### 9.1 Описание сервиса
 
 **Auth Service** — центральный сервис аутентификации и авторизации системы SIGame.
 
@@ -1479,7 +1602,7 @@ sequenceDiagram
 
 ---
 
-### 6.2 REST API — Полный список ручек
+### 9.2 REST API — Полный список ручек
 
 #### `GET /health` — Health Check
 Проверка работоспособности сервиса.
@@ -1694,26 +1817,58 @@ sequenceDiagram
 
 ---
 
-### 6.3 gRPC API
+### 9.3 gRPC API
+
+**Порт:** `:50051`
 
 ```protobuf
 service AuthService {
-  // Валидация JWT токена (вызывается Lobby/Game сервисами)
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
-  
-  // Получение информации о пользователе по ID
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ValidateToken — проверка JWT токена
+// ═══════════════════════════════════════════════════════════
+
+message ValidateTokenRequest {
+  string token = 1;  // JWT access token (без "Bearer ")
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;              // true если токен валиден
+  string user_id = 2;          // UUID пользователя
+  string username = 3;         // Имя пользователя
+  string avatar_url = 4;       // URL аватарки (может быть пустым)
+  string error = 5;            // Текст ошибки если valid=false
+}
+
+// ═══════════════════════════════════════════════════════════
+// GetUserInfo — получение информации о пользователе
+// ═══════════════════════════════════════════════════════════
+
+message GetUserInfoRequest {
+  string user_id = 1;  // UUID пользователя
+}
+
+message GetUserInfoResponse {
+  bool found = 1;              // true если пользователь найден
+  string user_id = 2;          // UUID
+  string username = 3;         // Имя
+  string avatar_url = 4;       // URL аватарки
+  string created_at = 5;       // ISO8601 timestamp
+  string error = 6;            // Текст ошибки если found=false
 }
 ```
 
-| Метод | Описание | Вызывается из |
-|-------|----------|---------------|
-| `ValidateToken` | Проверка JWT, возврат user_id/username/avatar_url | Lobby, Game |
-| `GetUserInfo` | Получение данных пользователя по ID (включая avatar_url) | Lobby |
+| Метод | Вызывается из | Когда |
+|-------|---------------|-------|
+| `ValidateToken` | Lobby, Game | При каждом запросе с токеном |
+| `GetUserInfo` | Lobby | При отображении списка игроков |
 
 ---
 
-### 6.4 Бизнес-правила
+### 9.4 Бизнес-правила
 
 | Правило | Значение |
 |---------|----------|
@@ -1735,7 +1890,7 @@ service AuthService {
 
 > **Kotlin 1.9** | **Spring WebFlux** | **:8002 (HTTP)**
 
-### 7.1 Описание сервиса
+### 10.1 Описание сервиса
 
 **Lobby Service** — сервис управления игровыми комнатами (лобби).
 
@@ -1757,7 +1912,7 @@ service AuthService {
 
 ---
 
-### 7.2 REST API — Полный список ручек
+### 10.2 REST API — Полный список ручек
 
 #### `GET /api/lobby/health` — Health Check
 
@@ -1888,6 +2043,41 @@ service AuthService {
 | Body | `{password?}` (для приватных комнат) |
 | Response | `200 OK` |
 
+**Request:**
+```json
+{
+  "password": "secret123"  // Только для приватных комнат
+}
+```
+
+**Response:**
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "roomCode": "ABC123",
+  "name": "Моя игра",
+  "hostId": "550e8400-e29b-41d4-a716-446655440000",
+  "packId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "WAITING",
+  "maxPlayers": 6,
+  "currentPlayers": 3,
+  "isPublic": false,
+  "hasPassword": true,
+  "players": [
+    {"userId": "...", "username": "host", "avatar_url": "...", "role": "HOST"},
+    {"userId": "...", "username": "player2", "avatar_url": "...", "role": "PLAYER"},
+    {"userId": "...", "username": "you", "avatar_url": "...", "role": "PLAYER"}
+  ],
+  "settings": {
+    "timeForAnswer": 30,
+    "timeForChoice": 60,
+    "allowWrongAnswer": true,
+    "showRightAnswer": true
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
 **Ошибки:**
 - `400 INVALID_PASSWORD` — Неверный пароль
 - `404 ROOM_NOT_FOUND` — Комната не найдена
@@ -1942,10 +2132,33 @@ service AuthService {
 |----------|----------|
 | Auth | ✅ `Bearer {token}` |
 | Path | `id` — UUID комнаты |
-| Body | `{timeForAnswer?, timeForChoice?, ...}` |
+| Body | Частичный объект настроек |
 | Response | `200 OK` |
 
+**Request:**
+```json
+{
+  "timeForAnswer": 45,       // 10-120 сек
+  "timeForChoice": 90,       // 10-180 сек
+  "allowWrongAnswer": false, // Штраф за неверный ответ
+  "showRightAnswer": true    // Показывать правильный ответ
+}
+```
+
+**Response:**
+```json
+{
+  "settings": {
+    "timeForAnswer": 45,
+    "timeForChoice": 90,
+    "allowWrongAnswer": false,
+    "showRightAnswer": true
+  }
+}
+```
+
 **Ошибки:**
+- `400 VALIDATION_ERROR` — Невалидные значения (вне допустимого диапазона)
 - `403 UNAUTHORIZED_ACTION` — Не хост
 - `409 INVALID_ROOM_STATE` — Игра уже запущена
 
@@ -1965,15 +2178,87 @@ service AuthService {
 
 ---
 
-### 7.3 Kafka Events
+### 10.3 Kafka Events
 
 | Event | Topic | Описание |
 |-------|-------|----------|
-| `ROOM_CREATED` | game.events | Комната создана |
-| `PLAYER_JOINED` | game.events | Игрок присоединился |
-| `PLAYER_LEFT` | game.events | Игрок вышел |
-| `ROOM_STARTED` | game.events | Игра запущена |
-| `ROOM_CANCELLED` | game.events | Комната отменена |
+| `ROOM_CREATED` | lobby.events | Комната создана |
+| `PLAYER_JOINED` | lobby.events | Игрок присоединился |
+| `PLAYER_LEFT` | lobby.events | Игрок вышел |
+| `ROOM_STARTED` | lobby.events | Игра запущена |
+| `ROOM_CANCELLED` | lobby.events | Комната отменена |
+
+**Схемы событий:**
+
+```typescript
+// ROOM_CREATED — комната создана
+{
+  "event_type": "ROOM_CREATED",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "payload": {
+    "room_id": "uuid",
+    "room_code": "ABC123",
+    "host_id": "uuid",
+    "host_username": "player1",
+    "pack_id": "uuid",
+    "pack_name": "Общие знания",
+    "max_players": 6,
+    "is_public": true
+  }
+}
+
+// PLAYER_JOINED — игрок присоединился
+{
+  "event_type": "PLAYER_JOINED",
+  "timestamp": "2024-01-15T10:31:00Z",
+  "payload": {
+    "room_id": "uuid",
+    "user_id": "uuid",
+    "username": "player2",
+    "avatar_url": "https://...",
+    "current_players": 3,
+    "max_players": 6
+  }
+}
+
+// PLAYER_LEFT — игрок вышел
+{
+  "event_type": "PLAYER_LEFT",
+  "timestamp": "2024-01-15T10:32:00Z",
+  "payload": {
+    "room_id": "uuid",
+    "user_id": "uuid",
+    "username": "player2",
+    "reason": "left",         // "left" | "kicked" | "disconnected"
+    "current_players": 2
+  }
+}
+
+// ROOM_STARTED — игра запущена
+{
+  "event_type": "ROOM_STARTED",
+  "timestamp": "2024-01-15T10:35:00Z",
+  "payload": {
+    "room_id": "uuid",
+    "game_id": "uuid",
+    "players": [
+      {"user_id": "uuid", "username": "player1", "role": "host"},
+      {"user_id": "uuid", "username": "player2", "role": "player"}
+    ],
+    "pack_id": "uuid"
+  }
+}
+
+// ROOM_CANCELLED — комната отменена
+{
+  "event_type": "ROOM_CANCELLED",
+  "timestamp": "2024-01-15T10:40:00Z",
+  "payload": {
+    "room_id": "uuid",
+    "reason": "host_left"     // "host_left" | "timeout" | "manual"
+  }
+}
+```
 
 ---
 
@@ -1983,7 +2268,7 @@ service AuthService {
 
 > **Go 1.21** | **Gin + Gorilla WebSocket** | **:8003 (HTTP)** | **:8083 (WS)**
 
-### 8.1 Описание сервиса
+### 11.1 Описание сервиса
 
 **Game Service** — сервис игровой логики в реальном времени.
 
@@ -2003,7 +2288,7 @@ service AuthService {
 
 ---
 
-### 8.2 REST API — Полный список ручек
+### 11.2 REST API — Полный список ручек
 
 #### `GET /health` — Health Check
 
@@ -2090,7 +2375,7 @@ service AuthService {
 
 ---
 
-### 8.3 WebSocket API
+### 11.3 WebSocket API
 
 **Endpoint:** `WS /api/game/{game_id}/ws?user_id={id}&token={jwt}`
 
@@ -2098,13 +2383,113 @@ service AuthService {
 
 #### Client → Server сообщения
 
-| Type | Описание | Payload | Кто отправляет |
-|------|----------|---------|----------------|
-| `READY` | Игрок готов к игре | — | Все игроки |
-| `SELECT_QUESTION` | Выбор вопроса | `{theme_id, question_id}` | Выбирающий игрок |
-| `PRESS_BUTTON` | Нажатие кнопки для ответа | `{client_time}` | Любой игрок |
-| `SUBMIT_ANSWER` | Отправка ответа | `{answer}` | Отвечающий игрок |
-| `JUDGE_ANSWER` | Оценка ответа | `{user_id, correct}` | Только хост |
+| Type | Описание | Кто отправляет |
+|------|----------|----------------|
+| `READY` | Игрок готов к игре | Все игроки |
+| `SELECT_QUESTION` | Выбор вопроса | Выбирающий игрок |
+| `PRESS_BUTTON` | Нажатие кнопки для ответа | Любой игрок |
+| `SUBMIT_ANSWER` | Отправка ответа | Отвечающий игрок |
+| `JUDGE_ANSWER` | Оценка ответа | Только хост |
+| `MAKE_STAKE` | Ставка (Ва-банк) | Игрок со ставкой |
+| `GIVE_CAT_TO` | Передача "Кота в мешке" | Выбравший кота |
+| `PONG` | Ответ на PING | Все игроки |
+| `TIME_SYNC_REQ` | Запрос синхронизации времени | Все клиенты |
+| `MEDIA_LOAD_PROGRESS` | Прогресс загрузки медиа | Все клиенты |
+| `MEDIA_LOAD_COMPLETE` | Медиа загружено | Все клиенты |
+
+**Детальные схемы Client → Server:**
+
+```typescript
+// READY — готовность к игре
+{ "type": "READY" }
+
+// SELECT_QUESTION — выбор вопроса
+{
+  "type": "SELECT_QUESTION",
+  "payload": {
+    "theme_index": 0,       // Индекс темы (0-4)
+    "question_index": 2     // Индекс вопроса (0-4)
+  }
+}
+
+// PRESS_BUTTON — нажатие кнопки ответа
+{
+  "type": "PRESS_BUTTON",
+  "payload": {
+    "client_time": 1701234567890  // Время на клиенте (опционально)
+  }
+}
+
+// SUBMIT_ANSWER — отправка ответа (голосом через микрофон или текстом)
+{
+  "type": "SUBMIT_ANSWER",
+  "payload": {
+    "answer": "Пётр I"      // Текст ответа (для финала)
+  }
+}
+
+// JUDGE_ANSWER — оценка ответа хостом
+{
+  "type": "JUDGE_ANSWER",
+  "payload": {
+    "user_id": "uuid",      // ID отвечавшего игрока
+    "correct": true         // true = верно, false = неверно
+  }
+}
+
+// MAKE_STAKE — ставка для Ва-банк
+{
+  "type": "MAKE_STAKE",
+  "payload": {
+    "amount": 500           // Сумма ставки
+  }
+}
+
+// GIVE_CAT_TO — передача "Кота в мешке"
+{
+  "type": "GIVE_CAT_TO",
+  "payload": {
+    "receiver_id": "uuid"   // ID получателя
+  }
+}
+
+// PONG — ответ на PING
+{
+  "type": "PONG",
+  "payload": {
+    "server_time": 1701234567890,  // Время из PING
+    "client_time": 1701234567895   // Текущее время клиента
+  }
+}
+
+// TIME_SYNC_REQ — запрос синхронизации времени
+{
+  "type": "TIME_SYNC_REQ",
+  "payload": {
+    "client_time": 1701234567000
+  }
+}
+
+// MEDIA_LOAD_PROGRESS — прогресс загрузки медиа
+{
+  "type": "MEDIA_LOAD_PROGRESS",
+  "payload": {
+    "loaded": 12,
+    "total": 25,
+    "bytes_loaded": 7500000,
+    "percent": 48
+  }
+}
+
+// MEDIA_LOAD_COMPLETE — медиа загружено
+{
+  "type": "MEDIA_LOAD_COMPLETE",
+  "payload": {
+    "round": 1,
+    "loaded_count": 25
+  }
+}
+```
 
 ---
 
@@ -2112,18 +2497,285 @@ service AuthService {
 
 | Type | Описание | Когда отправляется |
 |------|----------|-------------------|
-| `STATE_UPDATE` | Полное состояние игры | При любом изменении |
+| `STATE_UPDATE` | Полное состояние игры | При подключении и изменениях |
 | `QUESTION_SELECTED` | Вопрос выбран | После SELECT_QUESTION |
+| `WAITING_BUTTON` | Ожидание нажатия кнопки | После показа вопроса |
 | `BUTTON_PRESSED` | Кнопка нажата | После PRESS_BUTTON |
+| `PLAYER_ANSWERING` | Игрок отвечает | После определения победителя |
 | `ANSWER_RESULT` | Результат ответа | После JUDGE_ANSWER |
+| `SCORES_UPDATE` | Обновление очков | После изменения счёта |
+| `ROUND_START` | Начало раунда | При переходе к раунду |
 | `ROUND_COMPLETE` | Раунд завершён | В конце раунда |
 | `GAME_COMPLETE` | Игра завершена | В конце игры |
 | `ERROR` | Ошибка | При ошибке |
 | `PING` | Измерение задержки | Каждые 5 сек |
+| `TIME_SYNC_RES` | Ответ синхронизации времени | На TIME_SYNC_REQ |
+| `ROUND_MEDIA_MANIFEST` | Список медиа раунда | В начале раунда |
+| `START_MEDIA` | Команда воспроизведения | При показе вопроса |
+| `WHO_GETS_CAT` | Выбор получателя кота | При "Кот в мешке" |
+| `YOU_GOT_CAT` | Уведомление о коте | Получателю кота |
+| `MAKE_STAKE_REQUEST` | Запрос ставки | При Ва-банке |
+
+**Детальные схемы Server → Client:**
+
+```typescript
+// STATE_UPDATE — полное состояние игры
+{
+  "type": "STATE_UPDATE",
+  "payload": {
+    "game_id": "uuid",
+    "status": "playing",      // "waiting" | "playing" | "finished"
+    "phase": "question_select", // Текущая фаза
+    "current_round": 1,
+    "choosing_player_id": "uuid",  // Кто сейчас выбирает
+    "answering_player_id": null,   // Кто сейчас отвечает
+    "players": [
+      {
+        "user_id": "uuid",
+        "username": "player1",
+        "avatar_url": "https://...",
+        "role": "host",        // "host" | "player"
+        "score": 500,
+        "is_active": true,
+        "is_connected": true
+      }
+    ],
+    "board": {
+      "themes": [
+        {
+          "id": "theme-1",
+          "name": "История",
+          "questions": [
+            {"id": "q1", "price": 100, "is_answered": false},
+            {"id": "q2", "price": 200, "is_answered": true}
+          ]
+        }
+      ]
+    },
+    "timer": {
+      "type": "answer",        // Тип таймера
+      "remaining_ms": 15000,   // Осталось мс
+      "started_at": 1701234567890
+    }
+  }
+}
+
+// QUESTION_SELECTED — вопрос выбран
+{
+  "type": "QUESTION_SELECTED",
+  "payload": {
+    "theme_name": "История",
+    "theme_index": 0,
+    "question_index": 2,
+    "price": 300,
+    "question_type": "standard",  // "standard"|"secret"|"stake"|"forAll"
+    "text": "Кто был первым президентом США?",
+    "media_type": "text",         // "text"|"image"|"audio"|"video"
+    "media_url": null,
+    "media_duration_ms": 0
+  }
+}
+
+// WAITING_BUTTON — ожидание нажатия кнопки
+{
+  "type": "WAITING_BUTTON",
+  "payload": {
+    "timeout_ms": 30000,
+    "started_at": 1701234567890
+  }
+}
+
+// BUTTON_PRESSED — кнопка нажата
+{
+  "type": "BUTTON_PRESSED",
+  "payload": {
+    "winner_id": "uuid",
+    "winner_name": "player1",
+    "winner_avatar_url": "https://...",
+    "reaction_time_ms": 60,       // Скорректированное время реакции
+    "all_presses": [              // Все нажавшие (для отладки)
+      {"user_id": "uuid", "username": "player1", "time_ms": 60},
+      {"user_id": "uuid", "username": "player2", "time_ms": 90}
+    ]
+  }
+}
+
+// PLAYER_ANSWERING — игрок отвечает
+{
+  "type": "PLAYER_ANSWERING",
+  "payload": {
+    "user_id": "uuid",
+    "username": "player1",
+    "timeout_ms": 15000,
+    "started_at": 1701234567890
+  }
+}
+
+// ANSWER_RESULT — результат ответа
+{
+  "type": "ANSWER_RESULT",
+  "payload": {
+    "user_id": "uuid",
+    "username": "player1",
+    "avatar_url": "https://...",
+    "correct": true,
+    "player_answer": "Джордж Вашингтон",
+    "correct_answer": "Джордж Вашингтон",
+    "score_before": 500,
+    "score_after": 800,
+    "score_delta": 300
+  }
+}
+
+// SCORES_UPDATE — обновление очков
+{
+  "type": "SCORES_UPDATE",
+  "payload": {
+    "scores": [
+      {"user_id": "uuid", "username": "player1", "score": 800},
+      {"user_id": "uuid", "username": "player2", "score": 400}
+    ]
+  }
+}
+
+// ROUND_START — начало раунда
+{
+  "type": "ROUND_START",
+  "payload": {
+    "round_number": 2,
+    "round_name": "Второй раунд",
+    "round_type": "normal",     // "normal" | "final"
+    "themes": [
+      {"id": "t1", "name": "Наука"},
+      {"id": "t2", "name": "Искусство"}
+    ]
+  }
+}
+
+// ROUND_COMPLETE — раунд завершён
+{
+  "type": "ROUND_COMPLETE",
+  "payload": {
+    "round_number": 1,
+    "scores": [...],
+    "next_round": 2,           // null если это был последний
+    "is_final_next": false
+  }
+}
+
+// GAME_COMPLETE — игра завершена
+{
+  "type": "GAME_COMPLETE",
+  "payload": {
+    "winners": [
+      {"user_id": "uuid", "username": "player1", "avatar_url": "...", "score": 4500, "place": 1}
+    ],
+    "final_scores": [
+      {"user_id": "uuid", "username": "player1", "avatar_url": "...", "score": 4500, "place": 1},
+      {"user_id": "uuid", "username": "player2", "avatar_url": "...", "score": 3200, "place": 2}
+    ],
+    "duration_minutes": 45,
+    "total_questions": 75,
+    "answered_questions": 68
+  }
+}
+
+// ERROR — ошибка
+{
+  "type": "ERROR",
+  "payload": {
+    "code": "INVALID_ACTION",
+    "message": "Not your turn to select question"
+  }
+}
+
+// PING — измерение задержки
+{
+  "type": "PING",
+  "payload": {
+    "server_time": 1701234567890
+  }
+}
+
+// TIME_SYNC_RES — ответ синхронизации времени
+{
+  "type": "TIME_SYNC_RES",
+  "payload": {
+    "client_time": 1701234567000,
+    "server_time": 1701234567050
+  }
+}
+
+// ROUND_MEDIA_MANIFEST — список медиа раунда
+{
+  "type": "ROUND_MEDIA_MANIFEST",
+  "payload": {
+    "round": 1,
+    "media": [
+      {
+        "id": "r1_t1_q1_img",
+        "type": "image",
+        "url": "https://minio.../img1.png",
+        "size": 150000,
+        "question_ref": {"theme": 0, "price": 100}
+      }
+    ],
+    "total_size": 15000000,
+    "total_count": 25
+  }
+}
+
+// START_MEDIA — команда воспроизведения
+{
+  "type": "START_MEDIA",
+  "payload": {
+    "media_id": "r1_t2_q3_audio",
+    "media_type": "audio",
+    "url": "https://minio.../music.mp3",
+    "start_at": 1701234567890,  // Серверное время старта
+    "duration_ms": 15000
+  }
+}
+
+// WHO_GETS_CAT — выбор получателя "Кота в мешке"
+{
+  "type": "WHO_GETS_CAT",
+  "payload": {
+    "chooser_id": "uuid",
+    "available_receivers": [
+      {"user_id": "uuid", "username": "player2"},
+      {"user_id": "uuid", "username": "player3"}
+    ],
+    "secret_theme": "Секретная тема",  // Может быть null
+    "timeout_ms": 15000
+  }
+}
+
+// YOU_GOT_CAT — уведомление о получении кота
+{
+  "type": "YOU_GOT_CAT",
+  "payload": {
+    "from_user_id": "uuid",
+    "from_username": "player1",
+    "price": 500               // Может быть диапазон для выбора
+  }
+}
+
+// MAKE_STAKE_REQUEST — запрос ставки (Ва-банк)
+{
+  "type": "MAKE_STAKE_REQUEST",
+  "payload": {
+    "user_id": "uuid",
+    "min_stake": 300,          // Минимум = номинал
+    "max_stake": 1500,         // Максимум = текущий счёт
+    "timeout_ms": 15000
+  }
+}
+```
 
 ---
 
-### 8.4 🎯 Механизм честного определения нажатия кнопки
+### 11.4 🎯 Механизм честного определения нажатия кнопки
 
 > **Критически важно!** Решают миллисекунды — пинг не должен давать преимущество.
 
@@ -2275,7 +2927,7 @@ func (g *Game) DetermineWinner() string {
 
 ---
 
-### 8.5 Примеры сообщений
+### 11.5 Примеры сообщений
 
 #### STATE_UPDATE
 
@@ -2362,7 +3014,106 @@ func (g *Game) DetermineWinner() string {
 }
 ```
 
-### 8.5 Логика подсчёта очков
+### 11.6 Kafka Events
+
+Game Service публикует события в топики и потребляет события из Lobby:
+
+**Producer (Game → Kafka):**
+
+| Topic | Event | Когда |
+|-------|-------|-------|
+| `game.events` | `GAME_STARTED` | Игра началась |
+| `game.events` | `GAME_FINISHED` | Игра завершена |
+| `game.events` | `SCORES_UPDATED` | Очки изменились |
+| `game.actions` | `QUESTION_SELECTED` | Выбран вопрос |
+| `game.actions` | `BUTTON_PRESSED` | Нажата кнопка |
+| `game.actions` | `ANSWER_SUBMITTED` | Отправлен ответ |
+| `game.actions` | `ANSWER_JUDGED` | Ответ оценён |
+
+**Consumer (Kafka → Game):**
+
+| Topic | Event | Действие |
+|-------|-------|----------|
+| `lobby.events` | `ROOM_STARTED` | Создать игровую сессию |
+
+**Схемы событий:**
+
+```typescript
+// GAME_STARTED
+{
+  "event_type": "GAME_STARTED",
+  "timestamp": "2024-01-15T10:35:00Z",
+  "payload": {
+    "game_id": "uuid",
+    "room_id": "uuid",
+    "pack_id": "uuid",
+    "players": [
+      {"user_id": "uuid", "username": "player1", "role": "host"},
+      {"user_id": "uuid", "username": "player2", "role": "player"}
+    ]
+  }
+}
+
+// GAME_FINISHED
+{
+  "event_type": "GAME_FINISHED",
+  "timestamp": "2024-01-15T11:20:00Z",
+  "payload": {
+    "game_id": "uuid",
+    "room_id": "uuid",
+    "duration_minutes": 45,
+    "final_scores": [
+      {"user_id": "uuid", "username": "player1", "score": 4500, "place": 1},
+      {"user_id": "uuid", "username": "player2", "score": 3200, "place": 2}
+    ],
+    "winner_id": "uuid"
+  }
+}
+
+// QUESTION_SELECTED (для replay/аналитики)
+{
+  "event_type": "QUESTION_SELECTED",
+  "timestamp": "2024-01-15T10:36:00Z",
+  "payload": {
+    "game_id": "uuid",
+    "round": 1,
+    "theme_index": 0,
+    "question_index": 2,
+    "price": 300,
+    "selector_id": "uuid"
+  }
+}
+
+// BUTTON_PRESSED (для replay/аналитики)
+{
+  "event_type": "BUTTON_PRESSED",
+  "timestamp": "2024-01-15T10:36:05Z",
+  "payload": {
+    "game_id": "uuid",
+    "question_id": "uuid",
+    "winner_id": "uuid",
+    "all_presses": [
+      {"user_id": "uuid", "adjusted_time_ms": 60},
+      {"user_id": "uuid", "adjusted_time_ms": 90}
+    ]
+  }
+}
+
+// ANSWER_JUDGED (для replay/аналитики)
+{
+  "event_type": "ANSWER_JUDGED",
+  "timestamp": "2024-01-15T10:36:20Z",
+  "payload": {
+    "game_id": "uuid",
+    "question_id": "uuid",
+    "user_id": "uuid",
+    "correct": true,
+    "score_delta": 300
+  }
+}
+```
+
+### 11.7 Логика подсчёта очков
 
 | Ситуация | Очки |
 |----------|------|
@@ -2379,7 +3130,7 @@ func (g *Game) DetermineWinner() string {
 
 > **Python 3.11** | **FastAPI** | **:8005 (HTTP)** | **:50055 (gRPC)**
 
-### 9.1 Описание сервиса
+### 12.1 Описание сервиса
 
 **Pack Service** — сервис управления паками вопросов (SIQ файлы).
 
@@ -2398,7 +3149,7 @@ func (g *Game) DetermineWinner() string {
 
 ---
 
-### 9.2 Формат SIQ файла
+### 12.2 Формат SIQ файла
 
 **SIQ** (SIGame Question Pack) — это ZIP-архив со следующей структурой:
 
@@ -2638,7 +3389,7 @@ sequenceDiagram
 
 ---
 
-### 9.3 REST API — Полный список ручек
+### 12.3 REST API — Полный список ручек
 
 #### `GET /health` — Health Check
 
@@ -2845,30 +3596,122 @@ file: pack_name.siq
 
 ---
 
-### 9.4 gRPC API
+### 12.4 gRPC API
+
+**Порт:** `:50055`
 
 ```protobuf
 service PackService {
-  // Получение информации о паке
   rpc GetPackInfo(GetPackInfoRequest) returns (PackInfoResponse);
-  
-  // Получение полного контента пака (для Game Service)
   rpc GetPackContent(GetPackContentRequest) returns (PackContentResponse);
-  
-  // Проверка существования пака (для Lobby Service)
   rpc ValidatePackExists(ValidatePackRequest) returns (ValidatePackResponse);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ValidatePackExists — проверка существования пака
+// ═══════════════════════════════════════════════════════════
+
+message ValidatePackRequest {
+  string pack_id = 1;   // UUID пака
+  string user_id = 2;   // UUID владельца (опционально)
+}
+
+message ValidatePackResponse {
+  bool exists = 1;      // true если пак существует
+  bool is_owner = 2;    // true если user_id владелец
+  string status = 3;    // "processing" | "approved" | "failed"
+  string error = 4;     // Текст ошибки
+}
+
+// ═══════════════════════════════════════════════════════════
+// GetPackInfo — метаданные пака
+// ═══════════════════════════════════════════════════════════
+
+message GetPackInfoRequest {
+  string pack_id = 1;  // UUID пака
+}
+
+message PackInfoResponse {
+  bool found = 1;
+  string pack_id = 2;
+  string name = 3;
+  string author = 4;
+  string description = 5;
+  int32 rounds_count = 6;
+  int32 questions_count = 7;
+  bool has_media = 8;
+  string status = 9;
+  string created_at = 10;
+  string error = 11;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GetPackContent — полный контент пака для игры
+// ═══════════════════════════════════════════════════════════
+
+message GetPackContentRequest {
+  string pack_id = 1;  // UUID пака
+}
+
+message PackContentResponse {
+  bool found = 1;
+  string pack_id = 2;
+  string name = 3;
+  repeated Round rounds = 4;
+  string error = 5;
+}
+
+message Round {
+  string id = 1;
+  int32 round_number = 2;
+  string name = 3;
+  string type = 4;            // "normal" | "final"
+  repeated Theme themes = 5;
+}
+
+message Theme {
+  string id = 1;
+  string name = 2;
+  repeated Question questions = 3;
+}
+
+message Question {
+  string id = 1;
+  int32 price = 2;
+  string type = 3;            // "standard" | "secret" | "stake" | "forAll"
+  string text = 4;
+  string answer = 5;
+  repeated string alt_answers = 6;  // Альтернативные ответы
+  string media_type = 7;      // "text" | "image" | "audio" | "video"
+  string media_url = 8;       // URL медиа файла
+  int32 media_duration_ms = 9; // Длительность медиа
+  SecretParams secret_params = 10; // Для type="secret"
+  StakeParams stake_params = 11;   // Для type="stake"
+}
+
+message SecretParams {
+  string selection_mode = 1;  // "any" | "exceptCurrent"
+  string theme = 2;           // Секретная тема
+  int32 min_price = 3;
+  int32 max_price = 4;
+  int32 price_step = 5;
+}
+
+message StakeParams {
+  int32 min_stake = 1;
+  int32 max_stake = 2;
 }
 ```
 
-| Метод | Описание | Вызывается из |
-|-------|----------|---------------|
-| `GetPackInfo` | Метаданные пака | Lobby |
-| `GetPackContent` | Полный контент с вопросами | Game |
-| `ValidatePackExists` | Проверка существования | Lobby |
+| Метод | Вызывается из | Когда |
+|-------|---------------|-------|
+| `ValidatePackExists` | Lobby | При создании комнаты |
+| `GetPackInfo` | Lobby | При отображении информации о паке |
+| `GetPackContent` | Game | При старте игры |
 
 ---
 
-### 9.5 Процесс обработки SIQ
+### 12.5 Процесс обработки SIQ
 
 ```mermaid
 sequenceDiagram
@@ -2899,7 +3742,7 @@ sequenceDiagram
 
 ---
 
-### 9.6 Структура хранения
+### 12.6 Структура хранения
 
 ```
 📦 Pack в системе
@@ -2923,7 +3766,7 @@ sequenceDiagram
 
 ---
 
-### 9.7 Типы вопросов (media_type)
+### 12.7 Типы вопросов (media_type)
 
 | Тип | Описание | Отображение |
 |-----|----------|-------------|
@@ -2935,7 +3778,7 @@ sequenceDiagram
 
 ---
 
-### 9.8 Ошибки
+### 12.8 Ошибки
 
 | Code | Error | Описание |
 |------|-------|----------|
@@ -2954,7 +3797,7 @@ sequenceDiagram
 
 > **React 18** | **TypeScript** | **Vite**
 
-### 10.1 Технологии
+### 13.1 Технологии
 
 | Категория | Технология |
 |-----------|------------|
@@ -2964,7 +3807,7 @@ sequenceDiagram
 | HTTP | Axios |
 | Real-time | WebSocket API |
 
-### 10.2 Роутинг
+### 13.2 Роутинг
 
 | Путь | Страница | Доступ |
 |------|----------|--------|
@@ -2975,7 +3818,7 @@ sequenceDiagram
 | `/room/:id` | Комната ожидания | 🔒 Protected |
 | `/game/:id` | Игра | 🔒 Protected |
 
-### 10.3 Архитектура (Feature-Sliced Design)
+### 13.3 Архитектура (Feature-Sliced Design)
 
 ```
 src/
@@ -3000,7 +3843,71 @@ src/
     └── lib/
 ```
 
-### 10.4 Макеты экранов
+### 13.4 Сводка всех API эндпоинтов
+
+#### Auth Service (`:8001`)
+
+| Метод | Endpoint | Auth | Request | Response |
+|-------|----------|------|---------|----------|
+| GET | `/health` | ❌ | — | `{status, service}` |
+| GET | `/auth/check-username` | ❌ | `?username=...` | `{available, username}` |
+| POST | `/auth/register` | ❌ | `{username, password}` | `{user, access_token, refresh_token, expires_in}` |
+| POST | `/auth/login` | ❌ | `{username, password}` | `{user, access_token, refresh_token, expires_in}` |
+| POST | `/auth/refresh` | ❌ | `{refresh_token}` | `{access_token, refresh_token, expires_in}` |
+| POST | `/auth/logout` | ✅ | — | `{message}` |
+| GET | `/auth/me` | ✅ | — | `{id, username, avatar_url, created_at}` |
+| POST | `/auth/avatar` | ✅ | `multipart/form-data` | `{avatar_url}` |
+| DELETE | `/auth/avatar` | ✅ | — | `204 No Content` |
+
+#### Lobby Service (`:8002`)
+
+| Метод | Endpoint | Auth | Request | Response |
+|-------|----------|------|---------|----------|
+| GET | `/api/lobby/health` | ❌ | — | `{status}` |
+| POST | `/api/lobby/rooms` | ✅ | `{name, packId, maxPlayers, isPublic, password?, settings?}` | `Room` |
+| GET | `/api/lobby/rooms` | ❌ | `?page=0&size=20&status=&has_slots=` | `{rooms[], page, size, totalElements, totalPages}` |
+| GET | `/api/lobby/rooms/{id}` | ❌ | — | `Room` |
+| GET | `/api/lobby/rooms/code/{code}` | ❌ | — | `Room` |
+| POST | `/api/lobby/rooms/{id}/join` | ✅ | `{password?}` | `Room` |
+| DELETE | `/api/lobby/rooms/{id}/leave` | ✅ | — | `204 No Content` |
+| POST | `/api/lobby/rooms/{id}/start` | ✅ | — | `{gameId, websocketUrl}` |
+| PATCH | `/api/lobby/rooms/{id}/settings` | ✅ | `{timeForAnswer?, ...}` | `{settings}` |
+| DELETE | `/api/lobby/rooms/{id}` | ✅ | — | `204 No Content` |
+
+#### Game Service (`:8003`, WS `:8083`)
+
+| Метод | Endpoint | Auth | Request | Response |
+|-------|----------|------|---------|----------|
+| GET | `/health` | ❌ | — | `{status, service, timestamp, active_games}` |
+| POST | `/api/game` | ❌* | `{room_id, pack_id, players[], settings}` | `{game_id, websocket_url, status}` |
+| GET | `/api/game/{id}` | ❌ | — | `Game` |
+| WS | `/api/game/{id}/ws` | Query | `?user_id=&token=` | WebSocket connection |
+
+*Внутренний API, вызывается из Lobby Service
+
+#### Pack Service (`:8005`)
+
+| Метод | Endpoint | Auth | Request | Response |
+|-------|----------|------|---------|----------|
+| GET | `/health` | ❌ | — | `{status, service}` |
+| POST | `/api/packs/upload` | ✅ | `multipart/form-data (file)` | `{id, name, author, status, message}` |
+| GET | `/api/packs` | ✅ | `?page=0&size=20` | `{packs[], total}` |
+| GET | `/api/packs/{id}` | ✅ | — | `Pack` |
+| GET | `/api/packs/{id}/content` | ❌ | — | `PackContent` |
+| GET | `/api/packs/media/{pack_id}/{filename}` | ❌ | — | `binary file` |
+| DELETE | `/api/packs/{id}` | ✅ | — | `204 No Content` |
+
+#### gRPC Services
+
+| Service | Port | Method | Request | Response |
+|---------|------|--------|---------|----------|
+| Auth | 50051 | `ValidateToken` | `{token}` | `{valid, user_id, username, avatar_url, error}` |
+| Auth | 50051 | `GetUserInfo` | `{user_id}` | `{found, user_id, username, avatar_url, created_at, error}` |
+| Pack | 50055 | `ValidatePackExists` | `{pack_id, user_id?}` | `{exists, is_owner, status, error}` |
+| Pack | 50055 | `GetPackInfo` | `{pack_id}` | `{found, pack_id, name, ..., error}` |
+| Pack | 50055 | `GetPackContent` | `{pack_id}` | `{found, pack_id, name, rounds[], error}` |
+
+### 13.5 Макеты экранов
 
 #### Lobby
 
@@ -3057,7 +3964,7 @@ src/
 
 [⬆️ К оглавлению](#-оглавление)
 
-### 11.1 Стек
+### 14.1 Стек
 
 | Компонент | Назначение | Порт |
 |-----------|------------|------|
@@ -3068,7 +3975,7 @@ src/
 | Promtail | Сбор логов | — |
 | MinIO | S3 хранилище | 9000/9001 |
 
-### 11.2 Метрики сервисов
+### 14.2 Метрики сервисов
 
 #### Auth Service
 
@@ -3096,7 +4003,7 @@ game_questions_answered_total{correct}
 game_duration_seconds
 ```
 
-### 11.3 Дашборды Grafana
+### 14.3 Дашборды Grafana
 
 | Dashboard | Описание |
 |-----------|----------|
@@ -3112,7 +4019,7 @@ game_duration_seconds
 
 [⬆️ К оглавлению](#-оглавление)
 
-### 12.1 Docker Compose файлы
+### 15.1 Docker Compose файлы
 
 | Файл | Содержимое |
 |------|------------|
@@ -3120,7 +4027,7 @@ game_duration_seconds
 | `docker-compose.app.yml` | Только сервисы |
 | `docker-compose.infra.yml` | Только инфраструктура |
 
-### 12.2 Архитектура деплоя
+### 15.2 Архитектура деплоя
 
 ```mermaid
 flowchart TB
@@ -3152,7 +4059,7 @@ flowchart TB
     style PACK fill:#9C27B0,color:#fff
 ```
 
-### 12.3 Переменные окружения
+### 15.3 Переменные окружения
 
 ```bash
 # JWT
@@ -3179,7 +4086,7 @@ GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=admin
 ```
 
-### 12.4 Команды деплоя
+### 15.4 Команды деплоя
 
 ```bash
 # Запуск всего стека
