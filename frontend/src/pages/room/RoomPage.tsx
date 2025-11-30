@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { useRoom, useLeaveRoom, useStartGame, useRoomEvents, useKickPlayer, useTransferHost } from '@/entities/room';
+import { useState, useEffect, useRef } from 'react';
+import { useRoom, useLeaveRoom, useStartGame, useRoomEvents, useKickPlayer, useTransferHost, useJoinRoom } from '@/entities/room';
 import { useCurrentUser } from '@/entities/user';
 import { RoomSettingsComponent } from '@/features/room';
 import { Button, Card, Spinner } from '@/shared/ui';
@@ -11,9 +11,36 @@ export const RoomPage = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const [copySuccess, setCopySuccess] = useState(false);
+  const hasJoined = useRef(false);
   
-  const { data: room, isLoading } = useRoom(roomId!);
+  const { data: room, isLoading, refetch } = useRoom(roomId!);
   const { data: user } = useCurrentUser();
+  const joinRoomMutation = useJoinRoom();
+
+  // Автоматически присоединяемся к комнате при входе на страницу
+  useEffect(() => {
+    if (roomId && user && !hasJoined.current && !joinRoomMutation.isPending) {
+      // Проверяем, не состоим ли мы уже в комнате
+      const isAlreadyInRoom = room?.players?.some(p => p.userId === user.id);
+      
+      if (!isAlreadyInRoom) {
+        hasJoined.current = true;
+        joinRoomMutation.mutate(
+          { id: roomId, data: {} },
+          {
+            onSuccess: () => {
+              refetch();
+            },
+            onError: (error) => {
+              console.error('Failed to join room:', error);
+              // Если не удалось присоединиться, возвращаемся в лобби
+              navigate(ROUTES.LOBBY);
+            },
+          }
+        );
+      }
+    }
+  }, [roomId, user, room?.players]);
   const leaveRoomMutation = useLeaveRoom();
   const startGameMutation = useStartGame({
     onSuccess: (response) => {
