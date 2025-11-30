@@ -2,18 +2,7 @@ package com.sigame.lobby.service.domain
 
 import com.sigame.lobby.domain.dto.RoomDto
 import com.sigame.lobby.domain.dto.RoomListResponse
-import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.exception.RoomNotFoundException
-import com.sigame.lobby.domain.exception.RoomNotFoundByCodeException
-import com.sigame.lobby.domain.repository.GameRoomRepository
-import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.domain.repository.RoomSettingsRepository
-import com.sigame.lobby.service.batch.BatchOperationService
-import com.sigame.lobby.service.mapper.RoomMapper
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.reactive.asFlow
-import kotlinx.coroutines.reactive.awaitFirst
-import kotlinx.coroutines.reactive.awaitFirstOrNull
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import java.util.UUID
@@ -21,111 +10,34 @@ import java.util.UUID
 private val logger = KotlinLogging.logger {}
 
 @Service
-class RoomQueryService(
-    private val gameRoomRepository: GameRoomRepository,
-    private val roomPlayerRepository: RoomPlayerRepository,
-    private val roomSettingsRepository: RoomSettingsRepository,
-    private val roomMapper: RoomMapper,
-    private val batchOperationService: BatchOperationService
-) {
-    
-        suspend fun getRooms(
-        page: Int,
-        size: Int,
-        status: String?,
-        hasSlots: Boolean?
-    ): RoomListResponse {
+class RoomQueryService(private val helper: RoomQueryHelper) {
+
+    suspend fun getRooms(page: Int, size: Int, status: String?, hasSlots: Boolean?): RoomListResponse {
+        val statusEnum = helper.parseRoomStatus(status)
         val offset = page * size
-        val statusEnum = parseRoomStatus(status)
-        
-        val rooms = when {
-            statusEnum != null -> gameRoomRepository.findByStatus(statusEnum.name.lowercase(), size, offset)
-            hasSlots == true -> gameRoomRepository.findPublicWaitingRooms(size, offset)
-            else -> gameRoomRepository.findPublicWaitingRooms(size, offset)
-        }.asFlow().toList()
-        
-        val total = when {
-            statusEnum != null -> gameRoomRepository.countByStatus(statusEnum.name.lowercase()).awaitFirst()
-            hasSlots == true -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
-            else -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
+
+        val data = helper.fetchRoomListData(statusEnum, hasSlots, size, offset)
+
+        if (data.rooms.isEmpty()) {
+            return RoomListResponse(emptyList(), page, size, 0, 0)
         }
-        
-        // Batch загрузка паков
-        val packIds = rooms.map { it.packId }
-        val packInfoMap = batchOperationService.getPackInfoBatch(packIds)
-        
-        val roomDtos = rooms.map { room ->
-            val playerCount = roomPlayerRepository.countActiveByRoomId(room.id).awaitFirst().toInt()
-            val players = roomPlayerRepository.findActiveByRoomId(room.id).asFlow().toList()
-            roomMapper.toDtoWithCache(
-                room = room,
-                currentPlayers = playerCount,
-                packName = packInfoMap[room.packId]?.name,
-                players = players
-            )
-        }
-        
-        // Вычисляем totalPages согласно README
-        val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 0
-        
+
         return RoomListResponse(
-            rooms = roomDtos,
+            rooms = helper.buildRoomDtoList(data),
             page = page,
             size = size,
-            totalElements = total,
-            totalPages = totalPages
+            totalElements = data.total,
+            totalPages = helper.calculateTotalPages(data.total, size)
         )
     }
-    
-        suspend fun getRoomById(roomId: UUID): RoomDto {
-        val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
-            ?: throw RoomNotFoundException(roomId)
-        
-        return buildDetailedRoomDto(room)
+
+    suspend fun getRoomById(roomId: UUID): RoomDto {
+        val data = helper.fetchRoomById(roomId)
+        return helper.buildRoomDto(data)
     }
-    
-        suspend fun getRoomByCode(code: String): RoomDto {
-        val room = gameRoomRepository.findByRoomCode(code).awaitFirstOrNull()
-            ?: throw RoomNotFoundByCodeException(code)
-        
-        return buildDetailedRoomDto(room)
-    }
-    
-        suspend fun getUserCurrentRoom(userId: UUID): RoomDto? {
-        val player = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
-            ?: return null
-        
-        return try {
-            getRoomById(player.roomId)
-        } catch (e: RoomNotFoundException) {
-            logger.warn { "Player $userId has active player record but room ${player.roomId} not found" }
-            null
-        }
-    }
-    
-        private suspend fun buildDetailedRoomDto(room: com.sigame.lobby.domain.model.GameRoom): RoomDto {
-        val players = roomPlayerRepository.findActiveByRoomId(room.id).asFlow().toList()
-        val settings = roomSettingsRepository.findByRoomId(room.id).awaitFirstOrNull()
-        val packInfo = batchOperationService.getPackInfoBatch(listOf(room.packId))[room.packId]
-        
-        return roomMapper.toDto(
-            room = room,
-            currentPlayers = players.size,
-            players = players,
-            settings = settings,
-            packName = packInfo?.name
-        )
-    }
-    
-        private fun parseRoomStatus(status: String?): RoomStatus? {
-        if (status.isNullOrBlank()) return null
-        
-        return try {
-            RoomStatus.valueOf(status.uppercase())
-        } catch (e: IllegalArgumentException) {
-            logger.warn { "Invalid room status value: '$status'. Valid values: ${RoomStatus.entries.joinToString()}" }
-            null
-        }
+
+    suspend fun getRoomByCode(code: String): RoomDto {
+        val data = helper.fetchRoomByCode(code)
+        return helper.buildRoomDto(data)
     }
 }
-

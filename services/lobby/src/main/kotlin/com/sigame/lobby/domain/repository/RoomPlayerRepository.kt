@@ -29,5 +29,8 @@ interface RoomPlayerRepository : R2dbcRepository<RoomPlayer, UUID> {
     
     @Query("SELECT * FROM room_players WHERE left_at IS NULL")
     fun findByLeftAtIsNull(): Flux<RoomPlayer>
+
+    @Query("SELECT * FROM room_players WHERE room_id IN (:roomIds) AND left_at IS NULL")
+    fun findActiveByRoomIds(roomIds: List<UUID>): Flux<RoomPlayer>
 }
 

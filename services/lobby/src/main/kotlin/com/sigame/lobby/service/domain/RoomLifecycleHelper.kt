@@ -138,12 +138,7 @@ class RoomLifecycleHelper(
         ).awaitFirstOrNull()
     }
 
-    suspend fun createHostPlayer(
-        roomId: UUID,
-        hostId: UUID,
-        username: String,
-        avatarUrl: String?
-    ): RoomPlayer {
+    suspend fun createHostPlayer(roomId: UUID, hostId: UUID, username: String, avatarUrl: String?): RoomPlayer {
         val hostPlayer = RoomPlayer(
             roomId = roomId,
             userId = hostId,
@@ -175,60 +170,6 @@ class RoomLifecycleHelper(
         return savedRoom
     }
 
-    suspend fun updateRoomToPlaying(room: GameRoom, playersCount: Int) {
-        val playingRoom = room.copy(
-            status = GameRoom.statusFromEnum(RoomStatus.PLAYING)
-        )
-        gameRoomRepository.save(playingRoom).awaitFirstOrNull()
-        roomCacheService.cacheRoomData(playingRoom, playersCount)
-    }
-
-    suspend fun rollbackRoomToWaiting(room: GameRoom, playersCount: Int) {
-        logger.error { "Rolling back room ${room.id} status to WAITING" }
-        val rollbackRoom = room.copy(
-            status = GameRoom.statusFromEnum(RoomStatus.WAITING),
-            startedAt = null
-        )
-        gameRoomRepository.save(rollbackRoom).awaitFirstOrNull()
-        roomCacheService.cacheRoomData(rollbackRoom, playersCount)
-    }
-
-    suspend fun createGameSession(
-        roomId: UUID,
-        packId: UUID,
-        players: List<RoomPlayer>,
-        settings: GameSettings
-    ): GameSessionResponse = gameServiceClient.createGameSession(
-        roomId = roomId,
-        packId = packId,
-        players = players,
-        settings = settings
-    )
-
-    fun buildPlayerEventDataList(players: List<RoomPlayer>): List<PlayerEventData> =
-        players.map { player ->
-            PlayerEventData(
-                user_id = player.userId.toString(),
-                username = player.username,
-                role = player.role
-            )
-        }
-
-    suspend fun publishRoomStartedEvent(
-        roomId: UUID,
-        gameSession: GameSessionResponse,
-        packId: UUID,
-        players: List<RoomPlayer>
-    ) {
-        val playerEventDataList = buildPlayerEventDataList(players)
-        kafkaEventPublisher.publishRoomStarted(
-            roomId = roomId,
-            gameId = gameSession.gameSessionId,
-            packId = packId,
-            players = playerEventDataList
-        )
-    }
-
     suspend fun executeGameStart(
         roomId: UUID,
         room: GameRoom,
@@ -237,7 +178,7 @@ class RoomLifecycleHelper(
         gameSettings: GameSettings
     ): StartGameResponse {
         try {
-            val gameSession = createGameSession(
+            val gameSession = gameServiceClient.createGameSession(
                 roomId = roomId,
                 packId = room.packId,
                 players = activePlayers,
@@ -306,22 +247,19 @@ class RoomLifecycleHelper(
     suspend fun findSettingsByRoomId(roomId: UUID) =
         roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
 
-    fun mergeSettings(
-        roomId: UUID,
-        current: RoomSettings?,
-        request: UpdateRoomSettingsRequest
-    ): RoomSettings = current?.copy(
-        timeForAnswer = request.timeForAnswer ?: current.timeForAnswer,
-        timeForChoice = request.timeForChoice ?: current.timeForChoice,
-        allowWrongAnswer = request.allowWrongAnswer ?: current.allowWrongAnswer,
-        showRightAnswer = request.showRightAnswer ?: current.showRightAnswer
-    ) ?: RoomSettings(
-        roomId = roomId,
-        timeForAnswer = request.timeForAnswer ?: 30,
-        timeForChoice = request.timeForChoice ?: 60,
-        allowWrongAnswer = request.allowWrongAnswer ?: true,
-        showRightAnswer = request.showRightAnswer ?: true
-    )
+    fun mergeSettings(roomId: UUID, current: RoomSettings?, request: UpdateRoomSettingsRequest): RoomSettings =
+        current?.copy(
+            timeForAnswer = request.timeForAnswer ?: current.timeForAnswer,
+            timeForChoice = request.timeForChoice ?: current.timeForChoice,
+            allowWrongAnswer = request.allowWrongAnswer ?: current.allowWrongAnswer,
+            showRightAnswer = request.showRightAnswer ?: current.showRightAnswer
+        ) ?: RoomSettings(
+            roomId = roomId,
+            timeForAnswer = request.timeForAnswer ?: 30,
+            timeForChoice = request.timeForChoice ?: 60,
+            allowWrongAnswer = request.allowWrongAnswer ?: true,
+            showRightAnswer = request.showRightAnswer ?: true
+        )
 
     suspend fun saveSettings(settings: RoomSettings, isNew: Boolean) {
         if (isNew) {
@@ -347,5 +285,45 @@ class RoomLifecycleHelper(
     fun recordRoomCreatedMetrics() {
         lobbyMetrics.recordRoomCreated()
         lobbyMetrics.recordPlayerJoined()
+    }
+
+    private suspend fun updateRoomToPlaying(room: GameRoom, playersCount: Int) {
+        val playingRoom = room.copy(status = GameRoom.statusFromEnum(RoomStatus.PLAYING))
+        gameRoomRepository.save(playingRoom).awaitFirstOrNull()
+        roomCacheService.cacheRoomData(playingRoom, playersCount)
+    }
+
+    private suspend fun rollbackRoomToWaiting(room: GameRoom, playersCount: Int) {
+        logger.error { "Rolling back room ${room.id} status to WAITING" }
+        val rollbackRoom = room.copy(
+            status = GameRoom.statusFromEnum(RoomStatus.WAITING),
+            startedAt = null
+        )
+        gameRoomRepository.save(rollbackRoom).awaitFirstOrNull()
+        roomCacheService.cacheRoomData(rollbackRoom, playersCount)
+    }
+
+    private fun buildPlayerEventDataList(players: List<RoomPlayer>): List<PlayerEventData> =
+        players.map { player ->
+            PlayerEventData(
+                user_id = player.userId.toString(),
+                username = player.username,
+                role = player.role
+            )
+        }
+
+    private suspend fun publishRoomStartedEvent(
+        roomId: UUID,
+        gameSession: GameSessionResponse,
+        packId: UUID,
+        players: List<RoomPlayer>
+    ) {
+        val playerEventDataList = buildPlayerEventDataList(players)
+        kafkaEventPublisher.publishRoomStarted(
+            roomId = roomId,
+            gameId = gameSession.gameSessionId,
+            packId = packId,
+            players = playerEventDataList
+        )
     }
 }
