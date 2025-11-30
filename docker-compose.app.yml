@@ -32,8 +32,8 @@ services:
   # Auth Service
   auth-service:
     build:
-      context: ./services/auth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/auth/Dockerfile
     container_name: sigame-auth-service
     environment:
       # PostgreSQL (via Docker network)
@@ -89,8 +89,8 @@ services:
   # Lobby Service
   lobby-service:
     build:
-      context: ./services/lobby
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/lobby/Dockerfile
     container_name: sigame-lobby-service
     environment:
       # PostgreSQL (via Docker network)
@@ -143,8 +143,8 @@ services:
   # Game Service
   game-service:
     build:
-      context: ./services/game
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/game/Dockerfile
     container_name: sigame-game-service
     environment:
       # PostgreSQL (via Docker network)
@@ -199,8 +199,8 @@ services:
   # Pack Service
   pack-service:
     build:
-      context: ./services/packs
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/packs/Dockerfile
     container_name: sigame-pack-service
     environment:
       # PostgreSQL (via Docker network)

@@ -254,7 +254,8 @@ jobs:
           if [ "${{ matrix.service }}" = "frontend" ]; then
             docker build -t sigame-${{ matrix.service }}:test -f frontend/Dockerfile frontend/
           else
-            docker build -t sigame-${{ matrix.service }}:test -f services/${{ matrix.service }}/Dockerfile services/${{ matrix.service }}/
+            # Use project root as context because Dockerfiles expect proto/ and services/ directories
+            docker build -t sigame-${{ matrix.service }}:test -f services/${{ matrix.service }}/Dockerfile .
           fi
 
   # ==========================================
