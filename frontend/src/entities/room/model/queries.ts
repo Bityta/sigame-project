@@ -184,3 +184,39 @@ export const useStartGame = (
   });
 };
 
+/**
+ * Мутация: Выгнать игрока из комнаты
+ */
+export const useKickPlayer = (
+  options?: UseMutationOptions<void, Error, { roomId: string; targetUserId: string }>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { roomId: string; targetUserId: string }>({
+    mutationFn: ({ roomId, targetUserId }) => roomApi.kickPlayer(roomId, targetUserId),
+    onSuccess: (_, { roomId }) => {
+      // Инвалидируем данные комнаты
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+    },
+    ...options,
+  });
+};
+
+/**
+ * Мутация: Передать роль хоста
+ */
+export const useTransferHost = (
+  options?: UseMutationOptions<void, Error, { roomId: string; newHostId: string }>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { roomId: string; newHostId: string }>({
+    mutationFn: ({ roomId, newHostId }) => roomApi.transferHost(roomId, newHostId),
+    onSuccess: (_, { roomId }) => {
+      // Инвалидируем данные комнаты
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+    },
+    ...options,
+  });
+};
+

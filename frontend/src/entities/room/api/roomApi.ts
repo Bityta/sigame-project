@@ -12,7 +12,8 @@ import type {
   RoomListQuery,
   RoomSettings,
   StartGameResponse,
-  PaginatedResponse,
+  KickPlayerRequest,
+  TransferHostRequest,
 } from '@/shared/types';
 
 export const roomApi = {
@@ -98,6 +99,26 @@ export const roomApi = {
       API_CONFIG.ENDPOINTS.LOBBY.START_ROOM(id)
     );
     return response.data;
+  },
+
+  /**
+   * Выгнать игрока из комнаты
+   */
+  async kickPlayer(id: string, targetUserId: string): Promise<void> {
+    await lobbyApi.post(
+      API_CONFIG.ENDPOINTS.LOBBY.KICK_PLAYER(id),
+      { targetUserId } as KickPlayerRequest
+    );
+  },
+
+  /**
+   * Передать роль хоста другому игроку
+   */
+  async transferHost(id: string, newHostId: string): Promise<void> {
+    await lobbyApi.post(
+      API_CONFIG.ENDPOINTS.LOBBY.TRANSFER_HOST(id),
+      { newHostId } as TransferHostRequest
+    );
   },
 };
 
