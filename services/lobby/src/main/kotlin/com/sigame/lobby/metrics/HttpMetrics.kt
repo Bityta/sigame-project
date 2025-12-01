@@ -1,39 +1,45 @@
 package com.sigame.lobby.metrics
 
-import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.springframework.stereotype.Component
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class HttpMetrics(
     private val meterRegistry: MeterRegistry
 ) {
-
+    private val timers = ConcurrentHashMap<String, Timer>()
+    
     fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
-        Counter.builder("http_requests_total")
-            .tag("method", method)
-            .tag("endpoint", endpoint)
-            .tag("status", statusCodeGroup(status))
-            .register(meterRegistry)
-            .increment()
+        // Counter - simple increment
+        meterRegistry.counter(
+            "http_requests_total",
+            "method", method,
+            "endpoint", endpoint,
+            "status", statusCodeGroup(status)
+        ).increment()
 
-        Timer.builder("http_request_duration_seconds")
-            .tag("method", method)
-            .tag("endpoint", endpoint)
-            .publishPercentileHistogram()
-            .serviceLevelObjectives(
-                Duration.ofMillis(10),
-                Duration.ofMillis(50),
-                Duration.ofMillis(100),
-                Duration.ofMillis(200),
-                Duration.ofMillis(500),
-                Duration.ofSeconds(1),
-                Duration.ofSeconds(5)
-            )
-            .register(meterRegistry)
-            .record(Duration.ofMillis(durationMs))
+        // Timer with histogram - cached per method+endpoint
+        val timerKey = "$method:$endpoint"
+        val timer = timers.computeIfAbsent(timerKey) {
+            Timer.builder("http_request_duration_seconds")
+                .tag("method", method)
+                .tag("endpoint", endpoint)
+                .publishPercentileHistogram()
+                .serviceLevelObjectives(
+                    Duration.ofMillis(10),
+                    Duration.ofMillis(50),
+                    Duration.ofMillis(100),
+                    Duration.ofMillis(200),
+                    Duration.ofMillis(500),
+                    Duration.ofSeconds(1),
+                    Duration.ofSeconds(5)
+                )
+                .register(meterRegistry)
+        }
+        timer.record(Duration.ofMillis(durationMs))
     }
 
     private fun statusCodeGroup(status: Int): String = when (status) {
