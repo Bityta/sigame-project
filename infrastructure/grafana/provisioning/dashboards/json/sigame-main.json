@@ -503,7 +503,7 @@
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",endpoint!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
           "refId": "B",
           "legendFormat": "Lobby Service"
         },
@@ -587,13 +587,13 @@
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"4..\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",status=\"4xx\",endpoint!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
           "refId": "C",
           "legendFormat": "Lobby 4xx"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"5..\",uri!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",status=\"5xx\",endpoint!~\"/actuator.*|/api/lobby/health\"}[5m])) by (job)",
           "refId": "D",
           "legendFormat": "Lobby 5xx"
         },
