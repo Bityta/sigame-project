@@ -22,7 +22,7 @@ class HttpMetrics(
         Timer.builder("http_request_duration_seconds")
             .tag("method", method)
             .tag("endpoint", endpoint)
-            .publishPercentileHistogram()  // Enable histogram buckets for percentile calculations
+            .publishPercentileHistogram()
             .serviceLevelObjectives(
                 Duration.ofMillis(10),
                 Duration.ofMillis(50),
