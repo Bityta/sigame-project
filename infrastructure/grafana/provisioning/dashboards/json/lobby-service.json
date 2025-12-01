@@ -18,8 +18,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"2..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
-          "legendFormat": "{{uri}}",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",status=\"2xx\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
@@ -48,8 +48,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"4..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
-          "legendFormat": "{{uri}}",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",status=\"4xx\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
@@ -86,8 +86,8 @@
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",status=~\"5..\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
-          "legendFormat": "{{uri}}",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",status=\"5xx\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
@@ -116,8 +116,8 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (uri)",
-          "legendFormat": "{{uri}}",
+          "expr": "sum(rate(http_requests_total{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
@@ -146,18 +146,18 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
-          "legendFormat": "{{uri}} (p50)",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
+          "legendFormat": "{{endpoint}} (p50)",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
-          "legendFormat": "{{uri}} (p95)",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
+          "legendFormat": "{{endpoint}} (p95)",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
-          "legendFormat": "{{uri}} (p99)",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
+          "legendFormat": "{{endpoint}} (p99)",
           "refId": "C"
         }
       ],
