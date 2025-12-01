@@ -40,4 +40,9 @@ class RoomQueryService(private val helper: RoomQueryHelper) {
         val data = helper.fetchRoomByCode(code)
         return helper.buildRoomDto(data)
     }
+
+    suspend fun getMyActiveRoom(userId: UUID): RoomDto? {
+        val roomData = helper.fetchActiveRoomByUserId(userId)
+        return roomData?.let { helper.buildRoomDto(it) }
+    }
 }

@@ -80,8 +80,12 @@ class RoomQueryHelper(
         fetchRoomDetails(room)
     }
 
-    suspend fun findActivePlayerRoom(userId: UUID): UUID? =
-        roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()?.roomId
+    suspend fun fetchActiveRoomByUserId(userId: UUID): RoomDetailData? = coroutineScope {
+        val activePlayer = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
+            ?: return@coroutineScope null
+        
+        fetchRoomById(activePlayer.roomId)
+    }
 
     fun buildRoomDto(data: RoomDetailData): RoomDto =
         roomMapper.toDto(data.room, data.players.size, data.players, data.settings, data.packName)

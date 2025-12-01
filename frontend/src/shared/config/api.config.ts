@@ -29,6 +29,7 @@ export const API_CONFIG = {
     // Lobby
     LOBBY: {
       ROOMS: '/api/lobby/rooms',
+      MY_ROOMS: '/api/lobby/rooms/my',
       ROOM_BY_ID: (id: string) => `/api/lobby/rooms/${id}`,
       ROOM_BY_CODE: (code: string) => `/api/lobby/rooms/code/${code}`,
       JOIN_ROOM: (id: string) => `/api/lobby/rooms/${id}/join`,

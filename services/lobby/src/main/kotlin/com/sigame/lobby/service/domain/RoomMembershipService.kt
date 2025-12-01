@@ -17,6 +17,13 @@ class RoomMembershipService(private val helper: RoomMembershipHelper) {
         logger.info { "User $userId joining room $roomId" }
 
         val ctx = helper.fetchJoinContext(roomId, userId)
+        
+        val existingInThisRoom = ctx.existingPlayer?.takeIf { it.leftAt == null }
+        if (existingInThisRoom != null) {
+            logger.info { "User $userId already in room $roomId, returning current state" }
+            return helper.buildExistingPlayerResponse(ctx, existingInThisRoom)
+        }
+        
         helper.validateJoin(ctx, roomId, request.password)
 
         val savedPlayer = helper.addPlayer(roomId, userId, ctx, request.role.lowercase())

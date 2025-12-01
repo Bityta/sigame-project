@@ -280,6 +280,47 @@ class LobbyControllerIntegrationTest {
     }
 
     @Nested
+    @DisplayName("GET /api/lobby/rooms/my - Get My Rooms")
+    inner class GetMyRoomsEndpoint {
+
+        @Test
+        fun `should return user's active room`() {
+            val room = createTestRoomDto()
+            coEvery { roomQueryService.getMyActiveRoom(testUserId) } returns room
+
+            webTestClient.get()
+                .uri("/api/lobby/rooms/my")
+                .header("Authorization", testToken)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.rooms.length()").isEqualTo(1)
+                .jsonPath("$.rooms[0].id").isEqualTo(testRoomId.toString())
+        }
+
+        @Test
+        fun `should return empty list if user has no active room`() {
+            coEvery { roomQueryService.getMyActiveRoom(testUserId) } returns null
+
+            webTestClient.get()
+                .uri("/api/lobby/rooms/my")
+                .header("Authorization", testToken)
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.rooms.length()").isEqualTo(0)
+        }
+
+        @Test
+        fun `should return 401 without authorization`() {
+            webTestClient.get()
+                .uri("/api/lobby/rooms/my")
+                .exchange()
+                .expectStatus().isUnauthorized
+        }
+    }
+
+    @Nested
     @DisplayName("GET /api/lobby/rooms/{id} - Get Room by ID")
     inner class GetRoomByIdEndpoint {
 

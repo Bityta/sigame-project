@@ -10,11 +10,15 @@ import { ROUTES } from '@/shared/config';
 import type { GameRoom } from '@/shared/types';
 import './RoomList.css';
 
-export const RoomList = () => {
+interface RoomListProps {
+  hasActiveRoom?: boolean;
+}
+
+export const RoomList = ({ hasActiveRoom = false }: RoomListProps) => {
   const navigate = useNavigate();
   const { data: rooms, isLoading, refetch } = useRooms(
     { status: 'waiting', has_slots: true },
-    { refetchInterval: 5000 } // Обновляем каждые 5 секунд
+    { refetchInterval: 60000 } // Обновляем каждую минуту
   );
 
   const getRoomStatusText = (room: GameRoom): string => {
@@ -33,6 +37,7 @@ export const RoomList = () => {
   };
 
   const handleJoinRoom = (roomId: string) => {
+    if (hasActiveRoom) return;
     navigate(ROUTES.ROOM(roomId));
   };
 
@@ -91,7 +96,8 @@ export const RoomList = () => {
               fullWidth
               variant="primary"
               onClick={() => handleJoinRoom(room.id)}
-              disabled={room.currentPlayers >= room.maxPlayers}
+              disabled={room.currentPlayers >= room.maxPlayers || hasActiveRoom}
+              title={hasActiveRoom ? 'Сначала покиньте текущую комнату' : undefined}
             >
               {room.hasPassword ? 'Войти с паролем' : 'Присоединиться'}
             </Button>

@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.support.WebExchangeBindException
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebInputException
 import java.time.LocalDateTime
 
@@ -199,6 +200,18 @@ class GlobalExceptionHandler {
         
         logger.error { "UserInfoNotFoundException: ${ex.message}" }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse)
+    }
+    
+    @ExceptionHandler(ResponseStatusException::class)
+    fun handleResponseStatusException(ex: ResponseStatusException): ResponseEntity<ErrorResponse> {
+        val errorResponse = ErrorResponse(
+            status = ex.statusCode.value(),
+            error = ex.statusCode.toString(),
+            message = ex.reason ?: "An error occurred"
+        )
+        
+        logger.warn { "ResponseStatusException: ${ex.statusCode} - ${ex.reason}" }
+        return ResponseEntity.status(ex.statusCode).body(errorResponse)
     }
     
     @ExceptionHandler(Exception::class)

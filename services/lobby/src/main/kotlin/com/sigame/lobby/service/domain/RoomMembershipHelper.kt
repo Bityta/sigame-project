@@ -156,6 +156,10 @@ class RoomMembershipHelper(
         return roomMapper.toDto(ctx.room, newCount, players, ctx.settings, ctx.packName)
     }
 
+    fun buildExistingPlayerResponse(ctx: JoinContext, existingPlayer: RoomPlayer): RoomDto {
+        return roomMapper.toDto(ctx.room, ctx.currentPlayers, ctx.players, ctx.settings, ctx.packName)
+    }
+
     suspend fun onPlayerJoined(userId: UUID, room: GameRoom, userInfo: UserInfo, newCount: Int) = coroutineScope {
         launch { roomCacheService.setUserCurrentRoom(userId, room.requireId()) }
         launch { roomCacheService.addRoomPlayer(room.requireId(), userId) }

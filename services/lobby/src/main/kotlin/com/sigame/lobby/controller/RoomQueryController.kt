@@ -2,6 +2,9 @@ package com.sigame.lobby.controller
 
 import com.sigame.lobby.domain.dto.RoomDto
 import com.sigame.lobby.domain.dto.RoomListResponse
+import com.sigame.lobby.domain.dto.RoomsResponse
+import com.sigame.lobby.security.AuthenticatedUser
+import com.sigame.lobby.security.CurrentUser
 import com.sigame.lobby.service.domain.RoomQueryService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -24,6 +27,13 @@ class RoomQueryController(
         @RequestParam(name = "has_slots", required = false) hasSlots: Boolean?
     ): ResponseEntity<RoomListResponse> {
         return ResponseEntity.ok(roomQueryService.getRooms(page, size, status, hasSlots))
+    }
+
+    @GetMapping(ApiRoutes.Rooms.MY)
+    suspend fun getMyRooms(@CurrentUser user: AuthenticatedUser): ResponseEntity<RoomsResponse> {
+        val room = roomQueryService.getMyActiveRoom(user.userId)
+        val rooms = listOfNotNull(room)
+        return ResponseEntity.ok(RoomsResponse(rooms))
     }
 
     @GetMapping(ApiRoutes.Rooms.BY_ID)

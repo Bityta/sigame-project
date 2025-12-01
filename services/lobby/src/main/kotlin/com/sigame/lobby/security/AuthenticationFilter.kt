@@ -61,7 +61,7 @@ class AuthenticationFilter(
 
     private fun isPublicPath(path: String, method: String): Boolean =
         PUBLIC_PATHS.any { path.startsWith(it) } ||
-            (method == "GET" && PUBLIC_GET_PATHS.any { path.startsWith(it) })
+            (method == "GET" && PUBLIC_GET_PATHS.any { path == it || path.matches(Regex("$it\\?.*")) })
 
     private fun extractToken(exchange: ServerWebExchange): String? {
         val headerToken = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)

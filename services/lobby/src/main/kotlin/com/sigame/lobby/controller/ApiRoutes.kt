@@ -11,6 +11,8 @@ object ApiRoutes {
 
         const val LIST = BASE
 
+        const val MY = "$BASE/my"
+
         const val BY_ID = "$BASE/{id}"
 
         const val BY_CODE = "$BASE/code/{code}"

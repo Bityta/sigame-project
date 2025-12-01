@@ -30,6 +30,7 @@ export const roomKeys = {
   details: () => [...roomKeys.all, 'detail'] as const,
   detail: (id: string) => [...roomKeys.details(), id] as const,
   byCode: (code: string) => [...roomKeys.all, 'code', code] as const,
+  myActive: () => [...roomKeys.all, 'my-active'] as const,
 };
 
 /**
@@ -77,6 +78,19 @@ export const useRoomByCode = (
 };
 
 /**
+ * Хук для получения активной комнаты текущего пользователя
+ */
+export const useMyActiveRoom = (
+  options?: Omit<UseQueryOptions<GameRoom | null, Error>, 'queryKey' | 'queryFn'>
+) => {
+  return useQuery<GameRoom | null, Error>({
+    queryKey: roomKeys.myActive(),
+    queryFn: () => roomApi.getMyActiveRoom(),
+    ...options,
+  });
+};
+
+/**
  * Мутация: Создание комнаты
  */
 export const useCreateRoom = (
@@ -113,8 +127,9 @@ export const useJoinRoom = (
     onSuccess: (data) => {
       // Обновляем данные комнаты
       queryClient.setQueryData(roomKeys.detail(data.id), data);
-      // Инвалидируем список комнат
+      // Инвалидируем список комнат и активную комнату
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: roomKeys.myActive() });
     },
     ...options,
   });
@@ -133,8 +148,9 @@ export const useLeaveRoom = (
     onSuccess: (_, id) => {
       // Удаляем данные комнаты из кеша
       queryClient.removeQueries({ queryKey: roomKeys.detail(id) });
-      // Инвалидируем список комнат
+      // Инвалидируем список комнат и активную комнату
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: roomKeys.myActive() });
     },
     ...options,
   });

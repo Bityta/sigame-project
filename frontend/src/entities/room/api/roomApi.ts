@@ -29,6 +29,16 @@ export const roomApi = {
   },
 
   /**
+   * Получить активную комнату текущего пользователя
+   */
+  async getMyActiveRoom(): Promise<GameRoom | null> {
+    const response = await lobbyApi.get<{ rooms: GameRoom[] }>(
+      API_CONFIG.ENDPOINTS.LOBBY.MY_ROOMS
+    );
+    return response.data.rooms[0] || null;
+  },
+
+  /**
    * Получить комнату по ID
    */
   async getRoomById(id: string): Promise<GameRoom> {

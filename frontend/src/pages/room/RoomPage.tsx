@@ -19,28 +19,38 @@ export const RoomPage = () => {
 
   // Автоматически присоединяемся к комнате при входе на страницу
   useEffect(() => {
-    if (roomId && user && !hasJoined.current && !joinRoomMutation.isPending) {
-      // Проверяем, не состоим ли мы уже в комнате
-      const isAlreadyInRoom = room?.players?.some(p => p.userId === user.id);
-      
-      if (!isAlreadyInRoom) {
-        hasJoined.current = true;
-        joinRoomMutation.mutate(
-          { id: roomId, data: {} },
-          {
-            onSuccess: () => {
+    // Ждём загрузки данных комнаты и пользователя
+    if (!roomId || !user || isLoading) return;
+    
+    // Проверяем только когда room загружен
+    const isAlreadyInRoom = room?.players?.some(p => p.userId === user.id);
+    
+    // Если уже в комнате - ничего не делаем, просто показываем страницу
+    if (isAlreadyInRoom) return;
+    
+    // Если комната существует но нас в ней нет - присоединяемся
+    if (room && !hasJoined.current && !joinRoomMutation.isPending) {
+      hasJoined.current = true;
+      joinRoomMutation.mutate(
+        { id: roomId, data: {} },
+        {
+          onSuccess: () => {
+            refetch();
+          },
+          onError: (error: any) => {
+            console.error('Failed to join room:', error);
+            // Если ошибка "уже в комнате" (409) - просто обновляем данные
+            if (error?.response?.status === 409) {
               refetch();
-            },
-            onError: (error) => {
-              console.error('Failed to join room:', error);
-              // Если не удалось присоединиться, возвращаемся в лобби
-              navigate(ROUTES.LOBBY);
-            },
-          }
-        );
-      }
+              return;
+            }
+            // Иначе возвращаемся в лобби
+            navigate(ROUTES.LOBBY);
+          },
+        }
+      );
     }
-  }, [roomId, user, room?.players]);
+  }, [roomId, user, room, isLoading]);
   const leaveRoomMutation = useLeaveRoom();
   const startGameMutation = useStartGame({
     onSuccess: (response) => {
