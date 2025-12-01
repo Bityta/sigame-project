@@ -12,6 +12,7 @@ import com.sigame.lobby.domain.repository.RoomPlayerRepository
 import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.pack.PackInfo
 import com.sigame.lobby.service.batch.BatchOperationService
+import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.mapper.RoomMapper
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -31,6 +32,7 @@ class RoomQueryHelper(
     private val roomPlayerRepository: RoomPlayerRepository,
     private val roomSettingsRepository: RoomSettingsRepository,
     private val batchOperationService: BatchOperationService,
+    private val roomCacheService: RoomCacheService,
     private val roomMapper: RoomMapper
 ) {
 
@@ -75,16 +77,44 @@ class RoomQueryHelper(
     }
 
     suspend fun fetchRoomByCode(code: String): RoomDetailData = coroutineScope {
+        val cachedRoomId = roomCacheService.getRoomIdByCode(code)
+        if (cachedRoomId != null) {
+            return@coroutineScope try {
+                fetchRoomById(cachedRoomId)
+            } catch (e: RoomNotFoundException) {
+                roomCacheService.deleteRoomCodeIndex(code)
+                fetchRoomByCodeFromDb(code)
+            }
+        }
+        fetchRoomByCodeFromDb(code)
+    }
+
+    private suspend fun fetchRoomByCodeFromDb(code: String): RoomDetailData {
         val room = gameRoomRepository.findByRoomCode(code).awaitFirstOrNull()
             ?: throw RoomNotFoundByCodeException(code)
-        fetchRoomDetails(room)
+        roomCacheService.setRoomCodeIndex(code, room.requireId())
+        return fetchRoomDetails(room)
     }
 
     suspend fun fetchActiveRoomByUserId(userId: UUID): RoomDetailData? = coroutineScope {
+        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
+        if (cachedRoomId != null) {
+            return@coroutineScope try {
+                fetchRoomById(cachedRoomId)
+            } catch (e: RoomNotFoundException) {
+                roomCacheService.deleteUserCurrentRoom(userId)
+                fetchFromDatabaseByUserId(userId)
+            }
+        }
+        fetchFromDatabaseByUserId(userId)
+    }
+
+    private suspend fun fetchFromDatabaseByUserId(userId: UUID): RoomDetailData? {
         val activePlayer = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
-            ?: return@coroutineScope null
-        
-        fetchRoomById(activePlayer.roomId)
+            ?: return null
+        val data = fetchRoomById(activePlayer.roomId)
+        roomCacheService.setUserCurrentRoom(userId, activePlayer.roomId)
+        return data
     }
 
     fun buildRoomDto(data: RoomDetailData): RoomDto =

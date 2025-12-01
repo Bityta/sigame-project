@@ -85,42 +85,6 @@ export const LobbyPage = () => {
 
       <div className="lobby-page__content">
         <aside className="lobby-page__sidebar">
-          {hasActiveRoom && activeRoom && (
-            <Card padding="medium" className="lobby-page__active-room">
-              <div className="lobby-page__active-room-badge">⚠️ Активная комната</div>
-              <h3 className="lobby-page__active-room-name">{activeRoom.name}</h3>
-              <div className="lobby-page__active-room-info">
-                <div className="lobby-page__active-room-row">
-                  <span>Код:</span>
-                  <span className="lobby-page__active-room-code">{activeRoom.roomCode}</span>
-                </div>
-                <div className="lobby-page__active-room-row">
-                  <span>Игроки:</span>
-                  <span>{activeRoom.currentPlayers}/{activeRoom.maxPlayers}</span>
-                </div>
-                <div className="lobby-page__active-room-row">
-                  <span>Статус:</span>
-                  <span>{activeRoom.status === 'waiting' ? 'Ожидание' : activeRoom.status}</span>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                fullWidth
-                size="large"
-                onClick={() => navigate(ROUTES.ROOM(activeRoom.id))}
-              >
-                Вернуться в комнату
-              </Button>
-              <button
-                className="lobby-page__leave-link"
-                onClick={handleLeaveActiveRoom}
-                disabled={leaveRoomMutation.isPending}
-              >
-                {leaveRoomMutation.isPending ? 'Выход...' : 'Покинуть комнату'}
-              </button>
-            </Card>
-          )}
-
           <Card padding="medium">
             <h2 className="lobby-page__sidebar-title">{TEXTS.LOBBY.QUICK_ACTIONS}</h2>
             
@@ -163,7 +127,11 @@ export const LobbyPage = () => {
         </aside>
 
         <main className="lobby-page__main">
-          <RoomList hasActiveRoom={hasActiveRoom} />
+          <RoomList 
+            activeRoom={activeRoom} 
+            onLeaveRoom={handleLeaveActiveRoom}
+            isLeavingRoom={leaveRoomMutation.isPending}
+          />
         </main>
       </div>
     </div>

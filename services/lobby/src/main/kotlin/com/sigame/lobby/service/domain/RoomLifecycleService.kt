@@ -142,6 +142,6 @@ class RoomLifecycleService(
         helper.cancelRoom(room)
         helper.recordRoomCancelledMetrics(room, players.size)
 
-        launch { helper.clearRoomAndPlayersCache(roomId, players) }
+        launch { helper.clearRoomAndPlayersCache(roomId, room.roomCode, players) }
     }
 }

@@ -90,3 +90,62 @@
   font-weight: 500;
 }
 
+.room-card__value--code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  letter-spacing: 0.1em;
+}
+
+/* Active Room Card */
+.room-card--active {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+}
+
+.room-card--active .room-card__header {
+  flex-wrap: wrap;
+}
+
+.room-card__active-badge {
+  width: 100%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b45309;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.room-card--active .room-card__name {
+  color: #78350f;
+}
+
+.room-card--active .room-card__label {
+  color: #92400e;
+}
+
+.room-card--active .room-card__value {
+  color: #78350f;
+}
+
+.room-card__leave-link {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: #b45309;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.room-card__leave-link:hover:not(:disabled) {
+  color: #92400e;
+}
+
+.room-card__leave-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

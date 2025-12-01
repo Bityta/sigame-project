@@ -72,8 +72,17 @@ class RoomLifecycleHelper(
     }
 
     suspend fun validateUserNotInRoom(userId: UUID) {
+        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
+        if (cachedRoomId != null) {
+            val player = roomPlayerRepository.findByRoomIdAndUserId(cachedRoomId, userId).awaitFirstOrNull()
+            if (player != null && player.leftAt == null) {
+                throw PlayerAlreadyInRoomException(userId, cachedRoomId)
+            }
+            roomCacheService.deleteUserCurrentRoom(userId)
+        }
         val existingPlayer = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
         if (existingPlayer != null) {
+            roomCacheService.setUserCurrentRoom(userId, existingPlayer.roomId)
             throw PlayerAlreadyInRoomException(userId, existingPlayer.roomId)
         }
     }
@@ -210,6 +219,7 @@ class RoomLifecycleHelper(
         launch { roomCacheService.cacheRoomData(room, 1) }
         launch { roomCacheService.setUserCurrentRoom(hostId, room.requireId()) }
         launch { roomCacheService.addRoomPlayer(room.requireId(), hostId) }
+        launch { roomCacheService.setRoomCodeIndex(room.roomCode, room.requireId()) }
     }
 
     suspend fun cancelRoom(room: GameRoom) {
@@ -220,8 +230,8 @@ class RoomLifecycleHelper(
     suspend fun getActivePlayers(roomId: UUID): List<RoomPlayer> =
         roomPlayerRepository.findActiveByRoomId(roomId).asFlow().toList()
 
-    suspend fun clearRoomAndPlayersCache(roomId: UUID, players: List<RoomPlayer>) = coroutineScope {
-        launch { roomCacheService.clearRoomCache(roomId) }
+    suspend fun clearRoomAndPlayersCache(roomId: UUID, roomCode: String, players: List<RoomPlayer>) = coroutineScope {
+        launch { roomCacheService.clearRoomCache(roomId, roomCode) }
         players.forEach { player ->
             launch { roomCacheService.deleteUserCurrentRoom(player.userId) }
         }
