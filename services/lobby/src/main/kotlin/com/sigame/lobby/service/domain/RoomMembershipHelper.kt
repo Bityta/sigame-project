@@ -9,20 +9,20 @@ import com.sigame.lobby.domain.exception.InvalidRoomStateException
 import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
 import com.sigame.lobby.domain.exception.PlayerNotInRoomException
 import com.sigame.lobby.domain.exception.RoomFullException
-import com.sigame.lobby.domain.exception.RoomNotFoundException
 import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
 import com.sigame.lobby.domain.exception.UserInfoNotFoundException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
-import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.auth.AuthServiceClient
 import com.sigame.lobby.grpc.auth.UserInfo
 import com.sigame.lobby.grpc.pack.PackServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.service.cache.RoomCacheService
+import com.sigame.lobby.service.data.PlayerRepository
+import com.sigame.lobby.service.data.RoomRepository
+import com.sigame.lobby.service.data.SettingsRepository
 import com.sigame.lobby.service.mapper.RoomMapper
 import com.sigame.lobby.sse.event.PlayerJoinedEvent
 import com.sigame.lobby.sse.event.PlayerLeftEvent
@@ -30,9 +30,7 @@ import com.sigame.lobby.sse.event.RoomClosedEvent
 import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -42,9 +40,10 @@ import java.util.UUID
 
 @Component
 class RoomMembershipHelper(
+    private val roomRepository: RoomRepository,
+    private val playerRepository: PlayerRepository,
+    private val settingsRepository: SettingsRepository,
     private val gameRoomRepository: GameRoomRepository,
-    private val roomPlayerRepository: RoomPlayerRepository,
-    private val roomSettingsRepository: RoomSettingsRepository,
     private val roomCacheService: RoomCacheService,
     private val authServiceClient: AuthServiceClient,
     private val packServiceClient: PackServiceClient,
@@ -72,13 +71,13 @@ class RoomMembershipHelper(
     )
 
     suspend fun fetchJoinContext(roomId: UUID, userId: UUID): JoinContext = coroutineScope {
-        val roomD = async { findRoomOrThrow(roomId) }
-        val countD = async { countActivePlayers(roomId) }
-        val existingD = async { findExistingPlayer(roomId, userId) }
-        val currentD = async { findActivePlayerInAnyRoom(userId) }
+        val roomD = async { roomRepository.findById(roomId) }
+        val countD = async { playerRepository.countActiveByRoomId(roomId) }
+        val existingD = async { playerRepository.findByRoomAndUser(roomId, userId) }
+        val currentD = async { playerRepository.findActiveByUserId(userId) }
         val userInfoD = async { fetchRequiredUserInfo(userId) }
-        val playersD = async { getActivePlayers(roomId) }
-        val settingsD = async { findSettingsByRoomId(roomId) }
+        val playersD = async { playerRepository.findActiveByRoomId(roomId) }
+        val settingsD = async { settingsRepository.findByRoomId(roomId) }
 
         val room = roomD.await()
         val packNameD = async { packServiceClient.getPackInfo(room.packId)?.name }
@@ -96,9 +95,9 @@ class RoomMembershipHelper(
     }
 
     suspend fun fetchLeaveContext(roomId: UUID, userId: UUID): LeaveContext = coroutineScope {
-        val roomD = async { findRoomOrThrow(roomId) }
+        val roomD = async { roomRepository.findById(roomId) }
         val playerD = async { findPlayerOrThrow(roomId, userId) }
-        val countD = async { countActivePlayers(roomId) }
+        val countD = async { playerRepository.countActiveByRoomId(roomId) }
         LeaveContext(roomD.await(), playerD.await(), countD.await())
     }
 
@@ -137,7 +136,7 @@ class RoomMembershipHelper(
                 username = ctx.userInfo.username,
                 avatarUrl = ctx.userInfo.avatarUrl
             )
-            roomPlayerRepository.save(rejoined).awaitFirst()
+            playerRepository.save(rejoined)
         } else {
             val newPlayer = RoomPlayer(
                 roomId = roomId,
@@ -146,7 +145,7 @@ class RoomMembershipHelper(
                 avatarUrl = ctx.userInfo.avatarUrl,
                 role = role
             )
-            roomPlayerRepository.save(newPlayer).awaitFirst()
+            playerRepository.save(newPlayer)
         }
     }
 
@@ -156,15 +155,11 @@ class RoomMembershipHelper(
         return roomMapper.toDto(ctx.room, newCount, players, ctx.settings, ctx.packName)
     }
 
-    fun buildExistingPlayerResponse(ctx: JoinContext, existingPlayer: RoomPlayer): RoomDto {
+    fun buildExistingPlayerResponse(ctx: JoinContext): RoomDto {
         return roomMapper.toDto(ctx.room, ctx.currentPlayers, ctx.players, ctx.settings, ctx.packName)
     }
 
-    suspend fun onPlayerJoined(userId: UUID, room: GameRoom, userInfo: UserInfo, newCount: Int) = coroutineScope {
-        launch { roomCacheService.setUserCurrentRoom(userId, room.requireId()) }
-        launch { roomCacheService.addRoomPlayer(room.requireId(), userId) }
-        launch { roomCacheService.cacheRoomData(room, newCount) }
-
+    suspend fun onPlayerJoined(userId: UUID, room: GameRoom, userInfo: UserInfo, newCount: Int) {
         roomEventPublisher.publish(
             PlayerJoinedEvent(room.requireId(), userId, userInfo.username, newCount)
         )
@@ -172,9 +167,7 @@ class RoomMembershipHelper(
     }
 
     suspend fun handleLeave(room: GameRoom, player: RoomPlayer, currentPlayers: Int) = coroutineScope {
-        removePlayer(player)
-        launch { roomCacheService.deleteUserCurrentRoom(player.userId) }
-        launch { roomCacheService.removeRoomPlayer(room.requireId(), player.userId) }
+        playerRepository.save(player.copy(leftAt = LocalDateTime.now()))
         lobbyMetrics.recordPlayerLeft()
 
         val newCount = currentPlayers - 1
@@ -186,34 +179,27 @@ class RoomMembershipHelper(
     }
 
     suspend fun onPlayerKicked(room: GameRoom, player: RoomPlayer, currentPlayers: Int) = coroutineScope {
-        removePlayer(player)
-        launch { roomCacheService.deleteUserCurrentRoom(player.userId) }
-        launch { roomCacheService.removeRoomPlayer(room.requireId(), player.userId) }
+        playerRepository.save(player.copy(leftAt = LocalDateTime.now()))
         lobbyMetrics.recordPlayerLeft()
 
         val newCount = currentPlayers - 1
-        launch { roomCacheService.cacheRoomData(room, newCount) }
-
         roomEventPublisher.publish(
             PlayerLeftEvent(room.requireId(), player.userId, player.username, "kicked", newCount)
         )
     }
 
-    suspend fun onHostTransferred(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer, currentPlayers: Int) =
-        coroutineScope {
-            val updatedRoom = transferHost(room, fromHostId, toPlayer)
-            launch { roomCacheService.cacheRoomData(updatedRoom, currentPlayers) }
-        }
+    suspend fun onHostTransferred(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer) {
+        transferHost(room, fromHostId, toPlayer)
+    }
 
     private suspend fun handleHostLeave(room: GameRoom, leftPlayer: RoomPlayer, newCount: Int) = coroutineScope {
         if (newCount == 0) {
             cancelRoom(room)
         } else {
-            val activePlayers = getActivePlayers(room.requireId())
+            val activePlayers = playerRepository.findActiveByRoomId(room.requireId())
             val newHost = activePlayers.first()
-            val updatedRoom = transferHost(room, leftPlayer.userId, newHost)
+            transferHost(room, leftPlayer.userId, newHost)
 
-            launch { roomCacheService.cacheRoomData(updatedRoom, newCount) }
             roomEventPublisher.publish(
                 PlayerLeftEvent(room.requireId(), leftPlayer.userId, leftPlayer.username, "left", newCount)
             )
@@ -224,7 +210,6 @@ class RoomMembershipHelper(
         if (newCount == 0) {
             cancelRoom(room)
         } else {
-            launch { roomCacheService.cacheRoomData(room, newCount) }
             roomEventPublisher.publish(
                 PlayerLeftEvent(room.requireId(), leftPlayer.userId, leftPlayer.username, "left", newCount)
             )
@@ -241,69 +226,31 @@ class RoomMembershipHelper(
         roomEventPublisher.closeRoom(room.requireId())
     }
 
-    private suspend fun removePlayer(player: RoomPlayer): RoomPlayer {
-        val updated = player.copy(leftAt = LocalDateTime.now())
-        return roomPlayerRepository.save(updated).awaitFirst()
-    }
-
     private suspend fun transferHost(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer): GameRoom = coroutineScope {
-        val currentHost = roomPlayerRepository.findByRoomIdAndUserId(room.requireId(), fromHostId).awaitFirstOrNull()
-        
+        val currentHost = playerRepository.findByRoomAndUser(room.requireId(), fromHostId)
+
         val demoteJob = if (currentHost != null) {
-            launch { 
-                roomPlayerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER)))
-                    .awaitFirstOrNull() 
+            launch {
+                playerRepository.save(currentHost.copy(role = RoomPlayer.roleFromEnum(PlayerRole.PLAYER)))
             }
         } else null
-        
-        launch { 
-            roomPlayerRepository.save(toPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST)))
-                .awaitFirstOrNull() 
+
+        launch {
+            playerRepository.save(toPlayer.copy(role = RoomPlayer.roleFromEnum(PlayerRole.HOST)))
         }
-        
+
         demoteJob?.join()
-        
+
         val updatedRoom = room.copy(hostId = toPlayer.userId)
         gameRoomRepository.save(updatedRoom).awaitFirst()
     }
 
-    private suspend fun findRoomOrThrow(roomId: UUID): GameRoom =
-        gameRoomRepository.findById(roomId).awaitFirstOrNull() ?: throw RoomNotFoundException(roomId)
-
     private suspend fun findPlayerOrThrow(roomId: UUID, userId: UUID): RoomPlayer =
-        roomPlayerRepository.findByRoomIdAndUserId(roomId, userId).awaitFirstOrNull()
+        playerRepository.findByRoomAndUser(roomId, userId)
             ?: throw PlayerNotInRoomException(userId, roomId)
-
-    private suspend fun findExistingPlayer(roomId: UUID, userId: UUID): RoomPlayer? =
-        roomPlayerRepository.findByRoomIdAndUserId(roomId, userId).awaitFirstOrNull()
-
-    private suspend fun findActivePlayerInAnyRoom(userId: UUID): RoomPlayer? {
-        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
-        if (cachedRoomId != null) {
-            val player = roomPlayerRepository.findByRoomIdAndUserId(cachedRoomId, userId).awaitFirstOrNull()
-            if (player != null && player.leftAt == null) {
-                return player
-            }
-            roomCacheService.deleteUserCurrentRoom(userId)
-        }
-        val player = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
-        if (player != null) {
-            roomCacheService.setUserCurrentRoom(userId, player.roomId)
-        }
-        return player
-    }
 
     private suspend fun fetchRequiredUserInfo(userId: UUID): UserInfo =
         authServiceClient.getUserInfo(userId) ?: throw UserInfoNotFoundException(userId)
-
-    private suspend fun countActivePlayers(roomId: UUID): Int =
-        roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
-
-    private suspend fun getActivePlayers(roomId: UUID): List<RoomPlayer> =
-        roomPlayerRepository.findActiveByRoomId(roomId).asFlow().toList()
-
-    private suspend fun findSettingsByRoomId(roomId: UUID): RoomSettings? =
-        roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
 
     private fun validateRoomStatus(room: GameRoom, expected: RoomStatus, action: String) {
         if (room.getStatusEnum() != expected) {
@@ -338,4 +285,3 @@ class RoomMembershipHelper(
         }
     }
 }
-

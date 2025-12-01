@@ -13,15 +13,12 @@ import com.sigame.lobby.domain.exception.PackNotApprovedException
 import com.sigame.lobby.domain.exception.PackNotFoundException
 import com.sigame.lobby.domain.exception.PackNotOwnedException
 import com.sigame.lobby.domain.exception.PlayerAlreadyInRoomException
-import com.sigame.lobby.domain.exception.RoomNotFoundException
 import com.sigame.lobby.domain.exception.UnauthorizedRoomActionException
 import com.sigame.lobby.domain.exception.UserInfoNotFoundException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
-import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.auth.AuthServiceClient
 import com.sigame.lobby.grpc.auth.UserInfo
 import com.sigame.lobby.grpc.pack.PackInfo
@@ -29,14 +26,15 @@ import com.sigame.lobby.grpc.pack.PackServiceClient
 import com.sigame.lobby.metrics.LobbyMetrics
 import com.sigame.lobby.service.RoomCodeGenerator
 import com.sigame.lobby.service.cache.RoomCacheService
+import com.sigame.lobby.service.data.PlayerRepository
+import com.sigame.lobby.service.data.RoomRepository
+import com.sigame.lobby.service.data.SettingsRepository
 import com.sigame.lobby.service.external.GameServiceClient
 import com.sigame.lobby.service.external.GameSettings
 import com.sigame.lobby.sse.event.GameStartedEvent
 import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import mu.KotlinLogging
@@ -49,9 +47,10 @@ private val logger = KotlinLogging.logger {}
 
 @Component
 class RoomLifecycleHelper(
+    private val roomRepository: RoomRepository,
+    private val playerRepository: PlayerRepository,
+    private val settingsRepository: SettingsRepository,
     private val gameRoomRepository: GameRoomRepository,
-    private val roomPlayerRepository: RoomPlayerRepository,
-    private val roomSettingsRepository: RoomSettingsRepository,
     private val roomCodeGenerator: RoomCodeGenerator,
     private val roomCacheService: RoomCacheService,
     private val authServiceClient: AuthServiceClient,
@@ -72,24 +71,13 @@ class RoomLifecycleHelper(
     }
 
     suspend fun validateUserNotInRoom(userId: UUID) {
-        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
-        if (cachedRoomId != null) {
-            val player = roomPlayerRepository.findByRoomIdAndUserId(cachedRoomId, userId).awaitFirstOrNull()
-            if (player != null && player.leftAt == null) {
-                throw PlayerAlreadyInRoomException(userId, cachedRoomId)
-            }
-            roomCacheService.deleteUserCurrentRoom(userId)
-        }
-        val existingPlayer = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
-        if (existingPlayer != null) {
-            roomCacheService.setUserCurrentRoom(userId, existingPlayer.roomId)
-            throw PlayerAlreadyInRoomException(userId, existingPlayer.roomId)
+        val activePlayer = playerRepository.findActiveByUserId(userId)
+        if (activePlayer != null) {
+            throw PlayerAlreadyInRoomException(userId, activePlayer.roomId)
         }
     }
 
-    suspend fun findRoomOrThrow(roomId: UUID): GameRoom =
-        gameRoomRepository.findById(roomId).awaitFirstOrNull()
-            ?: throw RoomNotFoundException(roomId)
+    suspend fun findRoomOrThrow(roomId: UUID): GameRoom = roomRepository.findById(roomId)
 
     fun validateHostAccess(room: GameRoom, userId: UUID, action: String) {
         if (room.hostId != userId) {
@@ -104,7 +92,7 @@ class RoomLifecycleHelper(
     }
 
     suspend fun getActivePlayersWithMinCheck(roomId: UUID): List<RoomPlayer> {
-        val players = roomPlayerRepository.findActiveByRoomId(roomId).asFlow().toList()
+        val players = playerRepository.findActiveByRoomId(roomId)
         if (players.size < 2) {
             throw InsufficientPlayersException(roomId, players.size)
         }
@@ -133,17 +121,18 @@ class RoomLifecycleHelper(
             passwordHash = passwordHash
         )
 
-        return gameRoomRepository.save(room).awaitFirst()
+        return roomRepository.save(room)
     }
 
     suspend fun createRoomSettings(roomId: UUID, settings: RoomSettingsDto?) {
-        roomSettingsRepository.insertRoomSettings(
+        val roomSettings = RoomSettings(
             roomId = roomId,
             timeForAnswer = settings?.timeForAnswer ?: 30,
             timeForChoice = settings?.timeForChoice ?: 60,
             allowWrongAnswer = settings?.allowWrongAnswer ?: true,
             showRightAnswer = settings?.showRightAnswer ?: true
-        ).awaitFirstOrNull()
+        )
+        settingsRepository.insert(roomSettings)
     }
 
     suspend fun createHostPlayer(roomId: UUID, hostId: UUID, username: String, avatarUrl: String?): RoomPlayer {
@@ -154,11 +143,11 @@ class RoomLifecycleHelper(
             avatarUrl = avatarUrl,
             role = RoomPlayer.roleFromEnum(PlayerRole.HOST)
         )
-        return roomPlayerRepository.save(hostPlayer).awaitFirst()
+        return playerRepository.save(hostPlayer)
     }
 
     suspend fun buildGameSettings(roomId: UUID): GameSettings {
-        val settings = roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
+        val settings = settingsRepository.findByRoomId(roomId)
         return GameSettings(
             timeForAnswer = settings?.timeForAnswer ?: 30,
             timeForChoice = settings?.timeForChoice ?: 60,
@@ -167,13 +156,12 @@ class RoomLifecycleHelper(
         )
     }
 
-    suspend fun updateRoomToStarting(room: GameRoom, playersCount: Int): GameRoom {
+    suspend fun updateRoomToStarting(room: GameRoom): GameRoom {
         val updatedRoom = room.copy(
             status = GameRoom.statusFromEnum(RoomStatus.STARTING),
             startedAt = LocalDateTime.now()
         )
         val savedRoom = gameRoomRepository.save(updatedRoom).awaitFirst()
-        roomCacheService.cacheRoomData(savedRoom, playersCount)
         lobbyMetrics.recordRoomStarted()
         return savedRoom
     }
@@ -193,7 +181,7 @@ class RoomLifecycleHelper(
                 settings = gameSettings
             )
 
-            updateRoomToPlaying(savedRoom, activePlayers.size)
+            updateRoomToPlaying(savedRoom)
 
             roomEventPublisher.publish(
                 GameStartedEvent(
@@ -210,16 +198,9 @@ class RoomLifecycleHelper(
             )
         } catch (e: Exception) {
             logger.error(e) { "Failed to create game session, rolling back room status" }
-            rollbackRoomToWaiting(savedRoom, activePlayers.size)
+            rollbackRoomToWaiting(savedRoom)
             throw e
         }
-    }
-
-    suspend fun updateCacheForNewRoom(room: GameRoom, hostId: UUID) = coroutineScope {
-        launch { roomCacheService.cacheRoomData(room, 1) }
-        launch { roomCacheService.setUserCurrentRoom(hostId, room.requireId()) }
-        launch { roomCacheService.addRoomPlayer(room.requireId(), hostId) }
-        launch { roomCacheService.setRoomCodeIndex(room.roomCode, room.requireId()) }
     }
 
     suspend fun cancelRoom(room: GameRoom) {
@@ -227,8 +208,7 @@ class RoomLifecycleHelper(
         gameRoomRepository.save(updatedRoom).awaitFirstOrNull()
     }
 
-    suspend fun getActivePlayers(roomId: UUID): List<RoomPlayer> =
-        roomPlayerRepository.findActiveByRoomId(roomId).asFlow().toList()
+    suspend fun getActivePlayers(roomId: UUID): List<RoomPlayer> = playerRepository.findActiveByRoomId(roomId)
 
     suspend fun clearRoomAndPlayersCache(roomId: UUID, roomCode: String, players: List<RoomPlayer>) = coroutineScope {
         launch { roomCacheService.clearRoomCache(roomId, roomCode) }
@@ -242,8 +222,7 @@ class RoomLifecycleHelper(
         repeat(playersCount) { lobbyMetrics.recordPlayerLeft() }
     }
 
-    suspend fun findSettingsByRoomId(roomId: UUID) =
-        roomSettingsRepository.findByRoomId(roomId).awaitFirstOrNull()
+    suspend fun findSettingsByRoomId(roomId: UUID): RoomSettings? = settingsRepository.findByRoomId(roomId)
 
     fun mergeSettings(roomId: UUID, current: RoomSettings?, request: UpdateRoomSettingsRequest): RoomSettings =
         current?.copy(
@@ -261,15 +240,9 @@ class RoomLifecycleHelper(
 
     suspend fun saveSettings(settings: RoomSettings, isNew: Boolean) {
         if (isNew) {
-            roomSettingsRepository.insertRoomSettings(
-                roomId = settings.roomId,
-                timeForAnswer = settings.timeForAnswer,
-                timeForChoice = settings.timeForChoice,
-                allowWrongAnswer = settings.allowWrongAnswer,
-                showRightAnswer = settings.showRightAnswer
-            ).awaitFirstOrNull()
+            settingsRepository.insert(settings)
         } else {
-            roomSettingsRepository.save(settings).awaitFirstOrNull()
+            settingsRepository.save(settings)
         }
     }
 
@@ -285,19 +258,17 @@ class RoomLifecycleHelper(
         lobbyMetrics.recordPlayerJoined()
     }
 
-    private suspend fun updateRoomToPlaying(room: GameRoom, playersCount: Int) {
+    private suspend fun updateRoomToPlaying(room: GameRoom) {
         val playingRoom = room.copy(status = GameRoom.statusFromEnum(RoomStatus.PLAYING))
         gameRoomRepository.save(playingRoom).awaitFirstOrNull()
-        roomCacheService.cacheRoomData(playingRoom, playersCount)
     }
 
-    private suspend fun rollbackRoomToWaiting(room: GameRoom, playersCount: Int) {
+    private suspend fun rollbackRoomToWaiting(room: GameRoom) {
         logger.error { "Rolling back room ${room.id} status to WAITING" }
         val rollbackRoom = room.copy(
             status = GameRoom.statusFromEnum(RoomStatus.WAITING),
             startedAt = null
         )
         gameRoomRepository.save(rollbackRoom).awaitFirstOrNull()
-        roomCacheService.cacheRoomData(rollbackRoom, playersCount)
     }
 }

@@ -2,24 +2,21 @@ package com.sigame.lobby.service.domain
 
 import com.sigame.lobby.domain.dto.RoomDto
 import com.sigame.lobby.domain.enums.RoomStatus
-import com.sigame.lobby.domain.exception.RoomNotFoundException
-import com.sigame.lobby.domain.exception.RoomNotFoundByCodeException
 import com.sigame.lobby.domain.model.GameRoom
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.domain.model.RoomSettings
 import com.sigame.lobby.domain.repository.GameRoomRepository
-import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.domain.repository.RoomSettingsRepository
 import com.sigame.lobby.grpc.pack.PackInfo
 import com.sigame.lobby.service.batch.BatchOperationService
-import com.sigame.lobby.service.cache.RoomCacheService
+import com.sigame.lobby.service.data.PlayerRepository
+import com.sigame.lobby.service.data.RoomRepository
+import com.sigame.lobby.service.data.SettingsRepository
 import com.sigame.lobby.service.mapper.RoomMapper
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
-import kotlinx.coroutines.reactive.awaitFirstOrNull
 import mu.KotlinLogging
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -28,11 +25,11 @@ private val logger = KotlinLogging.logger {}
 
 @Component
 class RoomQueryHelper(
+    private val roomRepository: RoomRepository,
+    private val playerRepository: PlayerRepository,
+    private val settingsRepository: SettingsRepository,
     private val gameRoomRepository: GameRoomRepository,
-    private val roomPlayerRepository: RoomPlayerRepository,
-    private val roomSettingsRepository: RoomSettingsRepository,
     private val batchOperationService: BatchOperationService,
-    private val roomCacheService: RoomCacheService,
     private val roomMapper: RoomMapper
 ) {
 
@@ -64,57 +61,26 @@ class RoomQueryHelper(
         val roomIds = rooms.mapNotNull { it.id }
         val packIds = rooms.map { it.packId }
 
-        val playersD = async { loadPlayersByRoomIds(roomIds) }
+        val playersD = async { playerRepository.findActiveByRoomIds(roomIds) }
         val packsD = async { batchOperationService.getPackInfoBatch(packIds) }
 
         RoomListData(rooms, total, playersD.await(), packsD.await())
     }
 
     suspend fun fetchRoomById(roomId: UUID): RoomDetailData = coroutineScope {
-        val room = gameRoomRepository.findById(roomId).awaitFirstOrNull()
-            ?: throw RoomNotFoundException(roomId)
+        val room = roomRepository.findById(roomId)
         fetchRoomDetails(room)
     }
 
     suspend fun fetchRoomByCode(code: String): RoomDetailData = coroutineScope {
-        val cachedRoomId = roomCacheService.getRoomIdByCode(code)
-        if (cachedRoomId != null) {
-            return@coroutineScope try {
-                fetchRoomById(cachedRoomId)
-            } catch (e: RoomNotFoundException) {
-                roomCacheService.deleteRoomCodeIndex(code)
-                fetchRoomByCodeFromDb(code)
-            }
-        }
-        fetchRoomByCodeFromDb(code)
-    }
-
-    private suspend fun fetchRoomByCodeFromDb(code: String): RoomDetailData {
-        val room = gameRoomRepository.findByRoomCode(code).awaitFirstOrNull()
-            ?: throw RoomNotFoundByCodeException(code)
-        roomCacheService.setRoomCodeIndex(code, room.requireId())
-        return fetchRoomDetails(room)
+        val room = roomRepository.findByCode(code)
+        fetchRoomDetails(room)
     }
 
     suspend fun fetchActiveRoomByUserId(userId: UUID): RoomDetailData? = coroutineScope {
-        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
-        if (cachedRoomId != null) {
-            return@coroutineScope try {
-                fetchRoomById(cachedRoomId)
-            } catch (e: RoomNotFoundException) {
-                roomCacheService.deleteUserCurrentRoom(userId)
-                fetchFromDatabaseByUserId(userId)
-            }
-        }
-        fetchFromDatabaseByUserId(userId)
-    }
-
-    private suspend fun fetchFromDatabaseByUserId(userId: UUID): RoomDetailData? {
-        val activePlayer = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
-            ?: return null
-        val data = fetchRoomById(activePlayer.roomId)
-        roomCacheService.setUserCurrentRoom(userId, activePlayer.roomId)
-        return data
+        val activePlayer = playerRepository.findActiveByUserId(userId) ?: return@coroutineScope null
+        val room = roomRepository.findById(activePlayer.roomId)
+        fetchRoomDetails(room)
     }
 
     fun buildRoomDto(data: RoomDetailData): RoomDto =
@@ -140,8 +106,8 @@ class RoomQueryHelper(
         if (size > 0) ((total + size - 1) / size).toInt() else 0
 
     private suspend fun fetchRoomDetails(room: GameRoom): RoomDetailData = coroutineScope {
-        val playersD = async { roomPlayerRepository.findActiveByRoomId(room.requireId()).asFlow().toList() }
-        val settingsD = async { roomSettingsRepository.findByRoomId(room.requireId()).awaitFirstOrNull() }
+        val playersD = async { playerRepository.findActiveByRoomId(room.requireId()) }
+        val settingsD = async { settingsRepository.findByRoomId(room.requireId()) }
         val packInfoD = async { batchOperationService.getPackInfoBatch(listOf(room.packId))[room.packId] }
 
         RoomDetailData(room, playersD.await(), settingsD.await(), packInfoD.await()?.name)
@@ -160,8 +126,4 @@ class RoomQueryHelper(
             hasSlots == true -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
             else -> gameRoomRepository.countPublicWaitingRooms().awaitFirst()
         }
-
-    private suspend fun loadPlayersByRoomIds(roomIds: List<UUID>): Map<UUID, List<RoomPlayer>> =
-        roomPlayerRepository.findActiveByRoomIds(roomIds).asFlow().toList().groupBy { it.roomId }
 }
-

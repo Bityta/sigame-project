@@ -21,7 +21,7 @@ class RoomMembershipService(private val helper: RoomMembershipHelper) {
         val existingInThisRoom = ctx.existingPlayer?.takeIf { it.leftAt == null }
         if (existingInThisRoom != null) {
             logger.info { "User $userId already in room $roomId, returning current state" }
-            return helper.buildExistingPlayerResponse(ctx, existingInThisRoom)
+            return helper.buildExistingPlayerResponse(ctx)
         }
         
         helper.validateJoin(ctx, roomId, request.password)
@@ -61,6 +61,6 @@ class RoomMembershipService(private val helper: RoomMembershipHelper) {
         val ctx = helper.fetchLeaveContext(roomId, newHostId)
         helper.validateTransfer(ctx.room, currentHostId, newHostId, ctx.player, roomId)
 
-        helper.onHostTransferred(ctx.room, currentHostId, ctx.player, ctx.currentPlayers)
+        helper.onHostTransferred(ctx.room, currentHostId, ctx.player)
     }
 }
