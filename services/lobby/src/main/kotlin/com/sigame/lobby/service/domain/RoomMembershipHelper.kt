@@ -235,7 +235,7 @@ class RoomMembershipHelper(
         val cancelled = room.copy(status = GameRoom.statusFromEnum(RoomStatus.CANCELLED))
         gameRoomRepository.save(cancelled).awaitFirstOrNull()
         lobbyMetrics.recordRoomCancelled(room.getStatusEnum())
-        launch { roomCacheService.clearRoomCache(room.requireId()) }
+        launch { roomCacheService.clearRoomCache(room.requireId(), room.roomCode) }
 
         roomEventPublisher.publish(RoomClosedEvent(room.requireId(), "no_players"))
         roomEventPublisher.closeRoom(room.requireId())
@@ -277,8 +277,21 @@ class RoomMembershipHelper(
     private suspend fun findExistingPlayer(roomId: UUID, userId: UUID): RoomPlayer? =
         roomPlayerRepository.findByRoomIdAndUserId(roomId, userId).awaitFirstOrNull()
 
-    private suspend fun findActivePlayerInAnyRoom(userId: UUID): RoomPlayer? =
-        roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
+    private suspend fun findActivePlayerInAnyRoom(userId: UUID): RoomPlayer? {
+        val cachedRoomId = roomCacheService.getUserCurrentRoom(userId)
+        if (cachedRoomId != null) {
+            val player = roomPlayerRepository.findByRoomIdAndUserId(cachedRoomId, userId).awaitFirstOrNull()
+            if (player != null && player.leftAt == null) {
+                return player
+            }
+            roomCacheService.deleteUserCurrentRoom(userId)
+        }
+        val player = roomPlayerRepository.findActiveByUserId(userId).awaitFirstOrNull()
+        if (player != null) {
+            roomCacheService.setUserCurrentRoom(userId, player.roomId)
+        }
+        return player
+    }
 
     private suspend fun fetchRequiredUserInfo(userId: UUID): UserInfo =
         authServiceClient.getUserInfo(userId) ?: throw UserInfoNotFoundException(userId)
