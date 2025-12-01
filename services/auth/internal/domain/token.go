@@ -53,8 +53,9 @@ type RegisterResponse struct {
 // LoginResponse represents the login response
 // All fields are always present
 type LoginResponse struct {
-	AccessToken  string `json:"access_token" binding:"required"`
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	User         *UserResponse `json:"user" binding:"required"`
+	AccessToken  string        `json:"access_token" binding:"required"`
+	RefreshToken string        `json:"refresh_token" binding:"required"`
 }
 
 // CheckUsernameResponse represents the username availability check response

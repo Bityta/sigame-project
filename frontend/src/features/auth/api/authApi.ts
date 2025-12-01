@@ -20,16 +20,7 @@ import type {
 /**
  * Преобразует ответ сервера в формат User
  */
-const mapApiUserToUser = (apiUser: AuthApiUser | undefined, username: string): User => {
-  if (!apiUser) {
-    return {
-      id: '',
-      username,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
+const mapApiUserToUser = (apiUser: AuthApiUser): User => {
   return {
     id: apiUser.id,
     username: apiUser.username,
@@ -55,7 +46,7 @@ export const authFeatureApi = {
     );
     
     // Преобразуем и возвращаем пользователя
-    const user = mapApiUserToUser(response.data.user, credentials.username);
+    const user = mapApiUserToUser(response.data.user);
     
     // Сохраняем пользователя в localStorage
     TokenStorage.setUser(user);
