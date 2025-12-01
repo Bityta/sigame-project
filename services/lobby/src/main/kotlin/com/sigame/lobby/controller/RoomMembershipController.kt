@@ -41,7 +41,7 @@ class RoomMembershipController(
         @RequestBody request: KickPlayerRequest,
         @CurrentUser user: AuthenticatedUser
     ): ResponseEntity<Void> {
-        roomMembershipService.kickPlayer(id, user.userId, request.userId)
+        roomMembershipService.kickPlayer(id, user.userId, request.targetUserId)
         return ResponseEntity.noContent().build()
     }
 
