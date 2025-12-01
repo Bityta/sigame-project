@@ -87,9 +87,9 @@ export const RoomPage = () => {
     }
   };
 
-  const handleKickPlayer = (targetUserId: string) => {
+  const handleKickPlayer = (userId: string) => {
     if (roomId) {
-      kickPlayerMutation.mutate({ roomId, targetUserId });
+      kickPlayerMutation.mutate({ roomId, userId });
     }
   };
 

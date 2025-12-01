@@ -65,7 +65,7 @@ export interface StartGameResponse {
 }
 
 export interface KickPlayerRequest {
-  targetUserId: string;
+  userId: string;
 }
 
 export interface TransferHostRequest {

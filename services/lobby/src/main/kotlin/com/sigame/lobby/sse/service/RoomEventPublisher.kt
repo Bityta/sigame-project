@@ -19,10 +19,17 @@ class RoomEventPublisher {
     private val droppedCount = AtomicLong(0)
     private val failedCount = AtomicLong(0)
 
+    private fun createSink(): Sinks.Many<RoomEvent> =
+        Sinks.many().multicast().onBackpressureBuffer(100)
+
     fun subscribe(roomId: UUID): Flux<RoomEvent> {
-        val sink = roomSinks.computeIfAbsent(roomId) {
-            Sinks.many().multicast().onBackpressureBuffer(100)
-        }
+        val sink = roomSinks.compute(roomId) { _, existing ->
+            if (existing == null || existing.currentSubscriberCount() == 0) {
+                createSink()
+            } else {
+                existing
+            }
+        }!!
         return sink.asFlux()
     }
 
@@ -33,7 +40,14 @@ class RoomEventPublisher {
             return
         }
 
-        val result = sink.tryEmitNext(event)
+        var result = sink.tryEmitNext(event)
+        
+        if (result == Sinks.EmitResult.FAIL_CANCELLED || result == Sinks.EmitResult.FAIL_TERMINATED) {
+            val newSink = createSink()
+            roomSinks[event.roomId] = newSink
+            result = newSink.tryEmitNext(event)
+        }
+        
         if (result.isSuccess) {
             publishedCount.incrementAndGet()
         } else {

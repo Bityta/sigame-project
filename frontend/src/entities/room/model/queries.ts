@@ -204,14 +204,13 @@ export const useStartGame = (
  * Мутация: Выгнать игрока из комнаты
  */
 export const useKickPlayer = (
-  options?: UseMutationOptions<void, Error, { roomId: string; targetUserId: string }>
+  options?: UseMutationOptions<void, Error, { roomId: string; userId: string }>
 ) => {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { roomId: string; targetUserId: string }>({
-    mutationFn: ({ roomId, targetUserId }) => roomApi.kickPlayer(roomId, targetUserId),
+  return useMutation<void, Error, { roomId: string; userId: string }>({
+    mutationFn: ({ roomId, userId }) => roomApi.kickPlayer(roomId, userId),
     onSuccess: (_, { roomId }) => {
-      // Инвалидируем данные комнаты
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
     },
     ...options,
