@@ -114,10 +114,10 @@ export const roomApi = {
   /**
    * Выгнать игрока из комнаты
    */
-  async kickPlayer(id: string, targetUserId: string): Promise<void> {
+  async kickPlayer(id: string, userId: string): Promise<void> {
     await lobbyApi.post(
       API_CONFIG.ENDPOINTS.LOBBY.KICK_PLAYER(id),
-      { targetUserId } as KickPlayerRequest
+      { userId } as KickPlayerRequest
     );
   },
 
