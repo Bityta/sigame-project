@@ -58,6 +58,13 @@ management:
     export:
       prometheus:
         enabled: true
+    distribution:
+      percentiles-histogram:
+        http.request.duration: true
+        http_request_duration_seconds: true
+      slo:
+        http.request.duration: 10ms, 50ms, 100ms, 200ms, 500ms, 1s, 5s
+        http_request_duration_seconds: 0.01, 0.05, 0.1, 0.2, 0.5, 1, 5
     tags:
       application: ${spring.application.name}
       environment: ${ENVIRONMENT:dev}
