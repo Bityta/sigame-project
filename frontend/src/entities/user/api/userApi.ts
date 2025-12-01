@@ -5,22 +5,30 @@
 
 import { authApi } from '@/shared/api';
 import { API_CONFIG } from '@/shared/config';
-import { TokenStorage } from '@/shared/lib';
 import type { User } from '@/shared/types';
+
+interface UserApiResponse {
+  id: string;
+  username: string;
+  created_at: string;
+}
 
 export const userApi = {
   /**
    * Получить информацию о текущем пользователе
-   * Берём из localStorage, так как сервер не возвращает /auth/me
+   * Запрашивает данные с сервера по JWT токену
    */
   async getCurrentUser(): Promise<User> {
-    const user = TokenStorage.getUser();
+    const response = await authApi.get<UserApiResponse>(
+      API_CONFIG.ENDPOINTS.AUTH.ME
+    );
     
-    if (!user) {
-      throw new Error('User not found in storage');
-    }
-    
-    return user;
+    return {
+      id: response.data.id,
+      username: response.data.username,
+      createdAt: response.data.created_at,
+      updatedAt: response.data.created_at,
+    };
   },
 
   /**

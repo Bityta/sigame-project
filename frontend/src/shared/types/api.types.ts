@@ -46,7 +46,7 @@ export interface AuthApiUser {
 }
 
 export interface LoginApiResponse extends AuthApiTokens {
-  user: AuthApiUser;
+  user?: AuthApiUser;
 }
 
 export interface RegisterApiResponse extends AuthApiTokens {

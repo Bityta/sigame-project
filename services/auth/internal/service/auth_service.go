@@ -166,7 +166,6 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest, clien
 	}
 
 	return &domain.LoginResponse{
-		User:         user.ToResponse(),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
