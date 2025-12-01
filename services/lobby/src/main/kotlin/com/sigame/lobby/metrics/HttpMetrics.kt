@@ -13,7 +13,6 @@ class HttpMetrics(
     private val timers = ConcurrentHashMap<String, Timer>()
     
     fun recordHttpRequest(method: String, endpoint: String, status: Int, durationMs: Long) {
-        // Counter - simple increment
         meterRegistry.counter(
             "http_requests_total",
             "method", method,
@@ -21,7 +20,6 @@ class HttpMetrics(
             "status", statusCodeGroup(status)
         ).increment()
 
-        // Timer with histogram - cached per method+endpoint
         val timerKey = "$method:$endpoint"
         val timer = timers.computeIfAbsent(timerKey) {
             Timer.builder("http_request_duration_seconds")

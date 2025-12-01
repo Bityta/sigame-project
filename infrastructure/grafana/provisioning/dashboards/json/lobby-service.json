@@ -146,18 +146,18 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p50)",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p50)",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p95)",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p95)",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"lobby-service\",endpoint!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}} (p99)",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"lobby-service\",uri!~\".*/health|.*/prometheus|.*/actuator.*\"}[1m])) by (le, uri))",
+          "legendFormat": "{{uri}} (p99)",
           "refId": "C"
         }
       ],
