@@ -13,13 +13,13 @@ import reactor.core.publisher.Flux
 import java.util.UUID
 
 @RestController
-@RequestMapping(ApiRoutes.Rooms.BASE)
+@RequestMapping(ApiRoutes.BASE)
 class RoomEventsController(
     private val roomEventPublisher: RoomEventPublisher,
     private val objectMapper: ObjectMapper
 ) {
 
-    @GetMapping("/{roomId}/events", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
+    @GetMapping(ApiRoutes.Rooms.EVENTS, produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun subscribeToRoomEvents(@PathVariable roomId: UUID): Flux<ServerSentEvent<String>> =
         roomEventPublisher.subscribe(roomId)
             .map { event ->

@@ -7,21 +7,21 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
 import { authFeatureApi } from '../api/authApi';
 import { userKeys } from '@/entities/user';
-import type { User, LoginRequest, RegisterRequest } from '@/shared/types';
+import type { LoginRequest, RegisterRequest } from '@/shared/types';
 
 /**
  * Мутация: Вход
  */
 export const useLogin = (
-  options?: UseMutationOptions<User, Error, LoginRequest>
+  options?: UseMutationOptions<void, Error, LoginRequest>
 ) => {
   const queryClient = useQueryClient();
 
-  return useMutation<User, Error, LoginRequest>({
+  return useMutation<void, Error, LoginRequest>({
     mutationFn: authFeatureApi.login,
-    onSuccess: (user) => {
-      // Сохраняем пользователя в кеш
-      queryClient.setQueryData(userKeys.current(), user);
+    onSuccess: () => {
+      // Инвалидируем запрос currentUser - React Query вызовет /auth/me
+      queryClient.invalidateQueries({ queryKey: userKeys.current() });
     },
     ...options,
   });
@@ -31,15 +31,15 @@ export const useLogin = (
  * Мутация: Регистрация
  */
 export const useRegister = (
-  options?: UseMutationOptions<User, Error, RegisterRequest>
+  options?: UseMutationOptions<void, Error, RegisterRequest>
 ) => {
   const queryClient = useQueryClient();
 
-  return useMutation<User, Error, RegisterRequest>({
+  return useMutation<void, Error, RegisterRequest>({
     mutationFn: authFeatureApi.register,
-    onSuccess: (user) => {
-      // Сохраняем пользователя в кеш
-      queryClient.setQueryData(userKeys.current(), user);
+    onSuccess: () => {
+      // Инвалидируем запрос currentUser - React Query вызовет /auth/me
+      queryClient.invalidateQueries({ queryKey: userKeys.current() });
     },
     ...options,
   });

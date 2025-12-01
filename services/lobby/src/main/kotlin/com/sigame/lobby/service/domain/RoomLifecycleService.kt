@@ -7,14 +7,11 @@ import com.sigame.lobby.domain.dto.UpdateRoomSettingsRequest
 import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.model.RoomPlayer
-import com.sigame.lobby.domain.repository.RoomPlayerRepository
-import com.sigame.lobby.service.cache.RoomCacheService
 import com.sigame.lobby.service.mapper.RoomMapper
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.awaitFirst
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,8 +21,6 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class RoomLifecycleService(
-    private val roomPlayerRepository: RoomPlayerRepository,
-    private val roomCacheService: RoomCacheService,
     private val roomMapper: RoomMapper,
     private val helper: RoomLifecycleHelper
 ) {
@@ -62,7 +57,6 @@ class RoomLifecycleService(
             }
         ).last() as RoomPlayer
 
-        launch { helper.updateCacheForNewRoom(savedRoom, hostId) }
         helper.recordRoomCreatedMetrics()
 
         roomMapper.toDto(
@@ -86,7 +80,7 @@ class RoomLifecycleService(
 
         val activePlayers = playersDeferred.await()
 
-        val savedRoomDeferred = async { helper.updateRoomToStarting(room, activePlayers.size) }
+        val savedRoomDeferred = async { helper.updateRoomToStarting(room) }
         val gameSettingsDeferred = async { helper.buildGameSettings(roomId) }
 
         val savedRoom = savedRoomDeferred.await()
@@ -120,9 +114,6 @@ class RoomLifecycleService(
         val updatedSettings = helper.mergeSettings(roomId, currentSettings, request)
 
         helper.saveSettings(updatedSettings, isNew = currentSettings == null)
-
-        val currentPlayers = roomPlayerRepository.countActiveByRoomId(roomId).awaitFirst().toInt()
-        launch { roomCacheService.cacheRoomData(room, currentPlayers) }
 
         UpdateRoomSettingsResponse(settings = helper.toSettingsDto(updatedSettings))
     }

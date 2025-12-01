@@ -3,6 +3,7 @@ package com.sigame.lobby.service.cache
 import com.sigame.lobby.config.RoomConfig
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.model.GameRoom
+import com.sigame.lobby.domain.model.RoomSettings
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactive.awaitFirstOrNull
@@ -24,7 +25,7 @@ class RoomCacheService(
 
     suspend fun cacheRoomData(room: GameRoom, currentPlayers: Int) {
         try {
-            val metadata = buildMap<String, String>(7) {
+            val metadata = buildMap(7) {
                 put("room_code", room.roomCode)
                 put("host_id", room.hostId.toString())
                 put("pack_id", room.packId.toString())
@@ -142,8 +143,56 @@ class RoomCacheService(
         launch { removeActiveRoom(roomId) }
         launch { deleteRoomMeta(roomId) }
         launch { deleteRoomPlayers(roomId) }
+        launch { deleteRoomSettings(roomId) }
         if (roomCode != null) {
             launch { deleteRoomCodeIndex(roomCode) }
+        }
+    }
+
+    suspend fun setRoomSettings(roomId: UUID, settings: RoomSettings) {
+        try {
+            val key = "room:$roomId:settings"
+            val data = mapOf(
+                "time_for_answer" to settings.timeForAnswer.toString(),
+                "time_for_choice" to settings.timeForChoice.toString(),
+                "allow_wrong_answer" to settings.allowWrongAnswer.toString(),
+                "show_right_answer" to settings.showRightAnswer.toString()
+            )
+            redisTemplate.opsForHash<String, String>().putAll(key, data).awaitFirstOrNull()
+            redisTemplate.expire(key, cacheTtl).awaitFirstOrNull()
+        } catch (e: Exception) {
+            logger.error(e) { "Error setting room settings in Redis" }
+        }
+    }
+
+    suspend fun getRoomSettings(roomId: UUID): RoomSettings? {
+        return try {
+            val entries = redisTemplate.opsForHash<String, String>()
+                .entries("room:$roomId:settings")
+                .collectList()
+                .awaitFirstOrNull()
+                ?.associate { it.key to it.value }
+                ?.takeIf { it.isNotEmpty() }
+                ?: return null
+
+            RoomSettings(
+                roomId = roomId,
+                timeForAnswer = entries["time_for_answer"]?.toIntOrNull() ?: 30,
+                timeForChoice = entries["time_for_choice"]?.toIntOrNull() ?: 60,
+                allowWrongAnswer = entries["allow_wrong_answer"]?.toBoolean() ?: true,
+                showRightAnswer = entries["show_right_answer"]?.toBoolean() ?: true
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Error getting room settings from Redis" }
+            null
+        }
+    }
+
+    suspend fun deleteRoomSettings(roomId: UUID) {
+        try {
+            redisTemplate.delete("room:$roomId:settings").awaitFirstOrNull()
+        } catch (e: Exception) {
+            logger.error(e) { "Error deleting room settings from Redis" }
         }
     }
 
@@ -185,59 +234,6 @@ class RoomCacheService(
                 ?.let { UUID.fromString(it) }
         } catch (e: Exception) {
             logger.error(e) { "Error getting user current room from Redis" }
-            null
-        }
-    }
-
-    suspend fun getRoomMeta(roomId: UUID): Map<String, String>? {
-        return try {
-            val entries = redisTemplate.opsForHash<String, String>()
-                .entries("room:$roomId:meta")
-                .collectList()
-                .awaitFirstOrNull()
-                ?.associate { it.key to it.value }
-            entries?.takeIf { it.isNotEmpty() }
-        } catch (e: Exception) {
-            logger.error(e) { "Error getting room metadata from Redis" }
-            null
-        }
-    }
-
-    suspend fun getActiveRoomIds(limit: Int, offset: Int): List<UUID>? {
-        return try {
-            val range = org.springframework.data.domain.Range.closed(offset.toLong(), (offset + limit - 1).toLong())
-            redisTemplate.opsForZSet()
-                .reverseRange("active_rooms", range)
-                .collectList()
-                .awaitFirstOrNull()
-                ?.map { UUID.fromString(it) }
-        } catch (e: Exception) {
-            logger.error(e) { "Error getting active rooms from Redis" }
-            null
-        }
-    }
-
-    suspend fun getActiveRoomsCount(): Long? {
-        return try {
-            redisTemplate.opsForZSet()
-                .size("active_rooms")
-                .awaitFirstOrNull()
-        } catch (e: Exception) {
-            logger.error(e) { "Error getting active rooms count from Redis" }
-            null
-        }
-    }
-
-    suspend fun getRoomPlayers(roomId: UUID): Set<UUID>? {
-        return try {
-            redisTemplate.opsForSet()
-                .members("room:$roomId:players")
-                .collectList()
-                .awaitFirstOrNull()
-                ?.map { UUID.fromString(it) }
-                ?.toSet()
-        } catch (e: Exception) {
-            logger.error(e) { "Error getting room players from Redis" }
             null
         }
     }
