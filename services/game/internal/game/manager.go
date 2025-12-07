@@ -245,6 +245,24 @@ func (m *Manager) BroadcastState() {
 	m.hub.Broadcast(m.game.ID, data)
 }
 
+// SendStateToClient sends current game state to a specific client
+func (m *Manager) SendStateToClient(client *websocket.Client) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	state := m.buildGameState()
+	msg := websocket.NewStateUpdateMessage(state)
+
+	data, err := msg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize state for client: %v", err)
+		return
+	}
+
+	client.Send(data)
+	log.Printf("Sent initial state to client %s", client.GetUserID())
+}
+
 // buildGameState builds the current game state for broadcasting
 func (m *Manager) buildGameState() *domain.GameState {
 	state := &domain.GameState{

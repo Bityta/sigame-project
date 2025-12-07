@@ -10,6 +10,7 @@ import (
 // GameManager interface to avoid circular dependency
 type GameManager interface {
 	HandleClientMessage(userID uuid.UUID, message *ClientMessage)
+	SendStateToClient(client *Client)
 }
 
 // ClientMessageWrapper wraps a client message with the client reference
@@ -82,8 +83,6 @@ func (h *Hub) Run() {
 // registerClient registers a new client
 func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	gameID := client.GetGameID()
 
 	// Create game clients map if doesn't exist
@@ -92,7 +91,18 @@ func (h *Hub) registerClient(client *Client) {
 	}
 
 	h.games[gameID][client] = true
+	
+	// Get manager while holding the lock
+	manager, exists := h.managers[gameID]
+	h.mu.Unlock()
+
 	log.Printf("Client registered for game %s (user %s)", gameID, client.GetUserID())
+
+	// Send current game state to the newly connected client
+	if exists && manager != nil {
+		log.Printf("Sending initial state to client %s for game %s", client.GetUserID(), gameID)
+		manager.SendStateToClient(client)
+	}
 }
 
 // unregisterClient unregisters a client
