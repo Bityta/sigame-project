@@ -1,59 +1,138 @@
-/* PlayerList Styles */
+/* Players Panel - Horizontal Layout */
 
-.player-list {
-  width: 100%;
-}
-
-.player-list__title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 1rem 0;
-}
-
-.player-list__items {
+.players-panel {
+  background-color: #0f172a;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
-.player-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  background-color: #f3f4f6;
+/* Player Card Base */
+.player-card {
+  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
   border-radius: 8px;
-  transition: all 0.2s ease;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 180px;
+  border: 2px solid transparent;
+  transition: all 0.3s;
 }
 
-.player-item--active {
-  background-color: #dbeafe;
-  border: 2px solid #3b82f6;
+/* Host Card */
+.player-card--host {
+  border-color: #fbbf24;
+  background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
 }
 
-.player-item--ready {
-  opacity: 0.7;
+/* Answering Player */
+.player-card--answering {
+  border-color: #ef4444;
+  animation: pulse-red 0.5s infinite;
 }
 
-.player-item__info {
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+}
+
+/* Current User */
+.player-card--you {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* Avatar */
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.player-avatar--host {
+  background: #fbbf24;
+  color: #1e293b;
+  font-size: 1.25rem;
+}
+
+.player-avatar--player {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Player Info */
+.player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: white;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.player-item__name {
-  font-weight: 500;
-  color: #111827;
-}
-
-.player-item__badge {
-  font-size: 1.25rem;
-}
-
-.player-item__score {
-  font-size: 1.25rem;
+.player-role {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: uppercase;
   font-weight: 700;
-  color: #3b82f6;
 }
 
+.player-role--host {
+  background: #fbbf24;
+  color: #1e293b;
+}
+
+.player-status {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.125rem;
+}
+
+/* Score */
+.player-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.player-score--negative {
+  color: #f87171;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .players-panel {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .player-card {
+    min-width: 150px;
+    padding: 0.5rem 1rem;
+  }
+
+  .player-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.625rem;
+  }
+
+  .player-score {
+    font-size: 1.25rem;
+  }
+}
