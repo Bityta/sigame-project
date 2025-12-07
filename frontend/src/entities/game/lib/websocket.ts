@@ -169,23 +169,16 @@ export class GameWebSocket {
    * Отправить готовность
    */
   sendReady(): void {
-    this.send('READY', {
-      user_id: this.userId,
-      game_id: this.gameId,
-    });
+    this.sendGameMessage('READY');
   }
 
   /**
    * Выбрать вопрос
    */
   selectQuestion(themeId: string, questionId: string): void {
-    this.send('SELECT_QUESTION', {
-      user_id: this.userId,
-      game_id: this.gameId,
-      payload: {
-        theme_id: themeId,
-        question_id: questionId,
-      },
+    this.sendGameMessage('SELECT_QUESTION', {
+      theme_id: themeId,
+      question_id: questionId,
     });
   }
 
@@ -193,37 +186,43 @@ export class GameWebSocket {
    * Нажать на кнопку
    */
   pressButton(): void {
-    this.send('PRESS_BUTTON', {
-      user_id: this.userId,
-      game_id: this.gameId,
-    });
+    this.sendGameMessage('PRESS_BUTTON');
   }
 
   /**
    * Отправить ответ
    */
   submitAnswer(answer: string): void {
-    this.send('SUBMIT_ANSWER', {
-      user_id: this.userId,
-      game_id: this.gameId,
-      payload: {
-        answer,
-      },
-    });
+    this.sendGameMessage('SUBMIT_ANSWER', { answer });
   }
 
   /**
    * Оценить ответ (только для хоста)
    */
   judgeAnswer(answerUserId: string, correct: boolean): void {
-    this.send('JUDGE_ANSWER', {
+    this.sendGameMessage('JUDGE_ANSWER', {
+      user_id: answerUserId,
+      correct,
+    });
+  }
+
+  /**
+   * Отправить игровое сообщение с user_id и game_id на верхнем уровне
+   */
+  private sendGameMessage(type: WSMessageType, payload?: Record<string, unknown>): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('[GameWS] Соединение не открыто');
+      return;
+    }
+
+    const message = {
+      type,
       user_id: this.userId,
       game_id: this.gameId,
-      payload: {
-        user_id: answerUserId,
-        correct,
-      },
-    });
+      ...(payload && { payload }),
+    };
+    console.log('[GameWS] Отправка:', type, message);
+    this.ws.send(JSON.stringify(message));
   }
 }
 
