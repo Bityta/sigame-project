@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameWebSocket } from '@/entities/game';
 import { useCurrentUser } from '@/entities/user';
-import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro } from '@/features/game';
+import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro, GameEnd } from '@/features/game';
 import { Button, Spinner } from '@/shared/ui';
 import { ROUTES, TEXTS } from '@/shared/config';
 import './GamePage.css';
@@ -202,17 +202,12 @@ export const GamePage = () => {
         )}
 
         {/* Game End */}
-        {gameState.status === 'game_end' && (
-          <div className="game-page__game-end">
-            <h2>{TEXTS.GAME.GAME_FINISHED}</h2>
-            <Button
-              variant="primary"
-              size="large"
-              onClick={handleLeaveGame}
-            >
-              {TEXTS.GAME.RETURN_TO_LOBBY}
-            </Button>
-          </div>
+        {gameState.status === 'game_end' && gameState.winners && gameState.finalScores && (
+          <GameEnd
+            winners={gameState.winners}
+            finalScores={gameState.finalScores}
+            currentUserId={user?.id}
+          />
         )}
 
         {/* Message */}

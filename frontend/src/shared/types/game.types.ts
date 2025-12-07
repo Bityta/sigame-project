@@ -42,6 +42,13 @@ export interface RoundOverview {
   themeNames: string[];
 }
 
+export interface PlayerScore {
+  userId: string;
+  username: string;
+  score: number;
+  rank: number;
+}
+
 export interface GameState {
   gameId: string;
   status: GameStatus;
@@ -54,6 +61,8 @@ export interface GameState {
   timeRemaining?: number;
   message?: string;
   allRounds?: RoundOverview[];
+  winners?: PlayerScore[];
+  finalScores?: PlayerScore[];
 }
 
 export interface PlayerState {

@@ -336,6 +336,12 @@ func (m *Manager) buildGameState() *domain.GameState {
 		state.CurrentQuestion = &questionState
 	}
 
+	// Add winners and final scores for game_end status
+	if m.game.Status == domain.GameStatusGameEnd {
+		state.Winners = m.game.Winners
+		state.FinalScores = m.game.FinalScores
+	}
+
 	return state
 }
 
