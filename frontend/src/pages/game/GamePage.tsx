@@ -17,7 +17,7 @@ export const GamePage = () => {
     sendReady,
     selectQuestion,
     pressButton,
-    submitAnswer,
+    judgeAnswer,
   } = useGameWebSocket({
     gameId: gameId!,
     userId: user?.id || '',
@@ -38,17 +38,19 @@ export const GamePage = () => {
   }
 
   const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
+  const isHost = currentPlayer?.role === 'host';
   
   // Debug: проверяем activePlayer
-  console.log('[GamePage] status:', gameState.status, 'activePlayer:', gameState.activePlayer, 'userId:', user?.id);
+  console.log('[GamePage] status:', gameState.status, 'activePlayer:', gameState.activePlayer, 'userId:', user?.id, 'isHost:', isHost);
   
-  const canSelectQuestion =
-    gameState.status === 'question_select' &&
-    gameState.activePlayer === user?.id;
-  const canPressButton = gameState.status === 'button_press';
-  const canAnswer =
-    gameState.status === 'answering' &&
-    gameState.activePlayer === user?.id;
+  // Only host can select questions
+  const canSelectQuestion = gameState.status === 'question_select' && isHost;
+  
+  // Only players (not host) can press button
+  const canPressButton = gameState.status === 'button_press' && !isHost;
+  
+  // Host judges answers
+  const canJudgeAnswer = gameState.status === 'answer_judging' && isHost;
 
   const handleQuestionSelect = (themeId: string, questionId: string) => {
     selectQuestion(themeId, questionId);
@@ -108,10 +110,10 @@ export const GamePage = () => {
               {gameState.status === 'question_select' && (
                 <div className="game-page__select-info">
                   {canSelectQuestion ? (
-                    <p className="game-page__your-turn">Ваш ход! Выберите вопрос</p>
+                    <p className="game-page__your-turn">Выберите вопрос</p>
                   ) : (
                     <p>
-                      Выбирает: {gameState.players.find(p => p.userId === gameState.activePlayer)?.username || 'Игрок'}
+                      Ведущий выбирает вопрос...
                     </p>
                   )}
                 </div>
@@ -128,11 +130,26 @@ export const GamePage = () => {
             <QuestionView
               question={gameState.currentQuestion}
               canPressButton={canPressButton}
-              canAnswer={canAnswer}
               onPressButton={pressButton}
-              onSubmitAnswer={submitAnswer}
               timeRemaining={gameState.timeRemaining}
             />
+          )}
+
+          {canJudgeAnswer && gameState.activePlayer && (
+            <div className="game-page__judging">
+              <p className="game-page__judging-label">
+                Отвечает: {gameState.players.find(p => p.userId === gameState.activePlayer)?.username}
+              </p>
+              <p className="game-page__judging-hint">Игрок говорит ответ вслух. Оцените:</p>
+              <div className="game-page__judging-buttons">
+                <Button variant="success" size="large" onClick={() => judgeAnswer(gameState.activePlayer!, true)}>
+                  ✓ Верно
+                </Button>
+                <Button variant="danger" size="large" onClick={() => judgeAnswer(gameState.activePlayer!, false)}>
+                  ✗ Неверно
+                </Button>
+              </div>
+            </div>
           )}
 
           {gameState.status === 'game_end' && (

@@ -198,9 +198,9 @@ func (m *Manager) startRound(roundNumber int) {
 	// Show themes to all players
 	m.BroadcastState()
 
-	// Select first player (player with lowest score)
-	firstPlayer := m.selectActivePlayer()
-	m.game.ActivePlayer = &firstPlayer
+	// Host selects questions (they are the game master)
+	hostID := m.findHost()
+	m.game.ActivePlayer = &hostID
 
 	// Transition to question selection
 	m.updateGameStatus(domain.GameStatusQuestionSelect)
@@ -210,12 +210,16 @@ func (m *Manager) startRound(roundNumber int) {
 	m.timer.Start(time.Duration(m.game.Settings.TimeForChoice) * time.Second)
 }
 
-// selectActivePlayer selects the next active player (lowest score)
+// selectActivePlayer selects the next active player (lowest score, excluding host)
 func (m *Manager) selectActivePlayer() uuid.UUID {
 	var selectedPlayer uuid.UUID
 	minScore := int(^uint(0) >> 1) // max int
 
 	for userID, player := range m.game.Players {
+		// Skip host - they don't participate in scoring, they are the game master
+		if player.Role == domain.PlayerRoleHost {
+			continue
+		}
 		if player.IsActive && player.Score < minScore {
 			minScore = player.Score
 			selectedPlayer = userID
@@ -223,6 +227,16 @@ func (m *Manager) selectActivePlayer() uuid.UUID {
 	}
 
 	return selectedPlayer
+}
+
+// findHost finds the host player
+func (m *Manager) findHost() uuid.UUID {
+	for userID, player := range m.game.Players {
+		if player.Role == domain.PlayerRoleHost {
+			return userID
+		}
+	}
+	return uuid.Nil
 }
 
 // updateGameStatus updates the game status
@@ -322,6 +336,10 @@ func (m *Manager) handleTimeout() {
 
 	case domain.GameStatusAnswering:
 		// Time's up for answering
+		m.handleAnswerTimeout()
+
+	case domain.GameStatusAnswerJudging:
+		// Host didn't judge in time - treat as wrong answer
 		m.handleAnswerTimeout()
 	}
 }

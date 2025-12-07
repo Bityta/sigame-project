@@ -15,8 +15,9 @@ func (m *Manager) handleSelectQuestion(action *PlayerAction) {
 		return
 	}
 
-	// Verify it's the active player's turn
-	if m.game.ActivePlayer == nil || *m.game.ActivePlayer != action.UserID {
+	// Only host can select questions
+	player, ok := m.game.Players[action.UserID]
+	if !ok || player.Role != domain.PlayerRoleHost {
 		return
 	}
 
@@ -96,6 +97,11 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 		return
 	}
 
+	// Host cannot press button - they are the game master
+	if player.Role == domain.PlayerRoleHost {
+		return
+	}
+
 	// Try to press button (atomic)
 	if m.buttonPress.Press(userID) {
 		log.Printf("Button pressed by %s", player.Username)
@@ -119,12 +125,12 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 			m.hub.Broadcast(m.game.ID, data)
 		}
 
-		// Transition to answering phase
-		m.updateGameStatus(domain.GameStatusAnswering)
+		// Transition to answer judging phase (player answers verbally, host judges)
+		m.updateGameStatus(domain.GameStatusAnswerJudging)
 		m.BroadcastState()
 
-		// Start timer for answering
-		m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+		// Start timer for host to judge the answer
+		m.timer.Start(30 * time.Second)
 	}
 }
 
@@ -302,9 +308,9 @@ func (m *Manager) continueGame() {
 		return
 	}
 
-	// Select next player
-	nextPlayer := m.selectActivePlayer()
-	m.game.ActivePlayer = &nextPlayer
+	// Host selects next question (they are the game master)
+	hostID := m.findHost()
+	m.game.ActivePlayer = &hostID
 
 	// Back to question selection
 	m.updateGameStatus(domain.GameStatusQuestionSelect)

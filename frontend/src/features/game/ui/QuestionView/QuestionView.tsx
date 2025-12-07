@@ -10,29 +10,16 @@ import './QuestionView.css';
 interface QuestionViewProps {
   question: QuestionState;
   canPressButton: boolean;
-  canAnswer: boolean;
   onPressButton?: () => void;
-  onSubmitAnswer?: (answer: string) => void;
   timeRemaining?: number;
 }
 
 export const QuestionView = ({
   question,
   canPressButton,
-  canAnswer,
   onPressButton,
-  onSubmitAnswer,
   timeRemaining,
 }: QuestionViewProps) => {
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const answer = formData.get('answer') as string;
-    if (answer.trim()) {
-      onSubmitAnswer?.(answer);
-    }
-  };
-
   return (
     <Card className="question-view" padding="large">
       <div className="question-view__header">
@@ -63,24 +50,7 @@ export const QuestionView = ({
             🔴 Нажать кнопку!
           </Button>
         )}
-
-        {canAnswer && (
-          <form onSubmit={handleSubmit} className="question-view__answer-form">
-            <input
-              type="text"
-              name="answer"
-              placeholder="Ваш ответ..."
-              className="question-view__answer-input"
-              autoFocus
-              autoComplete="off"
-            />
-            <Button type="submit" variant="primary" size="large">
-              Отправить ответ
-            </Button>
-          </form>
-        )}
       </div>
     </Card>
   );
 };
-
