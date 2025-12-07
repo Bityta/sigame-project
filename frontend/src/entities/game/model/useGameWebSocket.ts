@@ -4,8 +4,10 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GameWebSocket } from '../lib/websocket';
 import type { WSMessageType, GameState } from '@/shared/types';
+import { ROUTES } from '@/shared/config';
 
 interface UseGameWebSocketOptions {
   gameId: string;
@@ -20,9 +22,11 @@ export const useGameWebSocket = ({
   onStateUpdate,
   onError,
 }: UseGameWebSocketOptions) => {
+  const navigate = useNavigate();
   const wsRef = useRef<GameWebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const stateReceivedRef = useRef(false);
   
   // Храним колбэки в ref чтобы избежать пересоздания useEffect
   const onStateUpdateRef = useRef(onStateUpdate);
@@ -39,19 +43,34 @@ export const useGameWebSocket = ({
 
     const ws = new GameWebSocket(gameId, userId);
     wsRef.current = ws;
+    stateReceivedRef.current = false;
 
     // Подключаемся
     ws.connect()
       .then(() => {
         setIsConnected(true);
+        
+        // Таймаут на получение первого STATE_UPDATE (5 секунд)
+        // Если игра не существует, сервер закроет соединение и мы не получим state
+        setTimeout(() => {
+          if (!stateReceivedRef.current) {
+            console.error('[GameWS] Таймаут: STATE_UPDATE не получен');
+            onErrorRef.current?.('Игра не найдена или не запущена');
+            ws.disconnect();
+            navigate(ROUTES.LOBBY);
+          }
+        }, 5000);
       })
       .catch((error) => {
         console.error('Ошибка подключения WebSocket:', error);
         onErrorRef.current?.('Не удалось подключиться к игре');
+        // Если подключение не удалось - редирект в лобби
+        navigate(ROUTES.LOBBY);
       });
 
     // Подписываемся на обновления состояния
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
+      stateReceivedRef.current = true;
       setGameState(state);
       onStateUpdateRef.current?.(state);
     });
@@ -59,6 +78,10 @@ export const useGameWebSocket = ({
     // Подписываемся на ошибки
     const unsubError = ws.on<{ message: string }>('ERROR', (error) => {
       onErrorRef.current?.(error.message);
+      // При ошибке "Game not found" редиректим в лобби
+      if (error.message.includes('not found') || error.message.includes('GAME_NOT_FOUND')) {
+        navigate(ROUTES.LOBBY);
+      }
     });
 
     // Cleanup при размонтировании
@@ -68,7 +91,7 @@ export const useGameWebSocket = ({
       ws.disconnect();
       setIsConnected(false);
     };
-  }, [gameId, userId]); // Убрали onStateUpdate, onError из зависимостей
+  }, [gameId, userId, navigate]); // Добавили navigate в зависимости
 
   // Игровые действия
   const sendReady = useCallback(() => {
