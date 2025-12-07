@@ -8,6 +8,8 @@ import com.sigame.lobby.domain.dto.UpdateRoomSettingsResponse
 import com.sigame.lobby.domain.enums.RoomStatus
 import com.sigame.lobby.domain.model.RoomPlayer
 import com.sigame.lobby.service.mapper.RoomMapper
+import com.sigame.lobby.sse.event.SettingsUpdatedEvent
+import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -22,7 +24,8 @@ private val logger = KotlinLogging.logger {}
 @Service
 class RoomLifecycleService(
     private val roomMapper: RoomMapper,
-    private val helper: RoomLifecycleHelper
+    private val helper: RoomLifecycleHelper,
+    private val roomEventPublisher: RoomEventPublisher
 ) {
 
     @Transactional
@@ -115,7 +118,17 @@ class RoomLifecycleService(
 
         helper.saveSettings(updatedSettings, isNew = currentSettings == null)
 
-        UpdateRoomSettingsResponse(settings = helper.toSettingsDto(updatedSettings))
+        val settingsDto = helper.toSettingsDto(updatedSettings)
+        
+        // Publish SSE event to notify all room members
+        roomEventPublisher.publish(
+            SettingsUpdatedEvent(
+                eventRoomId = roomId,
+                settings = settingsDto
+            )
+        )
+
+        UpdateRoomSettingsResponse(settings = settingsDto)
     }
 
     @Transactional
