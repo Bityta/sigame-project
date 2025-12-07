@@ -23,6 +23,15 @@ export const useGameWebSocket = ({
   const wsRef = useRef<GameWebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  
+  // Храним колбэки в ref чтобы избежать пересоздания useEffect
+  const onStateUpdateRef = useRef(onStateUpdate);
+  const onErrorRef = useRef(onError);
+  
+  useEffect(() => {
+    onStateUpdateRef.current = onStateUpdate;
+    onErrorRef.current = onError;
+  }, [onStateUpdate, onError]);
 
   // Инициализация WebSocket
   useEffect(() => {
@@ -38,18 +47,18 @@ export const useGameWebSocket = ({
       })
       .catch((error) => {
         console.error('Ошибка подключения WebSocket:', error);
-        onError?.('Не удалось подключиться к игре');
+        onErrorRef.current?.('Не удалось подключиться к игре');
       });
 
     // Подписываемся на обновления состояния
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
       setGameState(state);
-      onStateUpdate?.(state);
+      onStateUpdateRef.current?.(state);
     });
 
     // Подписываемся на ошибки
     const unsubError = ws.on<{ message: string }>('ERROR', (error) => {
-      onError?.(error.message);
+      onErrorRef.current?.(error.message);
     });
 
     // Cleanup при размонтировании
@@ -59,7 +68,7 @@ export const useGameWebSocket = ({
       ws.disconnect();
       setIsConnected(false);
     };
-  }, [gameId, userId, onStateUpdate, onError]);
+  }, [gameId, userId]); // Убрали onStateUpdate, onError из зависимостей
 
   // Игровые действия
   const sendReady = useCallback(() => {
