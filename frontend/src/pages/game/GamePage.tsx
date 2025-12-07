@@ -110,10 +110,23 @@ export const GamePage = () => {
           currentUserId={user?.id}
         />
 
-        {/* Turn Indicator */}
+        {/* Turn Indicator with Timer Bar */}
         {getTurnIndicator() && (
-          <div className="game-page__turn-indicator">
-            {getTurnIndicator()}
+          <div className="game-page__turn-indicator-wrapper">
+            <span className="game-page__turn-indicator-text">{getTurnIndicator()}</span>
+            {gameState.status === 'question_select' && gameState.timeRemaining !== undefined && (
+              <div className="game-page__timer-bar">
+                <div 
+                  className={`game-page__timer-bar-fill ${
+                    gameState.timeRemaining <= 3 ? 'game-page__timer-bar-fill--danger' :
+                    gameState.timeRemaining <= 5 ? 'game-page__timer-bar-fill--warning' : ''
+                  }`}
+                  style={{ 
+                    width: `${Math.min(100, (gameState.timeRemaining / 60) * 100)}%` 
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 
