@@ -29,6 +29,12 @@ func RequestResponseLoggingMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		
+		// Skip WebSocket requests - they need the original ResponseWriter for Hijacker interface
+		if c.Request.Header.Get("Upgrade") == "websocket" {
+			c.Next()
+			return
+		}
 
 		startTime := time.Now()
 
