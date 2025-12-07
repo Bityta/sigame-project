@@ -31,11 +31,10 @@ export const QuestionView = ({
     <Card className="question-view" padding="large">
       <div className="question-view__header">
         <div className="question-view__price">{question.price} очков</div>
-        {timeRemaining !== undefined && (
-          <div className={`question-view__timer ${isTimerDanger ? 'question-view__timer--danger' : isTimerWarning ? 'question-view__timer--warning' : ''}`}>
-            {timeRemaining}с
-          </div>
-        )}
+        {/* Always show timer container to prevent layout shift */}
+        <div className={`question-view__timer ${isTimerDanger ? 'question-view__timer--danger' : isTimerWarning ? 'question-view__timer--warning' : ''}`}>
+          {timeRemaining !== undefined ? `${timeRemaining}с` : '\u00A0'}
+        </div>
       </div>
 
       {question.text && (

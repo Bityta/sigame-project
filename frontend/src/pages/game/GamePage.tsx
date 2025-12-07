@@ -117,26 +117,26 @@ export const GamePage = () => {
           currentUserId={user?.id}
         />
 
-        {/* Turn Indicator with Timer Bar */}
-        {getTurnIndicator() && (
-          <div className="game-page__turn-indicator-wrapper">
-            <span className="game-page__turn-indicator-text">{getTurnIndicator()}</span>
-            {gameState.status === 'question_select' && timerDuration > 0 && (
-              <div className="game-page__timer-bar">
-                <div 
-                  key={timerKey}
-                  className={`game-page__timer-bar-fill ${
-                    (gameState.timeRemaining ?? 0) <= 3 ? 'game-page__timer-bar-fill--danger' :
-                    (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
-                  }`}
-                  style={{ 
-                    animationDuration: `${timerDuration}s`
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {/* Turn Indicator with Timer Bar - always visible to prevent layout shift */}
+        <div className="game-page__turn-indicator-wrapper">
+          <span className="game-page__turn-indicator-text">
+            {getTurnIndicator() || '\u00A0'}
+          </span>
+          {gameState.status === 'question_select' && timerDuration > 0 && (
+            <div className="game-page__timer-bar">
+              <div 
+                key={timerKey}
+                className={`game-page__timer-bar-fill ${
+                  (gameState.timeRemaining ?? 0) <= 3 ? 'game-page__timer-bar-fill--danger' :
+                  (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
+                }`}
+                style={{ 
+                  animationDuration: `${timerDuration}s`
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Waiting Screen - kept for backward compatibility but should not appear */}
         {gameState.status === 'waiting' && (
@@ -180,34 +180,36 @@ export const GamePage = () => {
           />
         )}
 
-        {/* Judging Panel (for host) - just buttons, answer is in QuestionView */}
-        {canJudgeAnswer && gameState.activePlayer && (
-          <div className="game-page__judging">
-            <div className="game-page__judging-buttons">
-              <button 
-                className="game-page__judge-btn game-page__judge-btn--correct"
-                onClick={() => judgeAnswer(gameState.activePlayer!, true)}
-              >
-                ✓ Верно
-              </button>
-              <button 
-                className="game-page__judge-btn game-page__judge-btn--wrong"
-                onClick={() => judgeAnswer(gameState.activePlayer!, false)}
-              >
-                ✗ Неверно
-              </button>
+        {/* Judging/Waiting Panel - fixed height container to prevent layout shift */}
+        <div className="game-page__action-panel">
+          {/* Judging Panel (for host) */}
+          {canJudgeAnswer && gameState.activePlayer && (
+            <div className="game-page__judging">
+              <div className="game-page__judging-buttons">
+                <button 
+                  className="game-page__judge-btn game-page__judge-btn--correct"
+                  onClick={() => judgeAnswer(gameState.activePlayer!, true)}
+                >
+                  ✓ Верно
+                </button>
+                <button 
+                  className="game-page__judge-btn game-page__judge-btn--wrong"
+                  onClick={() => judgeAnswer(gameState.activePlayer!, false)}
+                >
+                  ✗ Неверно
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Waiting for Host (for players) */}
-        {gameState.status === 'answer_judging' && !isHost && (
-          <div className="game-page__waiting-host">
-            <div className="game-page__waiting-host-icon">🎤</div>
-            <p>Скажите ответ вслух!</p>
-            <p className="game-page__waiting-host-hint">Ждём решения ведущего...</p>
-          </div>
-        )}
+          {/* Waiting for Host (for players) */}
+          {gameState.status === 'answer_judging' && !isHost && (
+            <div className="game-page__waiting-host">
+              <div className="game-page__waiting-host-icon">🎤</div>
+              <p>Скажите ответ вслух!</p>
+            </div>
+          )}
+        </div>
 
         {/* Game End */}
         {gameState.status === 'game_end' && gameState.winners && gameState.finalScores && (
