@@ -54,18 +54,18 @@ type GameSettings struct {
 }
 
 // GameState represents the current state for broadcasting (DTO)
-// Required: game_id, status, current_round, players
-// Optional: round_name, themes, active_player, current_question, time_remaining, message
+// Required: gameId, status, currentRound, players
+// Optional: roundName, themes, activePlayer, currentQuestion, timeRemaining, message
 type GameState struct {
-	GameID          uuid.UUID              `json:"game_id" binding:"required"`
+	GameID          uuid.UUID              `json:"gameId" binding:"required"`
 	Status          GameStatus             `json:"status" binding:"required"`
-	CurrentRound    int                    `json:"current_round" binding:"required"`
-	RoundName       string                 `json:"round_name,omitempty"`
+	CurrentRound    int                    `json:"currentRound" binding:"required"`
+	RoundName       string                 `json:"roundName,omitempty"`
 	Themes          []ThemeState           `json:"themes,omitempty"`
 	Players         []PlayerState          `json:"players" binding:"required"`
-	ActivePlayer    *uuid.UUID             `json:"active_player,omitempty"`
-	CurrentQuestion *QuestionState         `json:"current_question,omitempty"`
-	TimeRemaining   int                    `json:"time_remaining,omitempty"` // seconds
+	ActivePlayer    *uuid.UUID             `json:"activePlayer,omitempty"`
+	CurrentQuestion *QuestionState         `json:"currentQuestion,omitempty"`
+	TimeRemaining   int                    `json:"timeRemaining,omitempty"` // seconds
 	Message         string                 `json:"message,omitempty"`
 }
 
@@ -78,13 +78,13 @@ type ThemeState struct {
 
 // QuestionState represents question availability in UI (DTO)
 // Required: id, price, available
-// Optional: text, media_type (only when question is shown)
+// Optional: text, mediaType (only when question is shown)
 type QuestionState struct {
 	ID        string `json:"id" binding:"required"`
 	Price     int    `json:"price" binding:"required"`
 	Available bool   `json:"available" binding:"required"`
 	Text      string `json:"text,omitempty"`      // only when shown
-	MediaType string `json:"media_type,omitempty"` // only when shown
+	MediaType string `json:"mediaType,omitempty"` // only when shown
 }
 
 // CreateGameRequest is the request to create a new game (DTO)

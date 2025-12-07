@@ -30,12 +30,12 @@ type Player struct {
 // PlayerState represents player state for broadcasting (DTO)
 // All fields are required
 type PlayerState struct {
-	UserID   uuid.UUID  `json:"user_id" binding:"required"`
+	UserID   uuid.UUID  `json:"userId" binding:"required"`
 	Username string     `json:"username" binding:"required"`
 	Role     PlayerRole `json:"role" binding:"required"`
 	Score    int        `json:"score" binding:"required"`
-	IsActive bool       `json:"is_active" binding:"required"`
-	IsReady  bool       `json:"is_ready" binding:"required"`
+	IsActive bool       `json:"isActive" binding:"required"`
+	IsReady  bool       `json:"isReady" binding:"required"`
 }
 
 // PlayerScore represents a player's score entry (DTO)
