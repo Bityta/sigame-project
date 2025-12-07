@@ -62,14 +62,13 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 func (m *Manager) Start() {
 	log.Printf("Starting game manager for game %s", m.game.ID)
 
-	// Set game status to waiting
-	m.updateGameStatus(domain.GameStatusWaiting)
-
-	// Broadcast initial state
-	m.BroadcastState()
-
 	// Start main game loop
 	go m.run()
+
+	// Players are already ready in lobby, start game immediately
+	m.mu.Lock()
+	m.startGame()
+	m.mu.Unlock()
 }
 
 // Stop stops the game manager
@@ -110,9 +109,6 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 	defer m.mu.Unlock()
 
 	switch action.Message.Type {
-	case websocket.MessageTypeReady:
-		m.handlePlayerReady(action.UserID)
-
 	case websocket.MessageTypeSelectQuestion:
 		m.handleSelectQuestion(action)
 
@@ -127,38 +123,6 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 
 	default:
 		log.Printf("Unknown message type: %s", action.Message.Type)
-	}
-}
-
-// handlePlayerReady marks player as ready
-func (m *Manager) handlePlayerReady(userID uuid.UUID) {
-	player, ok := m.game.Players[userID]
-	if !ok {
-		log.Printf("Player %s not found in game %s (registered players: %v)", 
-			userID, m.game.ID, m.getPlayerIDs())
-		return
-	}
-
-	player.SetReady(true)
-	log.Printf("Player %s is ready", userID)
-
-	// Check if all players are ready
-	allReady := true
-	readyCount := 0
-	for _, p := range m.game.Players {
-		if p.IsActive {
-			readyCount++
-			if !p.IsReady {
-				allReady = false
-			}
-		}
-	}
-
-	// Need at least 2 players to start
-	if allReady && readyCount >= 2 {
-		m.startGame()
-	} else {
-		m.BroadcastState()
 	}
 }
 
