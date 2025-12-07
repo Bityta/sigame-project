@@ -38,6 +38,10 @@ export const GamePage = () => {
   }
 
   const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
+  
+  // Debug: проверяем activePlayer
+  console.log('[GamePage] status:', gameState.status, 'activePlayer:', gameState.activePlayer, 'userId:', user?.id);
+  
   const canSelectQuestion =
     gameState.status === 'question_select' &&
     gameState.activePlayer === user?.id;
@@ -100,11 +104,24 @@ export const GamePage = () => {
 
           {(gameState.status === 'question_select' ||
             gameState.status === 'round_start') && (
-            <GameBoard
-              themes={gameState.themes}
-              onQuestionSelect={handleQuestionSelect}
-              canSelectQuestion={canSelectQuestion}
-            />
+            <>
+              {gameState.status === 'question_select' && (
+                <div className="game-page__select-info">
+                  {canSelectQuestion ? (
+                    <p className="game-page__your-turn">Ваш ход! Выберите вопрос</p>
+                  ) : (
+                    <p>
+                      Выбирает: {gameState.players.find(p => p.userId === gameState.activePlayer)?.username || 'Игрок'}
+                    </p>
+                  )}
+                </div>
+              )}
+              <GameBoard
+                themes={gameState.themes}
+                onQuestionSelect={handleQuestionSelect}
+                canSelectQuestion={canSelectQuestion}
+              />
+            </>
           )}
 
           {gameState.currentQuestion && (
