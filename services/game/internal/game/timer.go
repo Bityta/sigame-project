@@ -7,11 +7,13 @@ import (
 
 // Timer represents a game timer with a stable channel for select
 type Timer struct {
-	C       chan time.Time // Public channel that never changes
-	timer   *time.Timer
-	active  bool
-	mu      sync.Mutex
-	stopped chan struct{}
+	C         chan time.Time // Public channel that never changes
+	timer     *time.Timer
+	active    bool
+	mu        sync.Mutex
+	stopped   chan struct{}
+	startedAt time.Time
+	duration  time.Duration
 }
 
 // NewTimer creates a new Timer with a stable channel
@@ -34,6 +36,8 @@ func (t *Timer) Start(duration time.Duration) {
 	// Create new timer
 	t.timer = time.NewTimer(duration)
 	t.active = true
+	t.startedAt = time.Now()
+	t.duration = duration
 
 	// Forward timer events to our stable channel
 	go func() {
@@ -83,4 +87,21 @@ func (t *Timer) IsActive() bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.active
+}
+
+// Remaining returns the remaining time in seconds
+func (t *Timer) Remaining() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if !t.active {
+		return 0
+	}
+
+	elapsed := time.Since(t.startedAt)
+	remaining := t.duration - elapsed
+	if remaining < 0 {
+		return 0
+	}
+	return int(remaining.Seconds())
 }

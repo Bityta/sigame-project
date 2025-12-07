@@ -13,16 +13,17 @@ import (
 
 // Manager manages a single game session
 type Manager struct {
-	game        *domain.Game
-	pack        *domain.Pack
-	hub         Hub
-	ctx         context.Context
-	cancel      context.CancelFunc
-	actionChan  chan *PlayerAction
-	timer       *Timer
-	buttonPress *ButtonPress
-	mu          sync.RWMutex
-	eventLogger EventLogger
+	game          *domain.Game
+	pack          *domain.Pack
+	hub           Hub
+	ctx           context.Context
+	cancel        context.CancelFunc
+	actionChan    chan *PlayerAction
+	timer         *Timer
+	timerTicker   *time.Ticker
+	buttonPress   *ButtonPress
+	mu            sync.RWMutex
+	eventLogger   EventLogger
 }
 
 // PlayerAction represents an action from a player
@@ -62,6 +63,9 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 func (m *Manager) Start() {
 	log.Printf("Starting game manager for game %s", m.game.ID)
 
+	// Start ticker for timer updates (every second)
+	m.timerTicker = time.NewTicker(1 * time.Second)
+
 	// Start main game loop
 	go m.run()
 
@@ -76,6 +80,9 @@ func (m *Manager) Stop() {
 	log.Printf("Stopping game manager for game %s", m.game.ID)
 	m.cancel()
 	m.timer.Stop()
+	if m.timerTicker != nil {
+		m.timerTicker.Stop()
+	}
 }
 
 // run is the main game loop
@@ -90,8 +97,42 @@ func (m *Manager) run() {
 
 		case <-m.timer.C:
 			m.handleTimeout()
+
+		case <-m.timerTicker.C:
+			// Broadcast timer updates during active phases
+			m.handleTimerTick()
 		}
 	}
+}
+
+// handleTimerTick broadcasts timer updates to clients
+func (m *Manager) handleTimerTick() {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Only broadcast during phases that have visible timers
+	switch m.game.Status {
+	case domain.GameStatusQuestionSelect,
+		domain.GameStatusButtonPress,
+		domain.GameStatusAnswering,
+		domain.GameStatusAnswerJudging:
+		// Broadcast current state with updated timer
+		m.BroadcastStateUnlocked()
+	}
+}
+
+// BroadcastStateUnlocked broadcasts state without acquiring lock (caller must hold RLock)
+func (m *Manager) BroadcastStateUnlocked() {
+	state := m.buildGameState()
+	msg := websocket.NewStateUpdateMessage(state)
+
+	data, err := msg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize state: %v", err)
+		return
+	}
+
+	m.hub.Broadcast(m.game.ID, data)
 }
 
 // HandleClientMessage handles a message from a client
@@ -247,11 +288,12 @@ func (m *Manager) SendStateToClient(client *websocket.Client) {
 // buildGameState builds the current game state for broadcasting
 func (m *Manager) buildGameState() *domain.GameState {
 	state := &domain.GameState{
-		GameID:       m.game.ID,
-		Status:       m.game.Status,
-		CurrentRound: m.game.CurrentRound,
-		Players:      make([]domain.PlayerState, 0, len(m.game.Players)),
-		ActivePlayer: m.game.ActivePlayer,
+		GameID:        m.game.ID,
+		Status:        m.game.Status,
+		CurrentRound:  m.game.CurrentRound,
+		Players:       make([]domain.PlayerState, 0, len(m.game.Players)),
+		ActivePlayer:  m.game.ActivePlayer,
+		TimeRemaining: m.timer.Remaining(),
 	}
 
 	// Add players
