@@ -14,5 +14,8 @@ data class PlayerDto(
     val avatarUrl: String?,
 
     @JsonProperty("role")
-    val role: String
+    val role: String,
+
+    @JsonProperty("isReady")
+    val isReady: Boolean = false
 )

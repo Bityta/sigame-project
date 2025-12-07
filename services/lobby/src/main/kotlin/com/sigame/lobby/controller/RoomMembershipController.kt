@@ -3,6 +3,8 @@ package com.sigame.lobby.controller
 import com.sigame.lobby.domain.dto.JoinRoomRequest
 import com.sigame.lobby.domain.dto.KickPlayerRequest
 import com.sigame.lobby.domain.dto.RoomDto
+import com.sigame.lobby.domain.dto.SetReadyRequest
+import com.sigame.lobby.domain.dto.SetReadyResponse
 import com.sigame.lobby.domain.dto.TransferHostRequest
 import com.sigame.lobby.security.AuthenticatedUser
 import com.sigame.lobby.security.CurrentUser
@@ -53,6 +55,27 @@ class RoomMembershipController(
     ): ResponseEntity<Void> {
         roomMembershipService.transferHostManually(id, user.userId, request.newHostId)
         return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping(ApiRoutes.Rooms.READY)
+    suspend fun setReadyStatus(
+        @PathVariable id: UUID,
+        @RequestBody(required = false) request: SetReadyRequest = SetReadyRequest(),
+        @CurrentUser user: AuthenticatedUser
+    ): ResponseEntity<SetReadyResponse> {
+        val gameStarted = roomMembershipService.setReadyStatus(id, user.userId, request.isReady)
+        
+        return ResponseEntity.ok(
+            SetReadyResponse(
+                isReady = request.isReady,
+                allPlayersReady = gameStarted != null,
+                readyCount = 0, // Will be sent via SSE
+                totalCount = 0, // Will be sent via SSE
+                gameStarted = gameStarted != null,
+                gameId = gameStarted?.gameId,
+                websocketUrl = gameStarted?.websocketUrl
+            )
+        )
     }
 }
 

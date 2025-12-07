@@ -168,15 +168,24 @@ func (m *Manager) startGame() {
 
 	now := time.Now()
 	m.game.StartedAt = &now
-	m.game.CurrentRound = 1
-	m.updateGameStatus(domain.GameStatusRoundStart)
+	m.game.CurrentRound = 0 // Will be set to 1 when rounds_overview ends
 
 	// Log event
 	event := domain.NewGameEvent(m.game.ID, domain.EventGameStarted)
 	m.eventLogger.LogEvent(context.Background(), event)
 
-	// Start first round
-	m.startRound(1)
+	// Show rounds overview first
+	m.showRoundsOverview()
+}
+
+// showRoundsOverview displays all rounds before starting the game
+func (m *Manager) showRoundsOverview() {
+	log.Printf("Showing rounds overview for game %s", m.game.ID)
+	m.updateGameStatus(domain.GameStatusRoundsOverview)
+	m.BroadcastState()
+
+	// Auto-transition to first round after 5 seconds
+	m.timer.Start(5 * time.Second)
 }
 
 // startRound starts a new round
@@ -197,19 +206,11 @@ func (m *Manager) startRound(roundNumber int) {
 		WithRound(roundNumber)
 	m.eventLogger.LogEvent(context.Background(), event)
 
-	// Show themes to all players
+	// Show round intro screen
 	m.BroadcastState()
 
-	// Host selects questions (they are the game master)
-	hostID := m.findHost()
-	m.game.ActivePlayer = &hostID
-
-	// Transition to question selection
-	m.updateGameStatus(domain.GameStatusQuestionSelect)
-	m.BroadcastState()
-
-	// Start timer for question selection
-	m.timer.Start(time.Duration(m.game.Settings.TimeForChoice) * time.Second)
+	// Wait 3 seconds for round intro before showing questions
+	m.timer.Start(3 * time.Second)
 }
 
 // selectActivePlayer selects the next active player (lowest score, excluding host)
@@ -294,6 +295,22 @@ func (m *Manager) buildGameState() *domain.GameState {
 		state.Players = append(state.Players, player.ToState())
 	}
 
+	// Add all rounds for rounds_overview status
+	if m.game.Status == domain.GameStatusRoundsOverview {
+		state.AllRounds = make([]domain.RoundOverview, 0, len(m.pack.Rounds))
+		for i, round := range m.pack.Rounds {
+			themeNames := make([]string, 0, len(round.Themes))
+			for _, theme := range round.Themes {
+				themeNames = append(themeNames, theme.Name)
+			}
+			state.AllRounds = append(state.AllRounds, domain.RoundOverview{
+				RoundNumber: i + 1,
+				Name:        round.Name,
+				ThemeNames:  themeNames,
+			})
+		}
+	}
+
 	// Add round info if in game
 	if m.game.CurrentRound > 0 && m.game.CurrentRound <= len(m.pack.Rounds) {
 		round := m.pack.Rounds[m.game.CurrentRound-1]
@@ -307,9 +324,9 @@ func (m *Manager) buildGameState() *domain.GameState {
 		}
 	}
 
-	// Add current question if shown
+	// Add current question if shown (include answer for host to see)
 	if m.game.CurrentQuestion != nil {
-		questionState := m.game.CurrentQuestion.ToState(true)
+		questionState := m.game.CurrentQuestion.ToStateWithAnswer(true)
 		state.CurrentQuestion = &questionState
 	}
 
@@ -324,6 +341,14 @@ func (m *Manager) handleTimeout() {
 	log.Printf("Timer expired in status %s", m.game.Status)
 
 	switch m.game.Status {
+	case domain.GameStatusRoundsOverview:
+		// Rounds overview finished, start first round
+		m.startRound(1)
+
+	case domain.GameStatusRoundStart:
+		// Round intro finished, transition to question selection
+		m.transitionToQuestionSelect()
+
 	case domain.GameStatusQuestionSelect:
 		// Auto-select random question
 		m.autoSelectQuestion()
@@ -344,6 +369,21 @@ func (m *Manager) handleTimeout() {
 		// Host didn't judge in time - treat as wrong answer
 		m.handleAnswerTimeout()
 	}
+}
+
+// transitionToQuestionSelect moves from round_start to question_select
+func (m *Manager) transitionToQuestionSelect() {
+	log.Printf("Transitioning to question_select phase")
+
+	// Host selects questions (they are the game master)
+	hostID := m.findHost()
+	m.game.ActivePlayer = &hostID
+
+	m.updateGameStatus(domain.GameStatusQuestionSelect)
+	m.BroadcastState()
+
+	// Start timer for question selection
+	m.timer.Start(time.Duration(m.game.Settings.TimeForChoice) * time.Second)
 }
 
 // transitionToButtonPress moves from question_show to button_press

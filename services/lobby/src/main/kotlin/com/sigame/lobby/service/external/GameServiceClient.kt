@@ -43,9 +43,7 @@ class GameServiceClient(
                 "players" to playerData,
                 "settings" to mapOf(
                     "time_for_answer" to settings.timeForAnswer,
-                    "time_for_choice" to settings.timeForChoice,
-                    "allow_wrong_answer" to settings.allowWrongAnswer,
-                    "show_right_answer" to settings.showRightAnswer
+                    "time_for_choice" to settings.timeForChoice
                 )
             )
             
@@ -74,9 +72,7 @@ class GameServiceClient(
 
 data class GameSettings(
     val timeForAnswer: Int = 30,
-    val timeForChoice: Int = 60,
-    val allowWrongAnswer: Boolean = true,
-    val showRightAnswer: Boolean = true
+    val timeForChoice: Int = 60
 )
 
 data class GameSessionResponse(

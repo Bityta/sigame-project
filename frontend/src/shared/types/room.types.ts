@@ -8,8 +8,6 @@ export type PlayerRole = 'host' | 'player' | 'spectator';
 export interface RoomSettings {
   timeForAnswer: number;
   timeForChoice: number;
-  allowWrongAnswer: boolean;
-  showRightAnswer: boolean;
 }
 
 export interface RoomPlayer {
@@ -17,6 +15,7 @@ export interface RoomPlayer {
   userId: string;
   username: string;
   role: PlayerRole;
+  isReady: boolean;
   joinedAt: string;
 }
 

@@ -15,13 +15,14 @@ data class RoomPlayer(
     val username: String,
     val avatarUrl: String? = null,
     val role: String = "player",
+    val isReady: Boolean = false,
     val joinedAt: LocalDateTime = LocalDateTime.now(),
     val leftAt: LocalDateTime? = null
 ) {
-        fun getRoleEnum(): PlayerRole = PlayerRole.valueOf(role.uppercase())
+    fun getRoleEnum(): PlayerRole = PlayerRole.valueOf(role.uppercase())
     
     companion object {
-                fun roleFromEnum(role: PlayerRole): String = role.name.lowercase()
+        fun roleFromEnum(role: PlayerRole): String = role.name.lowercase()
     }
 }
 

@@ -154,9 +154,7 @@ class RoomCacheService(
             val key = "room:$roomId:settings"
             val data = mapOf(
                 "time_for_answer" to settings.timeForAnswer.toString(),
-                "time_for_choice" to settings.timeForChoice.toString(),
-                "allow_wrong_answer" to settings.allowWrongAnswer.toString(),
-                "show_right_answer" to settings.showRightAnswer.toString()
+                "time_for_choice" to settings.timeForChoice.toString()
             )
             redisTemplate.opsForHash<String, String>().putAll(key, data).awaitFirstOrNull()
             redisTemplate.expire(key, cacheTtl).awaitFirstOrNull()
@@ -178,9 +176,7 @@ class RoomCacheService(
             RoomSettings(
                 roomId = roomId,
                 timeForAnswer = entries["time_for_answer"]?.toIntOrNull() ?: 30,
-                timeForChoice = entries["time_for_choice"]?.toIntOrNull() ?: 60,
-                allowWrongAnswer = entries["allow_wrong_answer"]?.toBoolean() ?: true,
-                showRightAnswer = entries["show_right_answer"]?.toBoolean() ?: true
+                timeForChoice = entries["time_for_choice"]?.toIntOrNull() ?: 60
             )
         } catch (e: Exception) {
             logger.error(e) { "Error getting room settings from Redis" }

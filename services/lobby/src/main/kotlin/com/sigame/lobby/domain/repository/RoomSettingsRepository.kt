@@ -15,15 +15,12 @@ interface RoomSettingsRepository : R2dbcRepository<RoomSettings, UUID> {
     
     @Modifying
     @Query("""
-        INSERT INTO room_settings (room_id, time_for_answer, time_for_choice, allow_wrong_answer, show_right_answer)
-        VALUES (:roomId, :timeForAnswer, :timeForChoice, :allowWrongAnswer, :showRightAnswer)
+        INSERT INTO room_settings (room_id, time_for_answer, time_for_choice)
+        VALUES (:roomId, :timeForAnswer, :timeForChoice)
     """)
     fun insertRoomSettings(
         roomId: UUID,
         timeForAnswer: Int,
-        timeForChoice: Int,
-        allowWrongAnswer: Boolean,
-        showRightAnswer: Boolean
+        timeForChoice: Int
     ): Mono<Int>
 }
-

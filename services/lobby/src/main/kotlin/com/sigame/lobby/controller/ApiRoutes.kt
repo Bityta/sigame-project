@@ -29,6 +29,8 @@ object ApiRoutes {
 
         const val TRANSFER_HOST = "$BASE/{id}/transfer-host"
 
+        const val READY = "$BASE/{id}/ready"
+
         const val EVENTS = "$BASE/{roomId}/events"
     }
 

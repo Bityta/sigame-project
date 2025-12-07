@@ -130,5 +130,26 @@ export const roomApi = {
       { newHostId } as TransferHostRequest
     );
   },
+
+  /**
+   * Установить статус готовности игрока
+   */
+  async setReady(id: string, isReady: boolean): Promise<SetReadyResponse> {
+    const response = await lobbyApi.post<SetReadyResponse>(
+      API_CONFIG.ENDPOINTS.LOBBY.SET_READY(id),
+      { isReady }
+    );
+    return response.data;
+  },
 };
+
+export interface SetReadyResponse {
+  isReady: boolean;
+  allPlayersReady: boolean;
+  readyCount: number;
+  totalCount: number;
+  gameStarted: boolean;
+  gameId?: string;
+  websocketUrl?: string;
+}
 

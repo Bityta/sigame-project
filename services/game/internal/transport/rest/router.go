@@ -24,6 +24,9 @@ func SetupRouter(handler *Handler, wsHandler *websocket.Handler) *gin.Engine {
 		// Create game
 		api.POST("/create", handler.CreateGame)
 
+		// Get user's active game
+		api.GET("/my-active", handler.GetMyActiveGame)
+
 		// Get game info
 		api.GET("/:id", handler.GetGame)
 

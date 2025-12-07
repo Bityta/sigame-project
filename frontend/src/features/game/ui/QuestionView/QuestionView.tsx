@@ -12,6 +12,7 @@ interface QuestionViewProps {
   canPressButton: boolean;
   onPressButton?: () => void;
   timeRemaining?: number;
+  isHost?: boolean;
 }
 
 export const QuestionView = ({
@@ -19,6 +20,7 @@ export const QuestionView = ({
   canPressButton,
   onPressButton,
   timeRemaining,
+  isHost = false,
 }: QuestionViewProps) => {
   const isTimerWarning = timeRemaining !== undefined && timeRemaining <= 5;
   const isTimerDanger = timeRemaining !== undefined && timeRemaining <= 3;
@@ -41,6 +43,14 @@ export const QuestionView = ({
       {question.mediaType && question.mediaType !== 'text' && (
         <div className="question-view__media">
           <p>Медиа: {question.mediaType}</p>
+        </div>
+      )}
+
+      {/* Show correct answer to host */}
+      {isHost && question.answer && (
+        <div className="question-view__answer">
+          <span className="question-view__answer-label">Правильный ответ:</span>
+          <span className="question-view__answer-text">{question.answer}</span>
         </div>
       )}
 

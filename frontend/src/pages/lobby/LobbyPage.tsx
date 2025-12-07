@@ -4,6 +4,7 @@ import { useLogout, useAuthStore } from '@/features/auth';
 import { RoomList } from '@/features/room';
 import { useCurrentUser } from '@/entities/user';
 import { roomApi, useMyActiveRoom, useLeaveRoom } from '@/entities/room';
+import { useMyActiveGame } from '@/entities/game';
 import { Button, Card, Spinner } from '@/shared/ui';
 import { ROUTES, TEXTS } from '@/shared/config';
 import { useErrorStore } from '@/shared/lib/error-store';
@@ -13,11 +14,13 @@ export const LobbyPage = () => {
   const navigate = useNavigate();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const { data: activeRoom, isLoading: activeRoomLoading } = useMyActiveRoom();
+  const { data: activeGame, isLoading: activeGameLoading } = useMyActiveGame();
   const leaveRoomMutation = useLeaveRoom();
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated);
   const setError = useErrorStore((state) => state.setError);
   
   const hasActiveRoom = !!activeRoom;
+  const hasActiveGame = activeGame?.hasActiveGame;
   
   const logoutMutation = useLogout({
     onSuccess: () => {
@@ -86,6 +89,23 @@ export const LobbyPage = () => {
           </Button>
         </div>
       </header>
+
+      {/* Active Game Banner */}
+      {hasActiveGame && activeGame?.gameId && (
+        <div className="lobby-page__active-game-banner">
+          <div className="lobby-page__active-game-info">
+            <span className="lobby-page__active-game-icon">🎮</span>
+            <span className="lobby-page__active-game-text">У вас есть активная игра!</span>
+          </div>
+          <Button
+            variant="primary"
+            size="small"
+            onClick={() => navigate(ROUTES.GAME(activeGame.gameId!))}
+          >
+            Вернуться в игру
+          </Button>
+        </div>
+      )}
 
       <div className="lobby-page__content">
         <aside className="lobby-page__sidebar">

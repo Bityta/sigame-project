@@ -4,6 +4,7 @@
 
 export type GameStatus = 
   | 'waiting'
+  | 'rounds_overview'
   | 'round_start'
   | 'question_select'
   | 'question_show'
@@ -35,6 +36,12 @@ export interface WSMessage<T = any> {
   payload?: T;
 }
 
+export interface RoundOverview {
+  roundNumber: number;
+  name: string;
+  themeNames: string[];
+}
+
 export interface GameState {
   gameId: string;
   status: GameStatus;
@@ -46,6 +53,7 @@ export interface GameState {
   currentQuestion?: QuestionState;
   timeRemaining?: number;
   message?: string;
+  allRounds?: RoundOverview[];
 }
 
 export interface PlayerState {
@@ -68,6 +76,7 @@ export interface QuestionState {
   available: boolean;
   text?: string;
   mediaType?: string;
+  answer?: string; // Only for host
 }
 
 export interface ButtonPressedPayload {
