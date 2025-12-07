@@ -121,7 +121,6 @@ func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*dom
 			ID:          r.ID,
 			RoundNumber: r.RoundNumber,
 			Name:        r.Name,
-			Type:        r.Type,
 			Themes:      make([]*domain.Theme, len(r.Themes)),
 		}
 		
@@ -134,16 +133,12 @@ func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*dom
 			
 			for k, q := range t.Questions {
 				theme.Questions[k] = &domain.Question{
-					ID:              q.ID,
-					Price:           q.Price,
-					Type:            q.Type,
-					Text:            q.Text,
-					Answer:          q.Answer,
-					AltAnswers:      q.AltAnswers,
-					MediaType:       q.MediaType,
-					MediaURL:        q.MediaURL,
-					MediaDurationMs: q.MediaDurationMs,
-					Used:            false,
+					ID:        q.ID,
+					Price:     q.Price,
+					Text:      q.Text,
+					Answer:    q.Answer,
+					MediaType: q.MediaType,
+					Used:      false,
 				}
 			}
 			
