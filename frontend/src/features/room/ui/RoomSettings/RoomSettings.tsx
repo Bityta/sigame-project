@@ -36,6 +36,12 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
     });
   };
 
+  const hasChanges = 
+    settings.timeForAnswer !== room.settings?.timeForAnswer ||
+    settings.timeForChoice !== room.settings?.timeForChoice ||
+    settings.allowWrongAnswer !== room.settings?.allowWrongAnswer ||
+    settings.showRightAnswer !== room.settings?.showRightAnswer;
+
   if (!isHost) {
     return (
       <Card className="room-settings" padding="medium">
@@ -125,6 +131,7 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
           onClick={handleSave}
           variant="primary"
           fullWidth
+          disabled={!hasChanges}
           isLoading={updateSettingsMutation.isPending}
         >
           Сохранить настройки
