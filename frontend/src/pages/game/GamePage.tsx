@@ -85,16 +85,6 @@ export const GamePage = () => {
           <div className={`game-page__role-indicator ${isHost ? 'game-page__role-indicator--host' : 'game-page__role-indicator--player'}`}>
             {isHost ? '👑 Ведущий' : '🎮 Игрок'}
           </div>
-          {/* Global Timer */}
-          {gameState.timeRemaining !== undefined && gameState.timeRemaining > 0 && (
-            <div className={`game-page__header-timer ${
-              gameState.timeRemaining <= 3 ? 'game-page__header-timer--danger' : 
-              gameState.timeRemaining <= 5 ? 'game-page__header-timer--warning' : ''
-            }`}>
-              <span className="game-page__header-timer-icon">⏱</span>
-              <span>{gameState.timeRemaining}с</span>
-            </div>
-          )}
         </div>
         <Button variant="danger" size="small" onClick={handleLeaveGame}>
           {TEXTS.GAME.LEAVE_GAME}
@@ -168,6 +158,7 @@ export const GamePage = () => {
             onPressButton={pressButton}
             timeRemaining={gameState.timeRemaining}
             isHost={isHost}
+            hideAnswer={gameState.status === 'answer_judging'}
           />
         )}
 
@@ -187,7 +178,6 @@ export const GamePage = () => {
                 <span className="game-page__judging-answer-text">{gameState.currentQuestion.answer}</span>
               </div>
             )}
-            <p className="game-page__judging-hint">Игрок говорит ответ вслух. Оцените:</p>
             <div className="game-page__judging-buttons">
               <button 
                 className="game-page__judge-btn game-page__judge-btn--correct"

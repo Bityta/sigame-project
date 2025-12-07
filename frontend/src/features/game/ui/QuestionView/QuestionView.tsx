@@ -13,6 +13,7 @@ interface QuestionViewProps {
   onPressButton?: () => void;
   timeRemaining?: number;
   isHost?: boolean;
+  hideAnswer?: boolean; // Hide answer when judging panel is shown
 }
 
 export const QuestionView = ({
@@ -21,6 +22,7 @@ export const QuestionView = ({
   onPressButton,
   timeRemaining,
   isHost = false,
+  hideAnswer = false,
 }: QuestionViewProps) => {
   const isTimerWarning = timeRemaining !== undefined && timeRemaining <= 5;
   const isTimerDanger = timeRemaining !== undefined && timeRemaining <= 3;
@@ -46,8 +48,8 @@ export const QuestionView = ({
         </div>
       )}
 
-      {/* Show correct answer to host */}
-      {isHost && question.answer && (
+      {/* Show correct answer to host (hide when judging panel is shown) */}
+      {isHost && question.answer && !hideAnswer && (
         <div className="question-view__answer">
           <span className="question-view__answer-label">Правильный ответ:</span>
           <span className="question-view__answer-text">{question.answer}</span>
