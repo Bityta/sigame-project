@@ -312,6 +312,10 @@ func (m *Manager) handleTimeout() {
 		// Auto-select random question
 		m.autoSelectQuestion()
 
+	case domain.GameStatusQuestionShow:
+		// Question was shown, now allow button press
+		m.transitionToButtonPress()
+
 	case domain.GameStatusButtonPress:
 		// No one pressed the button, skip question
 		m.skipQuestion()
@@ -320,6 +324,17 @@ func (m *Manager) handleTimeout() {
 		// Time's up for answering
 		m.handleAnswerTimeout()
 	}
+}
+
+// transitionToButtonPress moves from question_show to button_press
+func (m *Manager) transitionToButtonPress() {
+	log.Printf("Transitioning to button_press phase")
+	m.updateGameStatus(domain.GameStatusButtonPress)
+	m.buttonPress.Reset()
+	m.BroadcastState()
+
+	// Start timer for button press
+	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
 }
 
 // autoSelectQuestion automatically selects a random available question

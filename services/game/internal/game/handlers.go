@@ -81,22 +81,8 @@ func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question)
 	m.updateGameStatus(domain.GameStatusQuestionShow)
 	m.BroadcastState()
 
-	// Wait a bit for question to be read
+	// Wait a bit for question to be read, then handleTimeout will transition to button_press
 	m.timer.Start(3 * time.Second) // 3 seconds to read
-
-	// Then transition to button press phase
-	go func() {
-		<-m.timer.C
-		m.mu.Lock()
-		defer m.mu.Unlock()
-
-		m.updateGameStatus(domain.GameStatusButtonPress)
-		m.buttonPress.Reset()
-		m.BroadcastState()
-
-		// Start timer for button press
-		m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
-	}()
 }
 
 // handlePressButton handles button press
