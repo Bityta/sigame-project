@@ -128,9 +128,9 @@ func setDefaults() {
 	viper.SetDefault("REDIS_PASSWORD", "")
 	viper.SetDefault("REDIS_DB", 2)
 
-	// Pack Service
+	// Pack Service (HTTP port, will migrate to gRPC later)
 	viper.SetDefault("PACK_SERVICE_HOST", "localhost")
-	viper.SetDefault("PACK_SERVICE_PORT", "50055")
+	viper.SetDefault("PACK_SERVICE_PORT", "8084")
 }
 
 // Validate validates the configuration

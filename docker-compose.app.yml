@@ -170,9 +170,9 @@ services:
       # Kafka (via Docker network)
       KAFKA_BROKERS: kafka:9092
       
-      # gRPC Services
+      # Pack Service (HTTP, will migrate to gRPC later)
       PACK_SERVICE_HOST: pack-service
-      PACK_SERVICE_PORT: 50055
+      PACK_SERVICE_PORT: 8084
       
       # Server
       HTTP_PORT: 8083
