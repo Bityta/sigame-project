@@ -42,9 +42,7 @@ class CachedSettingsRepository(
         dbRepository.insertRoomSettings(
             roomId = settings.roomId,
             timeForAnswer = settings.timeForAnswer,
-            timeForChoice = settings.timeForChoice,
-            allowWrongAnswer = settings.allowWrongAnswer,
-            showRightAnswer = settings.showRightAnswer
+            timeForChoice = settings.timeForChoice
         ).awaitFirstOrNull()
 
         CoroutineScope(Dispatchers.IO).launch {

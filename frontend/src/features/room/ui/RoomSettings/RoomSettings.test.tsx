@@ -44,8 +44,6 @@ const createMockRoom = (overrides?: Partial<GameRoom>): GameRoom => ({
   settings: {
     timeForAnswer: 30,
     timeForChoice: 15,
-    allowWrongAnswer: true,
-    showRightAnswer: true,
   },
   players: [],
   createdAt: new Date().toISOString(),
@@ -86,10 +84,6 @@ describe('RoomSettings', () => {
     expect(screen.getByText('30 сек')).toBeInTheDocument();
     expect(screen.getByText('Время на выбор:')).toBeInTheDocument();
     expect(screen.getByText('15 сек')).toBeInTheDocument();
-    expect(screen.getByText('Неправильные ответы:')).toBeInTheDocument();
-    expect(screen.getByText('Разрешены')).toBeInTheDocument();
-    expect(screen.getByText('Показывать ответ:')).toBeInTheDocument();
-    expect(screen.getByText('Да')).toBeInTheDocument();
 
     // Проверяем что нет кнопки сохранения
     expect(screen.queryByRole('button', { name: /сохранить/i })).not.toBeInTheDocument();
@@ -116,10 +110,6 @@ describe('RoomSettings', () => {
     // Проверяем наличие слайдеров
     const sliders = screen.getAllByRole('slider');
     expect(sliders).toHaveLength(2);
-
-    // Проверяем наличие переключателей
-    expect(screen.getByText('Разрешить неправильные ответы')).toBeInTheDocument();
-    expect(screen.getByText('Показывать правильный ответ')).toBeInTheDocument();
 
     // Проверяем наличие кнопки сохранения
     expect(screen.getByRole('button', { name: /сохранить/i })).toBeInTheDocument();
@@ -179,26 +169,6 @@ describe('RoomSettings', () => {
   });
 
   /**
-   * ТЕСТ: Кнопка сохранения активируется после переключения "allowWrongAnswer"
-   * 
-   * Проверяет что после переключения настройки "Разрешить неправильные ответы"
-   * кнопка сохранения становится активной
-   */
-  it('кнопка сохранения активна после переключения allowWrongAnswer', async () => {
-    const user = userEvent.setup();
-    const room = createMockRoom();
-    renderRoomSettings(room, true);
-
-    const saveButton = screen.getByRole('button', { name: /сохранить/i });
-    
-    // Находим переключатель для allowWrongAnswer и кликаем
-    const toggles = screen.getAllByRole('checkbox');
-    await user.click(toggles[0]);
-
-    expect(saveButton).not.toBeDisabled();
-  });
-
-  /**
    * ТЕСТ: Вызов мутации при сохранении настроек
    * 
    * Проверяет что при клике на кнопку "Сохранить"
@@ -223,8 +193,6 @@ describe('RoomSettings', () => {
         settings: expect.objectContaining({
           timeForAnswer: 45,
           timeForChoice: 15,
-          allowWrongAnswer: true,
-          showRightAnswer: true,
         }),
       },
       expect.objectContaining({
@@ -256,46 +224,6 @@ describe('RoomSettings', () => {
   });
 
   /**
-   * ТЕСТ: Отображение "Запрещены" для allowWrongAnswer = false
-   * 
-   * Проверяет что для обычного игрока корректно отображается
-   * значение "Запрещены" когда неправильные ответы отключены
-   */
-  it('показывает "Запрещены" когда неправильные ответы отключены', () => {
-    const room = createMockRoom({
-      settings: {
-        timeForAnswer: 30,
-        timeForChoice: 15,
-        allowWrongAnswer: false,
-        showRightAnswer: true,
-      },
-    });
-    renderRoomSettings(room, false);
-
-    expect(screen.getByText('Запрещены')).toBeInTheDocument();
-  });
-
-  /**
-   * ТЕСТ: Отображение "Нет" для showRightAnswer = false
-   * 
-   * Проверяет что для обычного игрока корректно отображается
-   * значение "Нет" когда показ ответа отключен
-   */
-  it('показывает "Нет" когда показ ответа отключен', () => {
-    const room = createMockRoom({
-      settings: {
-        timeForAnswer: 30,
-        timeForChoice: 15,
-        allowWrongAnswer: true,
-        showRightAnswer: false,
-      },
-    });
-    renderRoomSettings(room, false);
-
-    expect(screen.getByText('Нет')).toBeInTheDocument();
-  });
-
-  /**
    * ТЕСТ: Корректное отображение при отсутствии настроек
    * 
    * Проверяет что компонент корректно работает
@@ -308,8 +236,6 @@ describe('RoomSettings', () => {
     // Проверяем дефолтные значения
     expect(screen.getByText('30 сек')).toBeInTheDocument();
     expect(screen.getByText('10 сек')).toBeInTheDocument();
-    expect(screen.getByText('Разрешены')).toBeInTheDocument();
-    expect(screen.getByText('Да')).toBeInTheDocument();
   });
 
   /**

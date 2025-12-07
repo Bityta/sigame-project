@@ -15,8 +15,6 @@ export const STORAGE_KEYS = {
 export const DEFAULT_ROOM_SETTINGS = {
   timeForAnswer: 30,      // секунды
   timeForChoice: 10,      // секунды
-  allowWrongAnswer: true,
-  showRightAnswer: true,
 } as const;
 
 // Лимиты
@@ -75,6 +73,7 @@ export const PLAYER_ROLES = {
 
 export const GAME_STATUS = {
   WAITING: 'waiting',
+  ROUNDS_OVERVIEW: 'rounds_overview',
   ROUND_START: 'round_start',
   QUESTION_SELECT: 'question_select',
   QUESTION_SHOW: 'question_show',

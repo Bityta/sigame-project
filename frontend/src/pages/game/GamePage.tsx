@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameWebSocket } from '@/entities/game';
 import { useCurrentUser } from '@/entities/user';
-import { GameBoard, PlayerList, QuestionView } from '@/features/game';
+import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro } from '@/features/game';
 import { Button, Spinner } from '@/shared/ui';
 import { ROUTES, TEXTS } from '@/shared/config';
 import './GamePage.css';
@@ -90,6 +90,16 @@ export const GamePage = () => {
           <div className={`game-page__role-indicator ${isHost ? 'game-page__role-indicator--host' : 'game-page__role-indicator--player'}`}>
             {isHost ? '👑 Ведущий' : '🎮 Игрок'}
           </div>
+          {/* Global Timer */}
+          {gameState.timeRemaining !== undefined && gameState.timeRemaining > 0 && (
+            <div className={`game-page__header-timer ${
+              gameState.timeRemaining <= 3 ? 'game-page__header-timer--danger' : 
+              gameState.timeRemaining <= 5 ? 'game-page__header-timer--warning' : ''
+            }`}>
+              <span className="game-page__header-timer-icon">⏱</span>
+              <span>{gameState.timeRemaining}с</span>
+            </div>
+          )}
         </div>
         <Button variant="danger" size="small" onClick={handleLeaveGame}>
           {TEXTS.GAME.LEAVE_GAME}
@@ -112,27 +122,29 @@ export const GamePage = () => {
           </div>
         )}
 
-        {/* Waiting Screen */}
+        {/* Waiting Screen - kept for backward compatibility but should not appear */}
         {gameState.status === 'waiting' && (
           <div className="game-page__waiting">
             <h2>{TEXTS.GAME.WAITING_PLAYERS}</h2>
-            <p>
-              {TEXTS.GAME.READY_COUNT(
-                gameState.players.filter((p) => p.isReady).length,
-                gameState.players.length
-              )}
-            </p>
-            {!currentPlayer?.isReady && (
-              <Button variant="primary" size="large" onClick={handleReady}>
-                {TEXTS.GAME.READY_BUTTON}
-              </Button>
-            )}
+            <p>Подготовка игры...</p>
           </div>
         )}
 
+        {/* Rounds Overview */}
+        {gameState.status === 'rounds_overview' && gameState.allRounds && (
+          <RoundsOverview rounds={gameState.allRounds} />
+        )}
+
+        {/* Round Intro */}
+        {gameState.status === 'round_start' && (
+          <RoundIntro
+            roundNumber={gameState.currentRound}
+            roundName={gameState.roundName}
+          />
+        )}
+
         {/* Game Board */}
-        {(gameState.status === 'question_select' ||
-          gameState.status === 'round_start') && (
+        {gameState.status === 'question_select' && (
           <GameBoard
             themes={gameState.themes}
             onQuestionSelect={handleQuestionSelect}
@@ -147,6 +159,7 @@ export const GamePage = () => {
             canPressButton={canPressButton}
             onPressButton={pressButton}
             timeRemaining={gameState.timeRemaining}
+            isHost={isHost}
           />
         )}
 
@@ -159,6 +172,13 @@ export const GamePage = () => {
                 {gameState.players.find(p => p.userId === gameState.activePlayer)?.username}
               </span>
             </div>
+            {/* Show correct answer to host */}
+            {gameState.currentQuestion?.answer && (
+              <div className="game-page__judging-answer">
+                <span className="game-page__judging-answer-label">Правильный ответ:</span>
+                <span className="game-page__judging-answer-text">{gameState.currentQuestion.answer}</span>
+              </div>
+            )}
             <p className="game-page__judging-hint">Игрок говорит ответ вслух. Оцените:</p>
             <div className="game-page__judging-buttons">
               <button 

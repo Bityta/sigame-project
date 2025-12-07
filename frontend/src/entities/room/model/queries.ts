@@ -13,6 +13,7 @@ import type {
   UseMutationOptions,
 } from '@tanstack/react-query';
 import { roomApi } from '../api/roomApi';
+import type { SetReadyResponse } from '../api/roomApi';
 import type {
   GameRoom,
   CreateRoomRequest,
@@ -227,6 +228,24 @@ export const useTransferHost = (
 
   return useMutation<void, Error, { roomId: string; newHostId: string }>({
     mutationFn: ({ roomId, newHostId }) => roomApi.transferHost(roomId, newHostId),
+    onSuccess: (_, { roomId }) => {
+      // Инвалидируем данные комнаты
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+    },
+    ...options,
+  });
+};
+
+/**
+ * Мутация: Установить статус готовности
+ */
+export const useSetReady = (
+  options?: UseMutationOptions<SetReadyResponse, Error, { roomId: string; isReady: boolean }>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<SetReadyResponse, Error, { roomId: string; isReady: boolean }>({
+    mutationFn: ({ roomId, isReady }) => roomApi.setReady(roomId, isReady),
     onSuccess: (_, { roomId }) => {
       // Инвалидируем данные комнаты
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });

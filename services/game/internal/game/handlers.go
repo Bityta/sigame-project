@@ -174,7 +174,7 @@ func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
 	if correct {
 		player.AddScore(questionPrice)
 		scoreDelta = questionPrice
-	} else if m.game.Settings.AllowWrongAnswer {
+	} else {
 		player.SubtractScore(questionPrice)
 		scoreDelta = -questionPrice
 	}
@@ -266,10 +266,8 @@ func (m *Manager) handleAnswerTimeout() {
 	player := m.game.Players[*m.game.ActivePlayer]
 
 	// Penalize for timeout
-	if m.game.Settings.AllowWrongAnswer {
-		questionPrice := m.game.CurrentQuestion.Price
-		player.SubtractScore(questionPrice)
-	}
+	questionPrice := m.game.CurrentQuestion.Price
+	player.SubtractScore(questionPrice)
 
 	log.Printf("Answer timeout for player %s", player.Username)
 

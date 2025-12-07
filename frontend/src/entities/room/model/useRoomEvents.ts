@@ -42,7 +42,17 @@ export interface SettingsUpdatedEvent extends RoomEvent {
   settings: RoomSettings;
 }
 
-type AnyRoomEvent = PlayerJoinedEvent | PlayerLeftEvent | GameStartedEvent | RoomClosedEvent | SettingsUpdatedEvent;
+export interface PlayerReadyEvent extends RoomEvent {
+  type: 'player_ready';
+  userId: string;
+  username: string;
+  isReady: boolean;
+  allPlayersReady: boolean;
+  readyCount: number;
+  totalCount: number;
+}
+
+type AnyRoomEvent = PlayerJoinedEvent | PlayerLeftEvent | GameStartedEvent | RoomClosedEvent | SettingsUpdatedEvent | PlayerReadyEvent;
 
 interface UseRoomEventsOptions {
   onPlayerJoined?: (event: PlayerJoinedEvent) => void;
@@ -50,6 +60,7 @@ interface UseRoomEventsOptions {
   onGameStarted?: (event: GameStartedEvent) => void;
   onRoomClosed?: (event: RoomClosedEvent) => void;
   onSettingsUpdated?: (event: SettingsUpdatedEvent) => void;
+  onPlayerReady?: (event: PlayerReadyEvent) => void;
   onError?: (error: Event) => void;
 }
 
@@ -102,6 +113,12 @@ export const useRoomEvents = (roomId: string | undefined, options: UseRoomEvents
       const event = JSON.parse(e.data) as SettingsUpdatedEvent;
       invalidateRoom();
       options.onSettingsUpdated?.(event);
+    });
+
+    eventSource.addEventListener('player_ready', (e) => {
+      const event = JSON.parse(e.data) as PlayerReadyEvent;
+      invalidateRoom();
+      options.onPlayerReady?.(event);
     });
 
     eventSource.onerror = (error) => {

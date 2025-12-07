@@ -17,12 +17,6 @@ data class UpdateRoomSettingsRequest(
     @field:Min(value = 10, message = "Minimum 10 seconds for choice")
     @field:Max(value = 180, message = "Maximum 180 seconds for choice")
     @JsonProperty("timeForChoice")
-    val timeForChoice: Int? = null,
-    
-    @JsonProperty("allowWrongAnswer")
-    val allowWrongAnswer: Boolean? = null,
-    
-    @JsonProperty("showRightAnswer")
-    val showRightAnswer: Boolean? = null
+    val timeForChoice: Int? = null
 )
 

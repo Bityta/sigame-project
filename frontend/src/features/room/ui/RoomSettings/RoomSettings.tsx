@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUpdateRoomSettings } from '@/entities/room';
-import { Button, Card, Toggle } from '@/shared/ui';
+import { Button, Card } from '@/shared/ui';
 import { DEFAULT_ROOM_SETTINGS } from '@/shared/config';
 import type { GameRoom, RoomSettings } from '@/shared/types';
 import './RoomSettings.css';
@@ -55,9 +55,7 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
   // Сравниваем с сохранёнными настройками, а не с пропсом
   const hasChanges = 
     settings.timeForAnswer !== savedSettings.timeForAnswer ||
-    settings.timeForChoice !== savedSettings.timeForChoice ||
-    settings.allowWrongAnswer !== savedSettings.allowWrongAnswer ||
-    settings.showRightAnswer !== savedSettings.showRightAnswer;
+    settings.timeForChoice !== savedSettings.timeForChoice;
 
   if (!isHost) {
     return (
@@ -71,14 +69,6 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
           <div className="room-settings__row">
             <span>Время на выбор:</span>
             <span>{settings.timeForChoice} сек</span>
-          </div>
-          <div className="room-settings__row">
-            <span>Неправильные ответы:</span>
-            <span>{settings.allowWrongAnswer ? 'Разрешены' : 'Запрещены'}</span>
-          </div>
-          <div className="room-settings__row">
-            <span>Показывать ответ:</span>
-            <span>{settings.showRightAnswer ? 'Да' : 'Нет'}</span>
           </div>
         </div>
       </Card>
@@ -121,26 +111,6 @@ export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
               setSettings({ ...settings, timeForChoice: Number(e.target.value) })
             }
             className="room-settings__slider"
-          />
-        </div>
-
-        <div className="room-settings__field">
-          <Toggle
-            label="Разрешить неправильные ответы"
-            checked={settings.allowWrongAnswer}
-            onChange={(checked) =>
-              setSettings({ ...settings, allowWrongAnswer: checked })
-            }
-          />
-        </div>
-
-        <div className="room-settings__field">
-          <Toggle
-            label="Показывать правильный ответ"
-            checked={settings.showRightAnswer}
-            onChange={(checked) =>
-              setSettings({ ...settings, showRightAnswer: checked })
-            }
           />
         </div>
 

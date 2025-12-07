@@ -15,11 +15,5 @@ data class RoomSettingsDto(
     @field:Min(value = 10, message = "Minimum 10 seconds for choice")
     @field:Max(value = 180, message = "Maximum 180 seconds for choice")
     @JsonProperty("timeForChoice")
-    val timeForChoice: Int = 60,
-    
-    @JsonProperty("allowWrongAnswer")
-    val allowWrongAnswer: Boolean = true,
-    
-    @JsonProperty("showRightAnswer")
-    val showRightAnswer: Boolean = true
+    val timeForChoice: Int = 60
 )

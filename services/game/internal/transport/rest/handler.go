@@ -189,6 +189,52 @@ func (h *Handler) GetGame(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// MyActiveGameResponse is the response for getting user's active game
+type MyActiveGameResponse struct {
+	HasActiveGame bool      `json:"hasActiveGame"`
+	GameID        uuid.UUID `json:"gameId,omitempty"`
+	WebSocketURL  string    `json:"websocketUrl,omitempty"`
+	Status        string    `json:"status,omitempty"`
+}
+
+// GetMyActiveGame returns the user's active game if any
+func (h *Handler) GetMyActiveGame(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Get user's active game from database
+	game, err := h.gameRepo.GetActiveGameForUser(ctx, userID)
+	if err != nil {
+		if err == domain.ErrGameNotFound {
+			c.JSON(http.StatusOK, MyActiveGameResponse{HasActiveGame: false})
+			return
+		}
+		log.Printf("Failed to get active game for user %s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get active game"})
+		return
+	}
+
+	wsURL := "/api/game/" + game.ID.String() + "/ws"
+	c.JSON(http.StatusOK, MyActiveGameResponse{
+		HasActiveGame: true,
+		GameID:        game.ID,
+		WebSocketURL:  wsURL,
+		Status:        string(game.Status),
+	})
+}
+
 // getPackWithCache retrieves pack with Redis caching
 func (h *Handler) getPackWithCache(ctx context.Context, packID uuid.UUID) (*domain.Pack, error) {
 	// Try cache first

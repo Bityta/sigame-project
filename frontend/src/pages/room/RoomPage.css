@@ -116,10 +116,60 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.2s ease;
+}
+
+.room-page__player--ready {
+  background-color: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.room-page__player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .room-page__player-name {
   font-weight: 500;
+}
+
+.room-page__player-ready-badge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.room-page__player-ready-badge--ready {
+  background-color: #22c55e;
+  color: white;
+}
+
+.room-page__player-ready-badge--waiting {
+  background-color: #fbbf24;
+  color: #1f2937;
+}
+
+.room-page__ready-status {
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.room-page__ready-count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.room-page__ready-label {
+  font-size: 0.875rem;
+  opacity: 0.9;
+  margin: 0;
 }
 
 .room-page__player-actions {
