@@ -16,31 +16,48 @@ interface RoomSettingsProps {
 }
 
 export const RoomSettingsComponent = ({ room, isHost }: RoomSettingsProps) => {
-  const [settings, setSettings] = useState<RoomSettings>(
-    room.settings || DEFAULT_ROOM_SETTINGS
-  );
+  const initialSettings = room.settings || DEFAULT_ROOM_SETTINGS;
+  
+  // Текущие настройки (редактируемые пользователем)
+  const [settings, setSettings] = useState<RoomSettings>(initialSettings);
+  
+  // Сохранённые настройки (то, что сейчас на сервере)
+  const [savedSettings, setSavedSettings] = useState<RoomSettings>(initialSettings);
 
   const updateSettingsMutation = useUpdateRoomSettings();
 
-  // Синхронизируем с room.settings
+  // Синхронизируем с room.settings при изменении из вне
   useEffect(() => {
     if (room.settings) {
       setSettings(room.settings);
+      setSavedSettings(room.settings);
     }
   }, [room.settings]);
 
   const handleSave = () => {
-    updateSettingsMutation.mutate({
-      id: room.id,
-      settings,
-    });
+    updateSettingsMutation.mutate(
+      {
+        id: room.id,
+        settings,
+      },
+      {
+        onSuccess: (updatedRoom) => {
+          // Синхронизируем оба стейта с ответом сервера
+          if (updatedRoom.settings) {
+            setSettings(updatedRoom.settings);
+            setSavedSettings(updatedRoom.settings);
+          }
+        },
+      }
+    );
   };
 
+  // Сравниваем с сохранёнными настройками, а не с пропсом
   const hasChanges = 
-    settings.timeForAnswer !== room.settings?.timeForAnswer ||
-    settings.timeForChoice !== room.settings?.timeForChoice ||
-    settings.allowWrongAnswer !== room.settings?.allowWrongAnswer ||
-    settings.showRightAnswer !== room.settings?.showRightAnswer;
+    settings.timeForAnswer !== savedSettings.timeForAnswer ||
+    settings.timeForChoice !== savedSettings.timeForChoice ||
+    settings.allowWrongAnswer !== savedSettings.allowWrongAnswer ||
+    settings.showRightAnswer !== savedSettings.showRightAnswer;
 
   if (!isHost) {
     return (
