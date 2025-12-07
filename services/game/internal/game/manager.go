@@ -134,6 +134,8 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 func (m *Manager) handlePlayerReady(userID uuid.UUID) {
 	player, ok := m.game.Players[userID]
 	if !ok {
+		log.Printf("Player %s not found in game %s (registered players: %v)", 
+			userID, m.game.ID, m.getPlayerIDs())
 		return
 	}
 
@@ -372,6 +374,15 @@ func (m *Manager) autoSelectQuestion() {
 
 	// No questions left in round
 	m.endRound()
+}
+
+// getPlayerIDs returns a list of player IDs for debugging
+func (m *Manager) getPlayerIDs() []string {
+	var ids []string
+	for id := range m.game.Players {
+		ids = append(ids, id.String())
+	}
+	return ids
 }
 
 // Continue with more manager methods in the next file...
