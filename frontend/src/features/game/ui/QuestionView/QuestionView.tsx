@@ -1,9 +1,9 @@
 /**
  * Game Feature - QuestionView
- * Отображение текущего вопроса
+ * Отображение текущего вопроса с большой кнопкой
  */
 
-import { Card, Button } from '@/shared/ui';
+import { Card } from '@/shared/ui';
 import type { QuestionState } from '@/shared/types';
 import './QuestionView.css';
 
@@ -20,12 +20,17 @@ export const QuestionView = ({
   onPressButton,
   timeRemaining,
 }: QuestionViewProps) => {
+  const isTimerWarning = timeRemaining !== undefined && timeRemaining <= 5;
+  const isTimerDanger = timeRemaining !== undefined && timeRemaining <= 3;
+
   return (
     <Card className="question-view" padding="large">
       <div className="question-view__header">
         <div className="question-view__price">{question.price} очков</div>
         {timeRemaining !== undefined && (
-          <div className="question-view__timer">{timeRemaining}с</div>
+          <div className={`question-view__timer ${isTimerDanger ? 'question-view__timer--danger' : isTimerWarning ? 'question-view__timer--warning' : ''}`}>
+            {timeRemaining}с
+          </div>
         )}
       </div>
 
@@ -41,14 +46,13 @@ export const QuestionView = ({
 
       <div className="question-view__actions">
         {canPressButton && (
-          <Button
-            variant="danger"
-            size="large"
-            fullWidth
+          <button
+            className="question-view__buzz-button"
             onClick={onPressButton}
           >
-            🔴 Нажать кнопку!
-          </Button>
+            🔴
+            <span>ОТВЕТИТЬ!</span>
+          </button>
         )}
       </div>
     </Card>
