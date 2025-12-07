@@ -148,7 +148,7 @@
   height: 100%;
   background: linear-gradient(90deg, #3b82f6, #2563eb);
   border-radius: 3px;
-  transition: width 0.3s linear;
+  transition: width 1s linear;
 }
 
 .game-page__timer-bar-fill--warning {
@@ -156,6 +156,10 @@
 }
 
 .game-page__timer-bar-fill--danger {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.game-page__timer-bar-fill--critical {
   background: linear-gradient(90deg, #ef4444, #dc2626);
   animation: timer-bar-pulse 0.3s infinite;
 }
