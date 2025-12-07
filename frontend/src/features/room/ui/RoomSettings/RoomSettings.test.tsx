@@ -217,15 +217,20 @@ describe('RoomSettings', () => {
     const saveButton = screen.getByRole('button', { name: /сохранить/i });
     await user.click(saveButton);
 
-    expect(mockUpdateSettingsMutate).toHaveBeenCalledWith({
-      id: 'room-123',
-      settings: expect.objectContaining({
-        timeForAnswer: 45,
-        timeForChoice: 15,
-        allowWrongAnswer: true,
-        showRightAnswer: true,
-      }),
-    });
+    expect(mockUpdateSettingsMutate).toHaveBeenCalledWith(
+      {
+        id: 'room-123',
+        settings: expect.objectContaining({
+          timeForAnswer: 45,
+          timeForChoice: 15,
+          allowWrongAnswer: true,
+          showRightAnswer: true,
+        }),
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      })
+    );
   });
 
   /**
@@ -306,5 +311,47 @@ describe('RoomSettings', () => {
     expect(screen.getByText('Разрешены')).toBeInTheDocument();
     expect(screen.getByText('Да')).toBeInTheDocument();
   });
+
+  /**
+   * ТЕСТ: Кнопка сохранения становится неактивной после успешного сохранения
+   * 
+   * Проверяет что после успешного сохранения настроек
+   * локальный стейт обновляется и кнопка становится disabled
+   */
+  it('кнопка становится неактивной после успешного сохранения', async () => {
+    const user = userEvent.setup();
+    const room = createMockRoom();
+    
+    // Настраиваем мок чтобы он вызывал onSuccess callback
+    mockUpdateSettingsMutate.mockImplementation((data, options) => {
+      // Симулируем успешный ответ сервера с обновлёнными настройками
+      const updatedRoom = {
+        ...room,
+        settings: data.settings,
+      };
+      if (options?.onSuccess) {
+        options.onSuccess(updatedRoom);
+      }
+    });
+
+    renderRoomSettings(room, true);
+
+    const saveButton = screen.getByRole('button', { name: /сохранить/i });
+    expect(saveButton).toBeDisabled();
+
+    // Меняем настройки
+    const sliders = screen.getAllByRole('slider');
+    fireEvent.change(sliders[0], { target: { value: '45' } });
+
+    // Кнопка должна стать активной
+    expect(saveButton).not.toBeDisabled();
+
+    // Сохраняем
+    await user.click(saveButton);
+
+    // После успешного сохранения кнопка должна снова стать неактивной
+    expect(saveButton).toBeDisabled();
+  });
 });
+
 
