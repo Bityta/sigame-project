@@ -142,7 +142,7 @@ export const GamePage = () => {
               </p>
               <p className="game-page__judging-hint">Игрок говорит ответ вслух. Оцените:</p>
               <div className="game-page__judging-buttons">
-                <Button variant="success" size="large" onClick={() => judgeAnswer(gameState.activePlayer!, true)}>
+                <Button variant="primary" size="large" onClick={() => judgeAnswer(gameState.activePlayer!, true)}>
                   ✓ Верно
                 </Button>
                 <Button variant="danger" size="large" onClick={() => judgeAnswer(gameState.activePlayer!, false)}>
