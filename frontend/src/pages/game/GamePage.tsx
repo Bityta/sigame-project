@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
 import { useGameWebSocket } from '@/entities/game';
 import { useCurrentUser } from '@/entities/user';
 import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro, GameEnd } from '@/features/game';
@@ -10,6 +11,10 @@ export const GamePage = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
+  
+  // Track max time for timer bar calculation
+  const maxTimeRef = useRef<number>(0);
+  const lastStatusRef = useRef<string>('');
 
   const {
     isConnected,
@@ -24,6 +29,18 @@ export const GamePage = () => {
       console.error('Game error:', error);
     },
   });
+  
+  // Update max time when status changes or when we see a higher timeRemaining
+  useEffect(() => {
+    if (gameState?.status && gameState.status !== lastStatusRef.current) {
+      // Status changed, reset max time
+      maxTimeRef.current = gameState.timeRemaining || 0;
+      lastStatusRef.current = gameState.status;
+    } else if (gameState?.timeRemaining && gameState.timeRemaining > maxTimeRef.current) {
+      // Higher time seen, update max
+      maxTimeRef.current = gameState.timeRemaining;
+    }
+  }, [gameState?.status, gameState?.timeRemaining]);
 
   if (!isConnected || !gameState) {
     return (
@@ -104,7 +121,7 @@ export const GamePage = () => {
         {getTurnIndicator() && (
           <div className="game-page__turn-indicator-wrapper">
             <span className="game-page__turn-indicator-text">{getTurnIndicator()}</span>
-            {gameState.status === 'question_select' && gameState.timeRemaining !== undefined && (
+            {gameState.status === 'question_select' && gameState.timeRemaining !== undefined && maxTimeRef.current > 0 && (
               <div className="game-page__timer-bar">
                 <div 
                   className={`game-page__timer-bar-fill ${
@@ -112,7 +129,7 @@ export const GamePage = () => {
                     gameState.timeRemaining <= 5 ? 'game-page__timer-bar-fill--warning' : ''
                   }`}
                   style={{ 
-                    width: `${Math.min(100, (gameState.timeRemaining / 60) * 100)}%` 
+                    width: `${Math.min(100, (gameState.timeRemaining / maxTimeRef.current) * 100)}%` 
                   }}
                 />
               </div>
