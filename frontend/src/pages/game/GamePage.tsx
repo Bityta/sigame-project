@@ -14,7 +14,6 @@ export const GamePage = () => {
   const {
     isConnected,
     gameState,
-    sendReady,
     selectQuestion,
     pressButton,
     judgeAnswer,
@@ -51,10 +50,6 @@ export const GamePage = () => {
 
   const handleQuestionSelect = (themeId: string, questionId: string) => {
     selectQuestion(themeId, questionId);
-  };
-
-  const handleReady = () => {
-    sendReady();
   };
 
   const handleLeaveGame = () => {
