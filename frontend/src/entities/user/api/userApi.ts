@@ -10,6 +10,7 @@ import type { User } from '@/shared/types';
 interface UserApiResponse {
   id: string;
   username: string;
+  avatar_url?: string;
   created_at: string;
 }
 
@@ -26,6 +27,7 @@ export const userApi = {
     return {
       id: response.data.id,
       username: response.data.username,
+      avatarUrl: response.data.avatar_url,
       createdAt: response.data.created_at,
       updatedAt: response.data.created_at,
     };

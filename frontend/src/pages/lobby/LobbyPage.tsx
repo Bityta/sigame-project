@@ -68,7 +68,11 @@ export const LobbyPage = () => {
       <header className="lobby-page__header">
         <h1 className="lobby-page__title">{TEXTS.APP_NAME}</h1>
         <div className="lobby-page__user">
-          <span className="lobby-page__username">
+          <span 
+            className="lobby-page__username lobby-page__username--clickable"
+            onClick={() => navigate(ROUTES.PROFILE)}
+            title="Перейти в профиль"
+          >
             {TEXTS.LOBBY.WELCOME(user?.username || '')}
           </span>
           <Button
