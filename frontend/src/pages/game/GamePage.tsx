@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useGameWebSocket } from '@/entities/game';
 import { useCurrentUser } from '@/entities/user';
 import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro, GameEnd } from '@/features/game';
@@ -12,8 +12,9 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
   
-  // Track max time for timer bar calculation
-  const maxTimeRef = useRef<number>(60); // Default to 60 seconds
+  // Track timer duration for CSS animation
+  const [timerDuration, setTimerDuration] = useState<number>(0);
+  const [timerKey, setTimerKey] = useState<number>(0); // Key to reset animation
   const lastStatusRef = useRef<string>('');
 
   const {
@@ -30,17 +31,15 @@ export const GamePage = () => {
     },
   });
   
-  // Update max time when status changes or when we see a higher timeRemaining
+  // Start CSS animation when entering question_select
   useEffect(() => {
-    if (gameState?.status && gameState.status !== lastStatusRef.current) {
-      // Status changed, reset max time to current or default
-      maxTimeRef.current = Math.max(gameState.timeRemaining || 60, 60);
-      lastStatusRef.current = gameState.status;
+    if (gameState?.status === 'question_select' && lastStatusRef.current !== 'question_select') {
+      // New question_select phase - start animation
+      const duration = gameState.timeRemaining || 60;
+      setTimerDuration(duration);
+      setTimerKey(prev => prev + 1); // Reset animation
     }
-    // Always update if we see a higher time (in case we missed the start)
-    if (gameState?.timeRemaining && gameState.timeRemaining > maxTimeRef.current) {
-      maxTimeRef.current = gameState.timeRemaining;
-    }
+    lastStatusRef.current = gameState?.status || '';
   }, [gameState?.status, gameState?.timeRemaining]);
 
   if (!isConnected || !gameState) {
@@ -122,17 +121,16 @@ export const GamePage = () => {
         {getTurnIndicator() && (
           <div className="game-page__turn-indicator-wrapper">
             <span className="game-page__turn-indicator-text">{getTurnIndicator()}</span>
-            {gameState.status === 'question_select' && (
+            {gameState.status === 'question_select' && timerDuration > 0 && (
               <div className="game-page__timer-bar">
                 <div 
+                  key={timerKey}
                   className={`game-page__timer-bar-fill ${
                     (gameState.timeRemaining ?? 0) <= 3 ? 'game-page__timer-bar-fill--danger' :
                     (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
                   }`}
                   style={{ 
-                    width: maxTimeRef.current > 0 
-                      ? `${Math.min(100, ((gameState.timeRemaining ?? 0) / maxTimeRef.current) * 100)}%`
-                      : '100%'
+                    animationDuration: `${timerDuration}s`
                   }}
                 />
               </div>
@@ -170,7 +168,7 @@ export const GamePage = () => {
           />
         )}
 
-        {/* Question View */}
+        {/* Question View - answer always visible for host */}
         {gameState.currentQuestion && (
           <QuestionView
             question={gameState.currentQuestion}
@@ -178,20 +176,13 @@ export const GamePage = () => {
             onPressButton={pressButton}
             timeRemaining={gameState.timeRemaining}
             isHost={isHost}
-            hideAnswer={gameState.status === 'answer_judging'}
+            hideAnswer={false}
           />
         )}
 
-        {/* Judging Panel (for host) */}
+        {/* Judging Panel (for host) - just buttons, answer is in QuestionView */}
         {canJudgeAnswer && gameState.activePlayer && (
           <div className="game-page__judging">
-            {/* Show correct answer to host */}
-            {gameState.currentQuestion?.answer && (
-              <div className="game-page__judging-answer">
-                <span className="game-page__judging-answer-label">Правильный ответ:</span>
-                <span className="game-page__judging-answer-text">{gameState.currentQuestion.answer}</span>
-              </div>
-            )}
             <div className="game-page__judging-buttons">
               <button 
                 className="game-page__judge-btn game-page__judge-btn--correct"
