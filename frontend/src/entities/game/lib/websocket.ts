@@ -47,12 +47,17 @@ export class GameWebSocket {
         };
 
         this.ws.onmessage = (event) => {
-          try {
-            const message: WSMessage = JSON.parse(event.data);
-            console.log('[GameWS] Получено:', message.type, message.payload);
-            this.handleMessage(message);
-          } catch (error) {
-            console.error('[GameWS] Ошибка парсинга сообщения:', error);
+          // Backend может отправить несколько JSON разделённых \n
+          const messages = event.data.split('\n').filter((s: string) => s.trim());
+          
+          for (const msgStr of messages) {
+            try {
+              const message: WSMessage = JSON.parse(msgStr);
+              console.log('[GameWS] Получено:', message.type, message.payload);
+              this.handleMessage(message);
+            } catch (error) {
+              console.error('[GameWS] Ошибка парсинга сообщения:', error);
+            }
           }
         };
 
