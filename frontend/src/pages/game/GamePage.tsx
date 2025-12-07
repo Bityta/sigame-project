@@ -13,7 +13,7 @@ export const GamePage = () => {
   const { data: user } = useCurrentUser();
   
   // Track max time for timer bar calculation
-  const maxTimeRef = useRef<number>(0);
+  const maxTimeRef = useRef<number>(60); // Default to 60 seconds
   const lastStatusRef = useRef<string>('');
 
   const {
@@ -33,11 +33,12 @@ export const GamePage = () => {
   // Update max time when status changes or when we see a higher timeRemaining
   useEffect(() => {
     if (gameState?.status && gameState.status !== lastStatusRef.current) {
-      // Status changed, reset max time
-      maxTimeRef.current = gameState.timeRemaining || 0;
+      // Status changed, reset max time to current or default
+      maxTimeRef.current = Math.max(gameState.timeRemaining || 60, 60);
       lastStatusRef.current = gameState.status;
-    } else if (gameState?.timeRemaining && gameState.timeRemaining > maxTimeRef.current) {
-      // Higher time seen, update max
+    }
+    // Always update if we see a higher time (in case we missed the start)
+    if (gameState?.timeRemaining && gameState.timeRemaining > maxTimeRef.current) {
       maxTimeRef.current = gameState.timeRemaining;
     }
   }, [gameState?.status, gameState?.timeRemaining]);
@@ -121,15 +122,17 @@ export const GamePage = () => {
         {getTurnIndicator() && (
           <div className="game-page__turn-indicator-wrapper">
             <span className="game-page__turn-indicator-text">{getTurnIndicator()}</span>
-            {gameState.status === 'question_select' && gameState.timeRemaining !== undefined && maxTimeRef.current > 0 && (
+            {gameState.status === 'question_select' && (
               <div className="game-page__timer-bar">
                 <div 
                   className={`game-page__timer-bar-fill ${
-                    gameState.timeRemaining <= 3 ? 'game-page__timer-bar-fill--danger' :
-                    gameState.timeRemaining <= 5 ? 'game-page__timer-bar-fill--warning' : ''
+                    (gameState.timeRemaining ?? 0) <= 3 ? 'game-page__timer-bar-fill--danger' :
+                    (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
                   }`}
                   style={{ 
-                    width: `${Math.min(100, (gameState.timeRemaining / maxTimeRef.current) * 100)}%` 
+                    width: maxTimeRef.current > 0 
+                      ? `${Math.min(100, ((gameState.timeRemaining ?? 0) / maxTimeRef.current) * 100)}%`
+                      : '100%'
                   }}
                 />
               </div>
@@ -182,12 +185,6 @@ export const GamePage = () => {
         {/* Judging Panel (for host) */}
         {canJudgeAnswer && gameState.activePlayer && (
           <div className="game-page__judging">
-            <div className="game-page__judging-player">
-              <span className="game-page__judging-label">Отвечает</span>
-              <span className="game-page__judging-name">
-                {gameState.players.find(p => p.userId === gameState.activePlayer)?.username}
-              </span>
-            </div>
             {/* Show correct answer to host */}
             {gameState.currentQuestion?.answer && (
               <div className="game-page__judging-answer">

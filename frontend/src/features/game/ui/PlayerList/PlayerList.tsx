@@ -1,6 +1,6 @@
 /**
  * Game Feature - PlayerList
- * Горизонтальная панель игроков (новый дизайн)
+ * Ведущий слева, игроки справа
  */
 
 import type { PlayerState } from '@/shared/types';
@@ -20,12 +20,7 @@ export const PlayerList = ({ players, activePlayer, currentUserId }: PlayerListP
     .sort((a, b) => b.score - a.score);
 
   // Рассчитываем ранги
-  const getRank = (index: number) => {
-    if (index === 0) return 1;
-    if (index === 1) return 2;
-    if (index === 2) return 3;
-    return index + 1;
-  };
+  const getRank = (index: number) => index + 1;
 
   const getRankClass = (rank: number) => {
     if (rank === 1) return 'player-rank--1';
@@ -42,52 +37,53 @@ export const PlayerList = ({ players, activePlayer, currentUserId }: PlayerListP
 
   return (
     <div className="players-panel">
-      {/* Карточка ведущего */}
+      {/* Ведущий слева */}
       {host && (
-        <div className={`player-card player-card--host ${currentUserId === host.userId ? 'player-card--you' : ''}`}>
-          <div className="player-avatar player-avatar--host">👑</div>
-          <div className="player-info">
-            <div className="player-name">
-              {host.username}
-              <span className="player-role player-role--host">HOST</span>
+        <div className="players-panel__host">
+          <div className={`player-card player-card--host ${currentUserId === host.userId ? 'player-card--you' : ''}`}>
+            <div className="player-avatar player-avatar--host">👑</div>
+            <div className="player-info">
+              <div className="player-name">{host.username}</div>
+              <div className="player-status">Ведущий</div>
             </div>
-            <div className="player-status">Ведущий игры</div>
           </div>
         </div>
       )}
 
-      {/* Карточки игроков */}
-      {gamePlayers.map((player, index) => {
-        const rank = getRank(index);
-        const isAnswering = player.userId === activePlayer;
-        
-        return (
-          <div
-            key={player.userId}
-            className={`player-card ${
-              isAnswering ? 'player-card--answering' : ''
-            } ${currentUserId === player.userId ? 'player-card--you' : ''}`}
-          >
-            {/* Бейдж позиции */}
-            <span className={`player-rank ${getRankClass(rank)}`}>
-              {rank}
-            </span>
-            
-            <div className="player-avatar player-avatar--player">
-              {player.username.substring(0, 2).toUpperCase()}
-            </div>
-            <div className="player-info">
-              <div className="player-name">{player.username}</div>
-              <div className={`player-status ${isAnswering ? 'player-status--answering' : ''}`}>
-                {isAnswering ? '🎤 Отвечает!' : 'Игрок'}
+      {/* Игроки справа */}
+      <div className="players-panel__players">
+        {gamePlayers.map((player, index) => {
+          const rank = getRank(index);
+          const isAnswering = player.userId === activePlayer;
+          
+          return (
+            <div
+              key={player.userId}
+              className={`player-card ${
+                isAnswering ? 'player-card--answering' : ''
+              } ${currentUserId === player.userId ? 'player-card--you' : ''}`}
+            >
+              {/* Бейдж позиции */}
+              <span className={`player-rank ${getRankClass(rank)}`}>
+                {rank}
+              </span>
+              
+              <div className="player-avatar player-avatar--player">
+                {player.username.substring(0, 2).toUpperCase()}
               </div>
+              <div className="player-info">
+                <div className="player-name">{player.username}</div>
+                <div className={`player-status ${isAnswering ? 'player-status--answering' : ''}`}>
+                  {isAnswering ? '🎤 Отвечает!' : 'Игрок'}
+                </div>
+              </div>
+              <span className={`player-score ${getScoreClass(player.score)}`}>
+                {player.score}
+              </span>
             </div>
-            <span className={`player-score ${getScoreClass(player.score)}`}>
-              {player.score}
-            </span>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };
