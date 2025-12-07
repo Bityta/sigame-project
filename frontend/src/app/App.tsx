@@ -13,6 +13,7 @@ import { ROUTES } from '@/shared/config';
 import { LoginPage } from '@/pages/login';
 import { RegisterPage } from '@/pages/register';
 import { LobbyPage } from '@/pages/lobby';
+import { ProfilePage } from '@/pages/profile';
 import { RoomPage } from '@/pages/room';
 import { GamePage } from '@/pages/game';
 import { CreateRoomForm } from '@/features/room';
@@ -52,6 +53,14 @@ export const App = () => {
               element={
                 <ProtectedRoute>
                   <LobbyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.PROFILE}
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />

@@ -145,7 +145,6 @@ export const RoomPage = () => {
         >
           <span className="room-page__code-label">{TEXTS.ROOM.ROOM_CODE}</span>
           <span className="room-page__code-value">{room.roomCode}</span>
-          <span className="room-page__code-icon">{copySuccess ? '✓' : '📋'}</span>
         </div>
       </header>
 

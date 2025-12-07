@@ -52,6 +52,7 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   LOBBY: '/lobby',
+  PROFILE: '/profile',
   JOIN_BY_CODE: (code: string) => `/join/${code}`,
   ROOM: (id: string) => `/room/${id}`,
   GAME: (id: string) => `/game/${id}`,
