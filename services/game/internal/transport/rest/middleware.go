@@ -3,7 +3,6 @@ package rest
 import (
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
@@ -92,25 +91,5 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("username", claims.Username)
 
 		c.Next()
-	}
-}
-
-// RequestResponseLoggingMiddleware logs requests and responses asynchronously
-func RequestResponseLoggingMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-
-		c.Next()
-
-		latency := time.Since(start)
-		status := c.Writer.Status()
-
-		log.Printf("[HTTP] %s %s | %d | %v",
-			c.Request.Method,
-			path,
-			status,
-			latency,
-		)
 	}
 }
