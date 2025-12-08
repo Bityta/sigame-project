@@ -12,10 +12,12 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
   
-  // Track timer duration for CSS animation
-  const [timerDuration, setTimerDuration] = useState<number>(0);
+  // Track timer for CSS animation sync
+  const [timerDuration, setTimerDuration] = useState<number>(10); // Default 10 seconds
+  const [timerElapsed, setTimerElapsed] = useState<number>(0); // How much time has passed
   const [timerKey, setTimerKey] = useState<number>(0); // Key to reset animation
   const lastStatusRef = useRef<string>('');
+  const maxTimeSeenRef = useRef<number>(10); // Track highest timeRemaining seen
 
   const {
     isConnected,
@@ -33,11 +35,21 @@ export const GamePage = () => {
   
   // Start CSS animation when entering question_select
   useEffect(() => {
-    if (gameState?.status === 'question_select' && lastStatusRef.current !== 'question_select') {
-      // New question_select phase - start animation
-      const duration = gameState.timeRemaining || 60;
-      setTimerDuration(duration);
-      setTimerKey(prev => prev + 1); // Reset animation
+    if (gameState?.status === 'question_select') {
+      const currentTime = gameState.timeRemaining || 0;
+      
+      if (lastStatusRef.current !== 'question_select') {
+        // New question_select phase - start animation
+        // Use current timeRemaining as the total duration (might already be reduced)
+        // Track max time seen to calculate proper duration
+        maxTimeSeenRef.current = currentTime;
+        setTimerDuration(currentTime);
+        setTimerElapsed(0);
+        setTimerKey(prev => prev + 1); // Reset animation
+      } else if (currentTime > maxTimeSeenRef.current) {
+        // We saw a higher time, update max
+        maxTimeSeenRef.current = currentTime;
+      }
     }
     lastStatusRef.current = gameState?.status || '';
   }, [gameState?.status, gameState?.timeRemaining]);
@@ -131,7 +143,7 @@ export const GamePage = () => {
                   (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
                 }`}
                 style={{ 
-                  animationDuration: `${timerDuration}s`
+                  animationDuration: `${timerDuration - 0.5}s` // Slightly faster to finish before backend timeout
                 }}
               />
             </div>
