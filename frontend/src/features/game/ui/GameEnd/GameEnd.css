@@ -155,13 +155,11 @@
 /* Scoreboard */
 .game-end__scoreboard {
   width: 100%;
-  max-width: 500px;
+  max-width: 700px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
   padding: 0.75rem;
   z-index: 1;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .game-end__scoreboard-title {
@@ -284,7 +282,6 @@
 
   .game-end__scoreboard {
     padding: 0.5rem;
-    max-height: 150px;
   }
 
   .game-end__scoreboard-row {

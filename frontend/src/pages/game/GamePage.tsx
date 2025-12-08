@@ -186,7 +186,8 @@ export const GamePage = () => {
             question={gameState.currentQuestion}
             canPressButton={canPressButton}
             onPressButton={pressButton}
-            timeRemaining={gameState.timeRemaining}
+            // Only show timer during button_press phase (not during question_show reading time)
+            timeRemaining={gameState.status === 'button_press' ? gameState.timeRemaining : undefined}
             isHost={isHost}
             hideAnswer={false}
           />
