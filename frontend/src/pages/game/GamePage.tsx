@@ -33,15 +33,15 @@ export const GamePage = () => {
     },
   });
   
-  // Start CSS animation when entering question_select
+  // Start CSS animation when entering question_select or button_press
   useEffect(() => {
-    if (gameState?.status === 'question_select') {
-      const currentTime = gameState.timeRemaining || 0;
-      
-      if (lastStatusRef.current !== 'question_select') {
-        // New question_select phase - start animation
-        // Use current timeRemaining as the total duration (might already be reduced)
-        // Track max time seen to calculate proper duration
+    const currentTime = gameState?.timeRemaining || 0;
+    const currentStatus = gameState?.status || '';
+    
+    // Track phases that need timer animation
+    if (currentStatus === 'question_select' || currentStatus === 'button_press') {
+      if (lastStatusRef.current !== currentStatus) {
+        // New phase - start animation
         maxTimeSeenRef.current = currentTime;
         setTimerDuration(currentTime);
         setTimerElapsed(0);
@@ -51,7 +51,7 @@ export const GamePage = () => {
         maxTimeSeenRef.current = currentTime;
       }
     }
-    lastStatusRef.current = gameState?.status || '';
+    lastStatusRef.current = currentStatus;
   }, [gameState?.status, gameState?.timeRemaining]);
 
   if (!isConnected || !gameState) {
@@ -134,7 +134,7 @@ export const GamePage = () => {
           <span className="game-page__turn-indicator-text">
             {getTurnIndicator() || '\u00A0'}
           </span>
-          {gameState.status === 'question_select' && timerDuration > 0 && (
+          {(gameState.status === 'question_select' || gameState.status === 'button_press') && timerDuration > 0 && (
             <div className="game-page__timer-bar">
               <div 
                 key={timerKey}
