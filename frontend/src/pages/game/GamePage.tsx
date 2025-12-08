@@ -143,7 +143,7 @@ export const GamePage = () => {
                   (gameState.timeRemaining ?? 0) <= 5 ? 'game-page__timer-bar-fill--warning' : ''
                 }`}
                 style={{ 
-                  animationDuration: `${timerDuration - 0.5}s` // Slightly faster to finish before backend timeout
+                  animationDuration: `${timerDuration}s`
                 }}
               />
             </div>
