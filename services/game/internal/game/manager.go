@@ -392,10 +392,10 @@ func (m *Manager) transitionToQuestionSelect() {
 	m.game.ActivePlayer = &hostID
 
 	m.updateGameStatus(domain.GameStatusQuestionSelect)
-	m.BroadcastState()
 
-	// Start timer for question selection
+	// Start timer BEFORE broadcasting so timeRemaining is correct
 	m.timer.Start(time.Duration(m.game.Settings.TimeForChoice) * time.Second)
+	m.BroadcastState()
 }
 
 // transitionToButtonPress moves from question_show to button_press
@@ -403,10 +403,10 @@ func (m *Manager) transitionToButtonPress() {
 	log.Printf("Transitioning to button_press phase")
 	m.updateGameStatus(domain.GameStatusButtonPress)
 	m.buttonPress.Reset()
-	m.BroadcastState()
 
-	// Start timer for button press
+	// Start timer BEFORE broadcasting so timeRemaining is correct
 	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+	m.BroadcastState()
 }
 
 // autoSelectQuestion automatically selects a random available question
