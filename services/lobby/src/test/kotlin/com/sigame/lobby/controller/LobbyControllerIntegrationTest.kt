@@ -131,7 +131,7 @@ class LobbyControllerIntegrationTest {
                 packId = testPackId,
                 maxPlayers = 6,
                 isPublic = true,
-                settings = RoomSettingsDto(30, 60, true, true)
+                settings = RoomSettingsDto(30, 60)
             )
             val expectedRoom = createTestRoomDto()
 
@@ -722,7 +722,7 @@ class LobbyControllerIntegrationTest {
         fun `should update settings successfully`() {
             val request = UpdateRoomSettingsRequest(timeForAnswer = 45, timeForChoice = 90)
             val response = UpdateRoomSettingsResponse(
-                settings = RoomSettingsDto(45, 90, true, true)
+                settings = RoomSettingsDto(45, 90)
             )
             coEvery { roomLifecycleService.updateRoomSettings(testRoomId, testUserId, any()) } returns response
 
@@ -818,6 +818,6 @@ class LobbyControllerIntegrationTest {
         hasPassword = false,
         createdAt = LocalDateTime.now(),
         players = listOf(PlayerDto(testUserId, testUsername, null, "HOST")),
-        settings = RoomSettingsDto(30, 60, true, true)
+        settings = RoomSettingsDto(30, 60)
     )
 }

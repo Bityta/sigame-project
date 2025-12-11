@@ -332,17 +332,22 @@ func (m *Manager) endRound() {
 	// Broadcast round end
 	m.BroadcastState()
 
-	// Wait a bit, then start next round or end game
-	time.Sleep(5 * time.Second)
+	// Schedule next round/game end in a goroutine to avoid deadlock
+	currentRound := m.game.CurrentRound
+	totalRounds := len(m.pack.Rounds)
+	
+	go func() {
+		time.Sleep(5 * time.Second)
+		
+		m.mu.Lock()
+		defer m.mu.Unlock()
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.game.CurrentRound < len(m.pack.Rounds) {
-		m.startRound(m.game.CurrentRound + 1)
-	} else {
-		m.endGame()
-	}
+		if currentRound < totalRounds {
+			m.startRound(currentRound + 1)
+		} else {
+			m.endGame()
+		}
+	}()
 }
 
 // endGame ends the game
@@ -353,14 +358,69 @@ func (m *Manager) endGame() {
 	now := time.Now()
 	m.game.FinishedAt = &now
 
+	// Calculate winners
+	m.game.Winners = m.calculateWinners()
+	m.game.FinalScores = m.calculateFinalScores()
+
 	// Log event
 	event := domain.NewGameEvent(m.game.ID, domain.EventGameFinished)
 	m.eventLogger.LogEvent(m.ctx, event)
 
-	// Broadcast game end
+	// Broadcast game end with winners
 	m.BroadcastState()
 
-	// Game is complete
-	m.updateGameStatus(domain.GameStatusFinished)
+	// Stop timer ticker as game is done
+	if m.timerTicker != nil {
+		m.timerTicker.Stop()
+	}
+}
+
+// calculateWinners calculates the game winners (top 3 players)
+func (m *Manager) calculateWinners() []domain.PlayerScore {
+	scores := m.calculateFinalScores()
+	
+	// Top 3 are winners
+	winners := make([]domain.PlayerScore, 0)
+	for i, score := range scores {
+		if i >= 3 {
+			break
+		}
+		winners = append(winners, score)
+	}
+	
+	return winners
+}
+
+// calculateFinalScores calculates and ranks all players by score
+func (m *Manager) calculateFinalScores() []domain.PlayerScore {
+	scores := make([]domain.PlayerScore, 0)
+	
+	// Collect scores (exclude host)
+	for userID, player := range m.game.Players {
+		if player.Role == domain.PlayerRoleHost {
+			continue
+		}
+		scores = append(scores, domain.PlayerScore{
+			UserID:   userID,
+			Username: player.Username,
+			Score:    player.Score,
+		})
+	}
+	
+	// Sort by score descending
+	for i := 0; i < len(scores); i++ {
+		for j := i + 1; j < len(scores); j++ {
+			if scores[j].Score > scores[i].Score {
+				scores[i], scores[j] = scores[j], scores[i]
+			}
+		}
+	}
+	
+	// Assign ranks
+	for i := range scores {
+		scores[i].Rank = i + 1
+	}
+	
+	return scores
 }
 

@@ -21,11 +21,11 @@ func SetupRouter(handler *Handler, wsHandler *websocket.Handler) *gin.Engine {
 	// API routes
 	api := r.Group("/api/game")
 	{
-		// Create game
+		// Create game (internal call from lobby service, no auth needed)
 		api.POST("/create", handler.CreateGame)
 
-		// Get user's active game
-		api.GET("/my-active", handler.GetMyActiveGame)
+		// Get user's active game (requires auth)
+		api.GET("/my-active", AuthMiddleware(), handler.GetMyActiveGame)
 
 		// Get game info
 		api.GET("/:id", handler.GetGame)

@@ -13,16 +13,17 @@ import (
 
 // Manager manages a single game session
 type Manager struct {
-	game        *domain.Game
-	pack        *domain.Pack
-	hub         Hub
-	ctx         context.Context
-	cancel      context.CancelFunc
-	actionChan  chan *PlayerAction
-	timer       *Timer
-	buttonPress *ButtonPress
-	mu          sync.RWMutex
-	eventLogger EventLogger
+	game          *domain.Game
+	pack          *domain.Pack
+	hub           Hub
+	ctx           context.Context
+	cancel        context.CancelFunc
+	actionChan    chan *PlayerAction
+	timer         *Timer
+	timerTicker   *time.Ticker
+	buttonPress   *ButtonPress
+	mu            sync.RWMutex
+	eventLogger   EventLogger
 }
 
 // PlayerAction represents an action from a player
@@ -62,14 +63,16 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 func (m *Manager) Start() {
 	log.Printf("Starting game manager for game %s", m.game.ID)
 
-	// Set game status to waiting
-	m.updateGameStatus(domain.GameStatusWaiting)
-
-	// Broadcast initial state
-	m.BroadcastState()
+	// Start ticker for timer updates (every second)
+	m.timerTicker = time.NewTicker(1 * time.Second)
 
 	// Start main game loop
 	go m.run()
+
+	// Players are already ready in lobby, start game immediately
+	m.mu.Lock()
+	m.startGame()
+	m.mu.Unlock()
 }
 
 // Stop stops the game manager
@@ -77,6 +80,9 @@ func (m *Manager) Stop() {
 	log.Printf("Stopping game manager for game %s", m.game.ID)
 	m.cancel()
 	m.timer.Stop()
+	if m.timerTicker != nil {
+		m.timerTicker.Stop()
+	}
 }
 
 // run is the main game loop
@@ -91,8 +97,42 @@ func (m *Manager) run() {
 
 		case <-m.timer.C:
 			m.handleTimeout()
+
+		case <-m.timerTicker.C:
+			// Broadcast timer updates during active phases
+			m.handleTimerTick()
 		}
 	}
+}
+
+// handleTimerTick broadcasts timer updates to clients
+func (m *Manager) handleTimerTick() {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Only broadcast during phases that have visible timers
+	switch m.game.Status {
+	case domain.GameStatusQuestionSelect,
+		domain.GameStatusButtonPress,
+		domain.GameStatusAnswering,
+		domain.GameStatusAnswerJudging:
+		// Broadcast current state with updated timer
+		m.BroadcastStateUnlocked()
+	}
+}
+
+// BroadcastStateUnlocked broadcasts state without acquiring lock (caller must hold RLock)
+func (m *Manager) BroadcastStateUnlocked() {
+	state := m.buildGameState()
+	msg := websocket.NewStateUpdateMessage(state)
+
+	data, err := msg.ToJSON()
+	if err != nil {
+		log.Printf("Failed to serialize state: %v", err)
+		return
+	}
+
+	m.hub.Broadcast(m.game.ID, data)
 }
 
 // HandleClientMessage handles a message from a client
@@ -110,9 +150,6 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 	defer m.mu.Unlock()
 
 	switch action.Message.Type {
-	case websocket.MessageTypeReady:
-		m.handlePlayerReady(action.UserID)
-
 	case websocket.MessageTypeSelectQuestion:
 		m.handleSelectQuestion(action)
 
@@ -127,38 +164,6 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 
 	default:
 		log.Printf("Unknown message type: %s", action.Message.Type)
-	}
-}
-
-// handlePlayerReady marks player as ready
-func (m *Manager) handlePlayerReady(userID uuid.UUID) {
-	player, ok := m.game.Players[userID]
-	if !ok {
-		log.Printf("Player %s not found in game %s (registered players: %v)", 
-			userID, m.game.ID, m.getPlayerIDs())
-		return
-	}
-
-	player.SetReady(true)
-	log.Printf("Player %s is ready", userID)
-
-	// Check if all players are ready
-	allReady := true
-	readyCount := 0
-	for _, p := range m.game.Players {
-		if p.IsActive {
-			readyCount++
-			if !p.IsReady {
-				allReady = false
-			}
-		}
-	}
-
-	// Need at least 2 players to start
-	if allReady && readyCount >= 2 {
-		m.startGame()
-	} else {
-		m.BroadcastState()
 	}
 }
 
@@ -283,11 +288,12 @@ func (m *Manager) SendStateToClient(client *websocket.Client) {
 // buildGameState builds the current game state for broadcasting
 func (m *Manager) buildGameState() *domain.GameState {
 	state := &domain.GameState{
-		GameID:       m.game.ID,
-		Status:       m.game.Status,
-		CurrentRound: m.game.CurrentRound,
-		Players:      make([]domain.PlayerState, 0, len(m.game.Players)),
-		ActivePlayer: m.game.ActivePlayer,
+		GameID:        m.game.ID,
+		Status:        m.game.Status,
+		CurrentRound:  m.game.CurrentRound,
+		Players:       make([]domain.PlayerState, 0, len(m.game.Players)),
+		ActivePlayer:  m.game.ActivePlayer,
+		TimeRemaining: m.timer.Remaining(),
 	}
 
 	// Add players
@@ -328,6 +334,12 @@ func (m *Manager) buildGameState() *domain.GameState {
 	if m.game.CurrentQuestion != nil {
 		questionState := m.game.CurrentQuestion.ToStateWithAnswer(true)
 		state.CurrentQuestion = &questionState
+	}
+
+	// Add winners and final scores for game_end status
+	if m.game.Status == domain.GameStatusGameEnd {
+		state.Winners = m.game.Winners
+		state.FinalScores = m.game.FinalScores
 	}
 
 	return state
@@ -380,10 +392,10 @@ func (m *Manager) transitionToQuestionSelect() {
 	m.game.ActivePlayer = &hostID
 
 	m.updateGameStatus(domain.GameStatusQuestionSelect)
-	m.BroadcastState()
 
-	// Start timer for question selection
+	// Start timer BEFORE broadcasting so timeRemaining is correct
 	m.timer.Start(time.Duration(m.game.Settings.TimeForChoice) * time.Second)
+	m.BroadcastState()
 }
 
 // transitionToButtonPress moves from question_show to button_press
@@ -391,10 +403,10 @@ func (m *Manager) transitionToButtonPress() {
 	log.Printf("Transitioning to button_press phase")
 	m.updateGameStatus(domain.GameStatusButtonPress)
 	m.buttonPress.Reset()
-	m.BroadcastState()
 
-	// Start timer for button press
+	// Start timer BEFORE broadcasting so timeRemaining is correct
 	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+	m.BroadcastState()
 }
 
 // autoSelectQuestion automatically selects a random available question

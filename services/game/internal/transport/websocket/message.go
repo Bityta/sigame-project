@@ -12,8 +12,6 @@ type MessageType string
 
 // WebSocket message type constants (client to server and server to client)
 const (
-	// MessageTypeReady indicates player is ready
-	MessageTypeReady MessageType = "READY"
 	// MessageTypeSelectQuestion indicates question selection
 	MessageTypeSelectQuestion MessageType = "SELECT_QUESTION"
 	// MessageTypePressButton indicates button press
