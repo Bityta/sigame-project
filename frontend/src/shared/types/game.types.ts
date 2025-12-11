@@ -108,10 +108,12 @@ export interface ForAllAnswerResult {
 export interface PlayerState {
   userId: string;
   username: string;
+  avatarUrl?: string;
   role: 'host' | 'player';
   score: number;
   isActive: boolean;
   isReady: boolean;
+  isConnected: boolean;
 }
 
 export interface ThemeState {

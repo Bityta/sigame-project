@@ -535,4 +535,20 @@ func (m *Manager) getPlayerIDs() []string {
 	return ids
 }
 
-// Continue with more manager methods in the next file...
+// SetPlayerConnected updates a player's connection status
+func (m *Manager) SetPlayerConnected(userID uuid.UUID, connected bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	player, exists := m.game.Players[userID]
+	if !exists {
+		log.Printf("Player %s not found in game %s", userID, m.game.ID)
+		return
+	}
+
+	player.SetConnected(connected)
+	log.Printf("Player %s connection status updated to %v", player.Username, connected)
+
+	// Broadcast state update so all clients see the connection status change
+	m.BroadcastStateUnlocked()
+}

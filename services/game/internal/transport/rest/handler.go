@@ -105,7 +105,7 @@ func (h *Handler) CreateGame(c *gin.Context) {
 	// Add players
 	for _, playerInfo := range req.Players {
 		role := domain.PlayerRole(playerInfo.Role)
-		player := domain.NewPlayer(playerInfo.UserID, playerInfo.Username, role)
+		player := domain.NewPlayer(playerInfo.UserID, playerInfo.Username, playerInfo.AvatarURL, role)
 		gameSession.Players[playerInfo.UserID] = player
 	}
 

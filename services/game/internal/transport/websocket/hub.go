@@ -12,6 +12,7 @@ import (
 type GameManager interface {
 	HandleClientMessage(userID uuid.UUID, message *ClientMessage)
 	SendStateToClient(client *Client)
+	SetPlayerConnected(userID uuid.UUID, connected bool)
 }
 
 // ClientMessageWrapper wraps a client message with the client reference
@@ -85,6 +86,7 @@ func (h *Hub) Run() {
 func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
 	gameID := client.GetGameID()
+	userID := client.GetUserID()
 
 	// Create game clients map if doesn't exist
 	if h.games[gameID] == nil {
@@ -97,11 +99,14 @@ func (h *Hub) registerClient(client *Client) {
 	manager, exists := h.managers[gameID]
 	h.mu.Unlock()
 
-	log.Printf("Client registered for game %s (user %s)", gameID, client.GetUserID())
+	log.Printf("Client registered for game %s (user %s)", gameID, userID)
 
-	// Send current game state to the newly connected client
+	// Update player connection status and send state
 	if exists && manager != nil {
-		log.Printf("Sending initial state to client %s for game %s", client.GetUserID(), gameID)
+		// Mark player as connected
+		manager.SetPlayerConnected(userID, true)
+		
+		log.Printf("Sending initial state to client %s for game %s", userID, gameID)
 		manager.SendStateToClient(client)
 	}
 }
@@ -109,16 +114,21 @@ func (h *Hub) registerClient(client *Client) {
 // unregisterClient unregisters a client
 func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	gameID := client.GetGameID()
+	userID := client.GetUserID()
+
+	var manager GameManager
+	var managerExists bool
 
 	if clients, ok := h.games[gameID]; ok {
 		if _, exists := clients[client]; exists {
 			delete(clients, client)
 			close(client.send)
 
-			log.Printf("Client unregistered from game %s (user %s)", gameID, client.GetUserID())
+			log.Printf("Client unregistered from game %s (user %s)", gameID, userID)
+
+			// Get manager to update connection status
+			manager, managerExists = h.managers[gameID]
 
 			// If no more clients, consider cleaning up game manager
 			if len(clients) == 0 {
@@ -126,6 +136,12 @@ func (h *Hub) unregisterClient(client *Client) {
 				// Note: Game manager cleanup is handled separately when game ends
 			}
 		}
+	}
+	h.mu.Unlock()
+
+	// Mark player as disconnected (outside of lock to avoid deadlock)
+	if managerExists && manager != nil {
+		manager.SetPlayerConnected(userID, false)
 	}
 }
 

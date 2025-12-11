@@ -140,11 +140,13 @@ type CreateGameRequest struct {
 }
 
 // PlayerInfo is player information for game creation (DTO)
-// All fields are required
+// Required: user_id, username, role
+// Optional: avatar_url
 type PlayerInfo struct {
-	UserID   uuid.UUID `json:"user_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440002"`
-	Username string    `json:"username" binding:"required" example:"player1"`
-	Role     string    `json:"role" binding:"required" example:"player"`
+	UserID    uuid.UUID `json:"user_id" binding:"required" example:"550e8400-e29b-41d4-a716-446655440002"`
+	Username  string    `json:"username" binding:"required" example:"player1"`
+	AvatarURL string    `json:"avatar_url,omitempty" example:"https://example.com/avatar.png"`
+	Role      string    `json:"role" binding:"required" example:"player"`
 }
 
 // CreateGameResponse is the response after creating a game (DTO)
