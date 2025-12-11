@@ -916,7 +916,7 @@ stateDiagram-v2
 
 | Из состояния | В состояние | Триггер | Условие |
 |--------------|-------------|---------|---------|
-| `WAITING` | `ROUND_START` | `PLAYER_READY` | Все игроки ready |
+| `WAITING` | `ROUND_START` | Game created | Игра создана, старт автоматический |
 | `ROUND_START` | `QUESTION_SELECT` | Timer | 3 сек истекло |
 | `QUESTION_SELECT` | `QUESTION_SHOW` | `SELECT_QUESTION` | Валидный вопрос |
 | `QUESTION_SELECT` | `QUESTION_SELECT` | Timer | Авто-выбор случайного |
@@ -1107,7 +1107,6 @@ type GameTimers struct {
 
 | Событие | Когда | Payload |
 |---------|-------|---------|
-| `PLAYER_READY` | Готовность к игре | `{}` |
 | `SELECT_QUESTION` | Выбор вопроса | `{round, theme, price}` |
 | `PRESS_BUTTON` | Нажатие кнопки | `{}` |
 | `SUBMIT_ANSWER` | Отправка ответа | `{answer}` |
@@ -1185,8 +1184,8 @@ flowchart TB
     end
     
     subgraph sync [⏱️ Синхронный старт]
-        READY --> TIME_SYNC[Синхронизация часов]
-        TIME_SYNC --> START_CMD[START_MEDIA + timestamp]
+        READY --> RTT[RTT измерение через PING/PONG]
+        RTT --> START_CMD[START_MEDIA + timestamp]
         START_CMD --> PLAY[Одновременный старт]
     end
 ```
@@ -1240,43 +1239,31 @@ flowchart TB
 {"type": "MEDIA_LOAD_COMPLETE", "round": 1, "loaded_count": 25}
 ```
 
-#### 2. Синхронизация времени (NTP-like)
+#### 2. Измерение RTT (PING/PONG)
 
-Перед началом игры клиенты синхронизируют часы с сервером:
+Сервер периодически отправляет PING для измерения задержки:
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant S as Server
     
-    Note over C: T1 = local time
-    C->>S: TIME_SYNC_REQ {client_time: T1}
-    Note over S: T2 = server time
-    S->>C: TIME_SYNC_RES {client_time: T1, server_time: T2}
-    Note over C: T3 = local time
-    
-    Note over C: RTT = T3 - T1
-    Note over C: offset = T2 - (T1 + T3) / 2
-    Note over C: server_now ≈ local_now + offset
-```
-
-**Формула:**
-```
-RTT = T3 - T1                    // Round-trip time
-offset = server_time - (T1 + RTT/2)  // Разница часов
-```
-
-**Точность:** Выполняется 5 замеров, берётся медиана для устойчивости.
-
-**Client → Server:**
-```json
-{"type": "TIME_SYNC_REQ", "client_time": 1701234567000}
+    S->>C: PING {server_time: T1}
+    C->>S: PONG {server_time: T1, client_time: T2}
+    Note over S: RTT = now - T1
 ```
 
 **Server → Client:**
 ```json
-{"type": "TIME_SYNC_RES", "client_time": 1701234567000, "server_time": 1701234567050}
+{"type": "PING", "payload": {"server_time": 1701234567890}}
 ```
+
+**Client → Server:**
+```json
+{"type": "PONG", "payload": {"server_time": 1701234567890, "client_time": 1701234567895}}
+```
+
+RTT используется для компенсации пинга при определении победителя нажатия кнопки.
 
 #### 3. Синхронный старт воспроизведения
 
@@ -1335,7 +1322,6 @@ flowchart TD
 | Событие | Описание |
 |---------|----------|
 | `ROUND_MEDIA_MANIFEST` | Список всех медиа раунда для предзагрузки |
-| `TIME_SYNC_RES` | Ответ на запрос синхронизации времени |
 | `START_MEDIA` | Команда начать воспроизведение |
 | `STOP_MEDIA` | Команда остановить воспроизведение |
 
@@ -1343,7 +1329,6 @@ flowchart TD
 
 | Событие | Описание |
 |---------|----------|
-| `TIME_SYNC_REQ` | Запрос синхронизации времени |
 | `MEDIA_LOAD_PROGRESS` | Прогресс загрузки медиа |
 | `MEDIA_LOAD_COMPLETE` | Все медиа раунда загружены |
 | `MEDIA_LOAD_ERROR` | Ошибка загрузки конкретного файла |
@@ -2289,7 +2274,6 @@ eventSource.addEventListener('game_started', (e) => {
 | `MAKE_STAKE` | Ставка (Ва-банк) | Игрок со ставкой |
 | `GIVE_CAT_TO` | Передача "Кота в мешке" | Выбравший кота |
 | `PONG` | Ответ на PING | Все игроки |
-| `TIME_SYNC_REQ` | Запрос синхронизации времени | Все клиенты |
 | `MEDIA_LOAD_PROGRESS` | Прогресс загрузки медиа | Все клиенты |
 | `MEDIA_LOAD_COMPLETE` | Медиа загружено | Все клиенты |
 
@@ -2358,14 +2342,6 @@ eventSource.addEventListener('game_started', (e) => {
   }
 }
 
-// TIME_SYNC_REQ — запрос синхронизации времени
-{
-  "type": "TIME_SYNC_REQ",
-  "payload": {
-    "client_time": 1701234567000
-  }
-}
-
 // MEDIA_LOAD_PROGRESS — прогресс загрузки медиа
 {
   "type": "MEDIA_LOAD_PROGRESS",
@@ -2405,7 +2381,6 @@ eventSource.addEventListener('game_started', (e) => {
 | `GAME_COMPLETE` | Игра завершена | В конце игры |
 | `ERROR` | Ошибка | При ошибке |
 | `PING` | Измерение задержки | Каждые 5 сек |
-| `TIME_SYNC_RES` | Ответ синхронизации времени | На TIME_SYNC_REQ |
 | `ROUND_MEDIA_MANIFEST` | Список медиа раунда | В начале раунда |
 | `START_MEDIA` | Команда воспроизведения | При показе вопроса |
 | `WHO_GETS_CAT` | Выбор получателя кота | При "Кот в мешке" |
@@ -2590,15 +2565,6 @@ eventSource.addEventListener('game_started', (e) => {
   "type": "PING",
   "payload": {
     "server_time": 1701234567890
-  }
-}
-
-// TIME_SYNC_RES — ответ синхронизации времени
-{
-  "type": "TIME_SYNC_RES",
-  "payload": {
-    "client_time": 1701234567000,
-    "server_time": 1701234567050
   }
 }
 
