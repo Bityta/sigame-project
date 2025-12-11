@@ -131,7 +131,7 @@ while [ $(date +%s) -lt $END_TIME ]; do
     # Создание комнаты
     if [ $((RANDOM % 8)) -eq 0 ]; then
         ROOM_NAME="Room_$(date +%s)"
-        make_request "http://$HOST:8082/api/lobby/rooms" "POST" "{\"name\":\"$ROOM_NAME\",\"isPublic\":true,\"maxPlayers\":6,\"settings\":{\"timeForAnswer\":30,\"timeForChoice\":60,\"allowWrongAnswer\":true,\"showRightAnswer\":true}}" > /dev/null 2>&1
+        make_request "http://$HOST:8082/api/lobby/rooms" "POST" "{\"name\":\"$ROOM_NAME\",\"isPublic\":true,\"maxPlayers\":6,\"settings\":{\"timeForAnswer\":30,\"timeForChoice\":60}}" > /dev/null 2>&1
     fi
     
     # Получение информации о конкретной комнате (случайный UUID)

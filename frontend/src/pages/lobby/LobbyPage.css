@@ -66,6 +66,49 @@
   transform: translateY(0);
 }
 
+/* Active Game Banner */
+.lobby-page__active-game-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lobby-page__active-game-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lobby-page__active-game-icon {
+  font-size: 1.5rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.lobby-page__active-game-text {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
 .lobby-page__content {
   flex: 1;
   display: grid;

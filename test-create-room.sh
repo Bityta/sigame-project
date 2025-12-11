@@ -71,9 +71,7 @@ REQUEST_BODY=$(cat <<EOF
   "isPublic": true,
   "settings": {
     "timeForAnswer": 30,
-    "timeForChoice": 10,
-    "allowWrongAnswer": true,
-    "showRightAnswer": true
+    "timeForChoice": 10
   }
 }
 EOF

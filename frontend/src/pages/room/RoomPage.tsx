@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { useRoom, useLeaveRoom, useStartGame, useRoomEvents, useKickPlayer, useTransferHost, useJoinRoom } from '@/entities/room';
+import { useRoom, useLeaveRoom, useRoomEvents, useKickPlayer, useTransferHost, useJoinRoom, useSetReady } from '@/entities/room';
 import { useCurrentUser } from '@/entities/user';
 import { RoomSettingsComponent } from '@/features/room';
 import { Button, Card, Spinner } from '@/shared/ui';
@@ -52,13 +52,9 @@ export const RoomPage = () => {
     }
   }, [roomId, user, room, isLoading]);
   const leaveRoomMutation = useLeaveRoom();
-  const startGameMutation = useStartGame({
-    onSuccess: (response) => {
-      navigate(ROUTES.GAME(response.gameId));
-    },
-  });
   const kickPlayerMutation = useKickPlayer();
   const transferHostMutation = useTransferHost();
+  const setReadyMutation = useSetReady();
 
   useRoomEvents(roomId, {
     onGameStarted: (event) => {
@@ -66,6 +62,12 @@ export const RoomPage = () => {
     },
     onRoomClosed: () => {
       navigate(ROUTES.LOBBY);
+    },
+    onPlayerReady: (event) => {
+      // Room data will be invalidated automatically, game will start via SSE if all ready
+      if (event.allPlayersReady) {
+        // Game should start automatically
+      }
     },
   });
 
@@ -81,12 +83,6 @@ export const RoomPage = () => {
     }
   };
 
-  const handleStart = () => {
-    if (roomId) {
-      startGameMutation.mutate(roomId);
-    }
-  };
-
   const handleKickPlayer = (userId: string) => {
     if (roomId) {
       kickPlayerMutation.mutate({ roomId, userId });
@@ -97,6 +93,23 @@ export const RoomPage = () => {
     if (roomId && window.confirm('Вы уверены, что хотите передать роль хоста?')) {
       transferHostMutation.mutate({ roomId, newHostId });
     }
+  };
+
+  const handleReady = () => {
+    if (!roomId) return;
+    const currentPlayer = room?.players.find(p => p.userId === user?.id);
+    const newReadyState = !(currentPlayer?.isReady);
+    
+    setReadyMutation.mutate(
+      { roomId, isReady: newReadyState },
+      {
+        onSuccess: (response) => {
+          if (response.gameStarted && response.gameId) {
+            navigate(ROUTES.GAME(response.gameId));
+          }
+        },
+      }
+    );
   };
 
   const handleCopyCode = async () => {
@@ -132,7 +145,10 @@ export const RoomPage = () => {
     );
   }
 
-  const canStart = isHost && room.currentPlayers >= 2 && room.status === 'waiting';
+  const currentPlayer = room.players.find(p => p.userId === user?.id);
+  const isCurrentPlayerReady = currentPlayer?.isReady ?? false;
+  const readyCount = room.players.filter(p => p.isReady).length;
+  const allPlayersReady = readyCount === room.currentPlayers && room.currentPlayers >= 2;
 
   return (
     <div className="room-page">
@@ -154,13 +170,28 @@ export const RoomPage = () => {
             <h2 className="room-page__subtitle">
               {TEXTS.ROOM.PLAYERS(room.currentPlayers, room.maxPlayers)}
             </h2>
+            
+            {/* Ready Status */}
+            <div className="room-page__ready-status">
+              <p className="room-page__ready-count">{readyCount} / {room.currentPlayers}</p>
+              <p className="room-page__ready-label">игроков готовы</p>
+            </div>
+            
             <div className="room-page__players">
               {room.players.map((player) => (
-                <div key={player.userId} className="room-page__player">
-                  <span className="room-page__player-name">
-                    {player.username}
-                    {player.role === 'host' && ' 👑'}
-                  </span>
+                <div 
+                  key={player.userId} 
+                  className={`room-page__player ${player.isReady ? 'room-page__player--ready' : ''}`}
+                >
+                  <div className="room-page__player-info">
+                    <span className="room-page__player-name">
+                      {player.username}
+                      {player.role === 'host' && ' 👑'}
+                    </span>
+                    <span className={`room-page__player-ready-badge ${player.isReady ? 'room-page__player-ready-badge--ready' : 'room-page__player-ready-badge--waiting'}`}>
+                      {player.isReady ? 'Готов' : 'Ждёт'}
+                    </span>
+                  </div>
                   {isHost && player.userId !== user?.id && room.status === 'waiting' && (
                     <div className="room-page__player-actions">
                       <button
@@ -187,31 +218,31 @@ export const RoomPage = () => {
           </Card>
 
           <Card padding="medium" className="room-page__actions">
-            {isHost ? (
-              <>
-                <Button
-                  variant="primary"
-                  size="large"
-                  fullWidth
-                  onClick={handleStart}
-                  disabled={!canStart}
-                  isLoading={startGameMutation.isPending}
-                >
-                  {TEXTS.ROOM.START_GAME}
-                </Button>
-                {!canStart && room.currentPlayers < 2 && (
-                  <p className="room-page__hint">
-                    {TEXTS.ROOM.MIN_PLAYERS_REQUIRED}
-                  </p>
-                )}
-              </>
+            {/* Ready Button - for all players */}
+            <Button
+              variant={isCurrentPlayerReady ? 'secondary' : 'primary'}
+              size="large"
+              fullWidth
+              onClick={handleReady}
+              isLoading={setReadyMutation.isPending}
+              disabled={room.status !== 'waiting'}
+            >
+              {isCurrentPlayerReady ? '✓ Вы готовы' : 'Готов!'}
+            </Button>
+            
+            {/* Status message */}
+            {room.currentPlayers < 2 ? (
+              <p className="room-page__hint">
+                {TEXTS.ROOM.MIN_PLAYERS_REQUIRED}
+              </p>
+            ) : !allPlayersReady ? (
+              <p className="room-page__hint">
+                Ожидание готовности всех игроков...
+              </p>
             ) : (
-              <div className="room-page__waiting">
-                <p>{TEXTS.ROOM.WAITING_START}</p>
-                <p className="room-page__hint">
-                  {TEXTS.ROOM.HOST_WILL_START}
-                </p>
-              </div>
+              <p className="room-page__hint" style={{ color: '#22c55e' }}>
+                ✓ Все готовы! Игра начинается...
+              </p>
             )}
 
             <Button

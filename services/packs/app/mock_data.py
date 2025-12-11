@@ -7,6 +7,7 @@ from uuid import UUID
 PACK_ID_1 = "550e8400-e29b-41d4-a716-446655440001"
 PACK_ID_2 = "550e8400-e29b-41d4-a716-446655440002"
 PACK_ID_3 = "550e8400-e29b-41d4-a716-446655440003"
+PACK_ID_4 = "550e8400-e29b-41d4-a716-446655440004"
 
 
 def get_pack_1() -> Dict[str, Any]:
@@ -200,11 +201,166 @@ def get_pack_3() -> Dict[str, Any]:
     }
 
 
+def get_pack_4() -> Dict[str, Any]:
+    """Pack 4: Медиа-пак - вопросы с изображениями и видео для тестирования медиа"""
+    return {
+        "id": PACK_ID_4,
+        "name": "Медиа-пак (тест)",
+        "author": "SIGame Team",
+        "description": "Пак с изображениями и видео для тестирования медиа-контента",
+        "rounds_count": 1,
+        "questions_count": 12,
+        "created_at": "2024-01-01T00:00:00Z",
+        "rounds": [
+            {
+                "id": "round-4-1",
+                "round_number": 1,
+                "name": "Медиа-раунд",
+                "themes": [
+                    {
+                        "id": "theme-4-1",
+                        "name": "Что на картинке?",
+                        "questions": [
+                            {
+                                "id": "q-4-1-1",
+                                "price": 100,
+                                "text": "Что изображено на картинке?",
+                                "answer": "Горы",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/mountains/800/600",
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-1-2",
+                                "price": 200,
+                                "text": "Какой город изображен на фото?",
+                                "answer": "Город",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/city/800/600",
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-1-3",
+                                "price": 300,
+                                "text": "Что вы видите на этом изображении?",
+                                "answer": "Природа",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/nature/800/600",
+                                "media_duration_ms": 0
+                            },
+                        ]
+                    },
+                    {
+                        "id": "theme-4-2",
+                        "name": "Угадай место",
+                        "questions": [
+                            {
+                                "id": "q-4-2-1",
+                                "price": 100,
+                                "text": "Где было сделано это фото?",
+                                "answer": "Пляж",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/beach/800/600",
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-2-2",
+                                "price": 200,
+                                "text": "Какая архитектура показана?",
+                                "answer": "Здание",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/architecture/800/600",
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-2-3",
+                                "price": 300,
+                                "text": "Что это за место?",
+                                "answer": "Лес",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/forest/800/600",
+                                "media_duration_ms": 0
+                            },
+                        ]
+                    },
+                    {
+                        "id": "theme-4-3",
+                        "name": "Видео вопросы",
+                        "questions": [
+                            {
+                                "id": "q-4-3-1",
+                                "price": 100,
+                                "text": "Что показано в этом видео?",
+                                "answer": "Кролики",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                                "media_duration_ms": 10000
+                            },
+                            {
+                                "id": "q-4-3-2",
+                                "price": 200,
+                                "text": "Какое событие происходит на видео?",
+                                "answer": "Слёзы радости",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                                "media_duration_ms": 10000
+                            },
+                            {
+                                "id": "q-4-3-3",
+                                "price": 300,
+                                "text": "Что демонстрируется в ролике?",
+                                "answer": "Стеклянные шары",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                                "media_duration_ms": 15000
+                            },
+                        ]
+                    },
+                    {
+                        "id": "theme-4-4",
+                        "name": "Смешанные вопросы",
+                        "questions": [
+                            {
+                                "id": "q-4-4-1",
+                                "price": 100,
+                                "text": "Обычный текстовый вопрос: Столица Италии?",
+                                "answer": "Рим",
+                                "media_type": "text",
+                                "media_url": None,
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-4-2",
+                                "price": 200,
+                                "text": "Какое животное на картинке?",
+                                "answer": "Животное",
+                                "media_type": "image",
+                                "media_url": "https://picsum.photos/seed/animal/800/600",
+                                "media_duration_ms": 0
+                            },
+                            {
+                                "id": "q-4-4-3",
+                                "price": 300,
+                                "text": "Ещё один текстовый: Сколько континентов на Земле?",
+                                "answer": "7",
+                                "media_type": "text",
+                                "media_url": None,
+                                "media_duration_ms": 0
+                            },
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+
 # All available packs
 MOCK_PACKS = {
     PACK_ID_1: get_pack_1(),
     PACK_ID_2: get_pack_2(),
     PACK_ID_3: get_pack_3(),
+    PACK_ID_4: get_pack_4(),
 }
 
 

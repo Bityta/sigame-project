@@ -133,12 +133,14 @@ func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*dom
 			
 			for k, q := range t.Questions {
 				theme.Questions[k] = &domain.Question{
-					ID:        q.ID,
-					Price:     q.Price,
-					Text:      q.Text,
-					Answer:    q.Answer,
-					MediaType: q.MediaType,
-					Used:      false,
+					ID:              q.ID,
+					Price:           q.Price,
+					Text:            q.Text,
+					Answer:          q.Answer,
+					MediaType:       q.MediaType,
+					MediaURL:        q.MediaURL,
+					MediaDurationMs: q.MediaDurationMs,
+					Used:            false,
 				}
 			}
 			

@@ -8,6 +8,7 @@ import type {
   WSMessage,
   WSMessageType,
   GameState,
+  PingPayload,
   RoundMediaManifestPayload,
   StartMediaPayload,
 } from '@/shared/types';
@@ -158,6 +159,12 @@ export class GameWebSocket {
    * Обработать входящее сообщение
    */
   private handleMessage(message: WSMessage): void {
+    // Handle PING automatically - respond with PONG for RTT measurement
+    if (message.type === 'PING') {
+      this.handlePing(message.payload as PingPayload);
+      return;
+    }
+
     // Handle media manifest - start preloading
     if (message.type === 'ROUND_MEDIA_MANIFEST') {
       this.handleMediaManifest(message.payload as RoundMediaManifestPayload);
@@ -167,6 +174,18 @@ export class GameWebSocket {
     if (handlers) {
       handlers.forEach((handler) => handler(message.payload));
     }
+  }
+
+  /**
+   * Handle PING message - respond with PONG for RTT measurement
+   */
+  private handlePing(payload: PingPayload): void {
+    const pongPayload = {
+      server_time: payload.server_time,
+      client_time: Date.now(),
+    };
+
+    this.sendGameMessage('PONG', pongPayload as Record<string, unknown>);
   }
 
   /**
@@ -298,4 +317,3 @@ export class GameWebSocket {
     return mediaCache;
   }
 }
-

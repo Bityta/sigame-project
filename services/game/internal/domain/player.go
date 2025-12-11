@@ -77,12 +77,9 @@ func (p *Player) AddScore(points int) {
 	p.Score += points
 }
 
-// SubtractScore subtracts points from player's score
+// SubtractScore subtracts points from player's score (can go negative like in real SIGame)
 func (p *Player) SubtractScore(points int) {
 	p.Score -= points
-	if p.Score < 0 {
-		p.Score = 0
-	}
 }
 
 // SetReady marks player as ready

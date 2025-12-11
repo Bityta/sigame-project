@@ -81,6 +81,13 @@ func (q *Question) ToState(includeText bool) QuestionState {
 	return state
 }
 
+// ToStateWithAnswer converts Question to QuestionState including the answer (for host)
+func (q *Question) ToStateWithAnswer(includeText bool) QuestionState {
+	state := q.ToState(includeText)
+	state.Answer = q.Answer
+	return state
+}
+
 // GetAvailableQuestions returns all available questions in a theme
 func (t *Theme) GetAvailableQuestions() []*Question {
 	available := make([]*Question, 0)

@@ -116,8 +116,6 @@ const createMockRoom = (overrides?: any) => ({
   settings: {
     timeForAnswer: 30,
     timeForChoice: 15,
-    allowWrongAnswer: true,
-    showRightAnswer: true,
   },
   players: [
     { userId: 'user-1', username: 'TestUser', role: 'host', joinedAt: new Date().toISOString() },

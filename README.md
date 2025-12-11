@@ -725,8 +725,6 @@ erDiagram
         uuid room_id PK
         int time_for_answer "10-120 sec"
         int time_for_choice "10-180 sec"
-        boolean allow_wrong_answer
-        boolean show_right_answer
     }
 ```
 
@@ -1499,8 +1497,6 @@ interface RoomPlayer {
 interface RoomSettings {
   timeForAnswer: number;      // 10-120 сек
   timeForChoice: number;      // 10-180 сек
-  allowWrongAnswer: boolean;  // Штраф за неверный ответ
-  showRightAnswer: boolean;   // Показывать правильный ответ
 }
 
 // Pack — пак вопросов
@@ -1908,9 +1904,7 @@ message GetUserInfoResponse {
   "password": null,
   "settings": {
     "timeForAnswer": 30,
-    "timeForChoice": 60,
-    "allowWrongAnswer": true,
-    "showRightAnswer": true
+    "timeForChoice": 60
   }
 }
 ```
@@ -2032,9 +2026,7 @@ message GetUserInfoResponse {
   ],
   "settings": {
     "timeForAnswer": 30,
-    "timeForChoice": 60,
-    "allowWrongAnswer": true,
-    "showRightAnswer": true
+    "timeForChoice": 60
   },
   "createdAt": "2024-01-15T10:30:00Z"
 }
@@ -2101,9 +2093,7 @@ message GetUserInfoResponse {
 ```json
 {
   "timeForAnswer": 45,       // 10-120 сек
-  "timeForChoice": 90,       // 10-180 сек
-  "allowWrongAnswer": false, // Штраф за неверный ответ
-  "showRightAnswer": true    // Показывать правильный ответ
+  "timeForChoice": 90        // 10-180 сек
 }
 ```
 
@@ -2112,9 +2102,7 @@ message GetUserInfoResponse {
 {
   "settings": {
     "timeForAnswer": 45,
-    "timeForChoice": 90,
-    "allowWrongAnswer": false,
-    "showRightAnswer": true
+    "timeForChoice": 90
   }
 }
 ```
@@ -2238,9 +2226,7 @@ eventSource.addEventListener('game_started', (e) => {
   ],
   "settings": {
     "time_for_answer": 30,
-    "time_for_choice": 60,
-    "allow_wrong_answer": true,
-    "show_right_answer": true
+    "time_for_choice": 60
   }
 }
 ```

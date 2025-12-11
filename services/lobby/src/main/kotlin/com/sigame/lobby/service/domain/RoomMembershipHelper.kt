@@ -26,6 +26,7 @@ import com.sigame.lobby.service.data.SettingsRepository
 import com.sigame.lobby.service.mapper.RoomMapper
 import com.sigame.lobby.sse.event.PlayerJoinedEvent
 import com.sigame.lobby.sse.event.PlayerLeftEvent
+import com.sigame.lobby.sse.event.PlayerReadyEvent
 import com.sigame.lobby.sse.event.RoomClosedEvent
 import com.sigame.lobby.sse.service.RoomEventPublisher
 import kotlinx.coroutines.async
@@ -68,6 +69,13 @@ class RoomMembershipHelper(
         val room: GameRoom,
         val player: RoomPlayer,
         val currentPlayers: Int
+    )
+
+    data class ReadyResult(
+        val allPlayersReady: Boolean,
+        val readyCount: Int,
+        val totalCount: Int,
+        val hostId: UUID
     )
 
     suspend fun fetchJoinContext(roomId: UUID, userId: UUID): JoinContext = coroutineScope {
@@ -190,6 +198,47 @@ class RoomMembershipHelper(
 
     suspend fun onHostTransferred(room: GameRoom, fromHostId: UUID, toPlayer: RoomPlayer) {
         transferHost(room, fromHostId, toPlayer)
+    }
+
+    suspend fun setPlayerReady(roomId: UUID, userId: UUID, isReady: Boolean): ReadyResult = coroutineScope {
+        val roomD = async { roomRepository.findById(roomId) }
+        val playerD = async { findPlayerOrThrow(roomId, userId) }
+        
+        val room = roomD.await()
+        val player = playerD.await()
+        
+        validateRoomStatus(room, RoomStatus.WAITING, "set ready status")
+        require(player.leftAt == null) { "Player is not active in this room" }
+        
+        // Update player ready status
+        val updatedPlayer = player.copy(isReady = isReady)
+        playerRepository.save(updatedPlayer)
+        
+        // Get all active players and check ready status
+        val allPlayers = playerRepository.findActiveByRoomId(roomId)
+        val readyCount = allPlayers.count { it.userId == userId && isReady || it.userId != userId && it.isReady }
+        val totalCount = allPlayers.size
+        val allReady = readyCount == totalCount && totalCount >= 2
+        
+        // Publish SSE event
+        roomEventPublisher.publish(
+            PlayerReadyEvent(
+                roomId = roomId,
+                userId = userId,
+                username = player.username,
+                isReady = isReady,
+                allPlayersReady = allReady,
+                readyCount = readyCount,
+                totalCount = totalCount
+            )
+        )
+        
+        ReadyResult(
+            allPlayersReady = allReady,
+            readyCount = readyCount,
+            totalCount = totalCount,
+            hostId = room.hostId
+        )
     }
 
     private suspend fun handleHostLeave(room: GameRoom, leftPlayer: RoomPlayer, newCount: Int) = coroutineScope {

@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS room_players (
     username VARCHAR(50) NOT NULL,
     avatar_url VARCHAR(500),
     role VARCHAR(20) NOT NULL DEFAULT 'player',
+    is_ready BOOLEAN NOT NULL DEFAULT FALSE,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
     UNIQUE(room_id, user_id)
@@ -63,8 +64,6 @@ CREATE TABLE IF NOT EXISTS room_settings (
     room_id UUID PRIMARY KEY REFERENCES game_rooms(id) ON DELETE CASCADE,
     time_for_answer INTEGER NOT NULL DEFAULT 30 CHECK (time_for_answer BETWEEN 10 AND 120),
     time_for_choice INTEGER NOT NULL DEFAULT 60 CHECK (time_for_choice BETWEEN 10 AND 180),
-    allow_wrong_answer BOOLEAN NOT NULL DEFAULT TRUE,
-    show_right_answer BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

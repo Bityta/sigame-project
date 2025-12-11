@@ -12,6 +12,7 @@ type GameStatus string
 // Game status constants
 const (
 	GameStatusWaiting        GameStatus = "waiting"
+	GameStatusRoundsOverview GameStatus = "rounds_overview"
 	GameStatusRoundStart     GameStatus = "round_start"
 	GameStatusQuestionSelect GameStatus = "question_select"
 	GameStatusQuestionShow   GameStatus = "question_show"
@@ -26,36 +27,43 @@ const (
 
 // Game represents the entire game session (Entity - internal model)
 type Game struct {
-	ID            uuid.UUID              `json:"id"`
-	RoomID        uuid.UUID              `json:"room_id"`
-	PackID        uuid.UUID              `json:"pack_id"`
-	Status        GameStatus             `json:"status"`
-	Players       map[uuid.UUID]*Player  `json:"players"`
-	Rounds        []*Round               `json:"rounds"`
-	CurrentRound  int                    `json:"current_round"`
-	CurrentPhase  GameStatus             `json:"current_phase"`
-	ActivePlayer  *uuid.UUID             `json:"active_player,omitempty"`
-	CurrentTheme  *string                `json:"current_theme,omitempty"`
-	CurrentQuestion *Question            `json:"current_question,omitempty"`
-	Settings      GameSettings           `json:"settings"`
-	StartedAt     *time.Time             `json:"started_at,omitempty"`
-	FinishedAt    *time.Time             `json:"finished_at,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	ID              uuid.UUID              `json:"id"`
+	RoomID          uuid.UUID              `json:"room_id"`
+	PackID          uuid.UUID              `json:"pack_id"`
+	Status          GameStatus             `json:"status"`
+	Players         map[uuid.UUID]*Player  `json:"players"`
+	Rounds          []*Round               `json:"rounds"`
+	CurrentRound    int                    `json:"current_round"`
+	CurrentPhase    GameStatus             `json:"current_phase"`
+	ActivePlayer    *uuid.UUID             `json:"active_player,omitempty"`
+	CurrentTheme    *string                `json:"current_theme,omitempty"`
+	CurrentQuestion *Question              `json:"current_question,omitempty"`
+	Settings        GameSettings           `json:"settings"`
+	Winners         []PlayerScore          `json:"winners,omitempty"`
+	FinalScores     []PlayerScore          `json:"final_scores,omitempty"`
+	StartedAt       *time.Time             `json:"started_at,omitempty"`
+	FinishedAt      *time.Time             `json:"finished_at,omitempty"`
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
 // GameSettings holds game configuration (DTO)
 // All fields are required
 type GameSettings struct {
-	TimeForAnswer    int  `json:"time_for_answer" binding:"required"`    // seconds
-	TimeForChoice    int  `json:"time_for_choice" binding:"required"`    // seconds
-	AllowWrongAnswer bool `json:"allow_wrong_answer" binding:"required"`
-	ShowRightAnswer  bool `json:"show_right_answer" binding:"required"`
+	TimeForAnswer int `json:"time_for_answer" binding:"required"` // seconds
+	TimeForChoice int `json:"time_for_choice" binding:"required"` // seconds
+}
+
+// RoundOverview represents a round summary for the overview screen
+type RoundOverview struct {
+	RoundNumber int      `json:"roundNumber" binding:"required"`
+	Name        string   `json:"name" binding:"required"`
+	ThemeNames  []string `json:"themeNames" binding:"required"`
 }
 
 // GameState represents the current state for broadcasting (DTO)
 // Required: gameId, status, currentRound, players
-// Optional: roundName, themes, activePlayer, currentQuestion, timeRemaining, message
+// Optional: roundName, themes, activePlayer, currentQuestion, timeRemaining, message, allRounds, winners, finalScores
 type GameState struct {
 	GameID          uuid.UUID              `json:"gameId" binding:"required"`
 	Status          GameStatus             `json:"status" binding:"required"`
@@ -67,6 +75,9 @@ type GameState struct {
 	CurrentQuestion *QuestionState         `json:"currentQuestion,omitempty"`
 	TimeRemaining   int                    `json:"timeRemaining,omitempty"` // seconds
 	Message         string                 `json:"message,omitempty"`
+	AllRounds       []RoundOverview        `json:"allRounds,omitempty"` // for rounds_overview status
+	Winners         []PlayerScore          `json:"winners,omitempty"`   // for game_end status
+	FinalScores     []PlayerScore          `json:"finalScores,omitempty"` // for game_end status
 }
 
 // ThemeState represents a theme with questions availability (DTO)
@@ -78,15 +89,16 @@ type ThemeState struct {
 
 // QuestionState represents question availability in UI (DTO)
 // Required: id, price, available
-// Optional: text, mediaType, mediaUrl, mediaDurationMs (only when question is shown)
+// Optional: text, mediaType, mediaUrl, mediaDurationMs (only when question is shown), answer (only for host)
 type QuestionState struct {
 	ID              string `json:"id" binding:"required"`
 	Price           int    `json:"price" binding:"required"`
 	Available       bool   `json:"available" binding:"required"`
 	Text            string `json:"text,omitempty"`            // only when shown
 	MediaType       string `json:"mediaType,omitempty"`       // only when shown
-	MediaURL        string `json:"mediaUrl,omitempty"`        // only when shown
-	MediaDurationMs int    `json:"mediaDurationMs,omitempty"` // only when shown
+	MediaURL        string `json:"mediaUrl,omitempty"`        // only when shown (image/audio/video URL)
+	MediaDurationMs int    `json:"mediaDurationMs,omitempty"` // only for audio/video (duration in ms)
+	Answer          string `json:"answer,omitempty"`          // only for host (correct answer)
 }
 
 // CreateGameRequest is the request to create a new game (DTO)
@@ -127,4 +139,3 @@ type GetGameResponse struct {
 	StartedAt    *time.Time    `json:"started_at,omitempty"`
 	FinishedAt   *time.Time    `json:"finished_at,omitempty"`
 }
-

@@ -25,7 +25,8 @@ class RoomMapper {
                 userId = player.userId,
                 username = player.username,
                 avatarUrl = player.avatarUrl,
-                role = player.role
+                role = player.role,
+                isReady = player.isReady
             )
         }
 
@@ -62,7 +63,8 @@ class RoomMapper {
                 userId = player.userId,
                 username = player.username,
                 avatarUrl = player.avatarUrl,
-                role = player.role
+                role = player.role,
+                isReady = player.isReady
             )
         }
 
@@ -88,9 +90,7 @@ class RoomMapper {
     private fun toSettingsDto(settings: RoomSettings): RoomSettingsDto {
         return RoomSettingsDto(
             timeForAnswer = settings.timeForAnswer,
-            timeForChoice = settings.timeForChoice,
-            allowWrongAnswer = settings.allowWrongAnswer,
-            showRightAnswer = settings.showRightAnswer
+            timeForChoice = settings.timeForChoice
         )
     }
 }

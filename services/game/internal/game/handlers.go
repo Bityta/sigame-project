@@ -116,7 +116,7 @@ func (m *Manager) sendStartMedia(question *domain.Question) {
 	}
 }
 
-// handlePressButton handles button press
+// handlePressButton handles button press with RTT compensation
 func (m *Manager) handlePressButton(userID uuid.UUID) {
 	if m.game.Status != domain.GameStatusButtonPress {
 		return
@@ -132,36 +132,85 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 		return
 	}
 
-	// Try to press button (atomic)
-	if m.buttonPress.Press(userID) {
-		log.Printf("Button pressed by %s", player.Username)
+	// Get client's RTT for compensation
+	rtt := m.hub.GetClientRTT(m.game.ID, userID)
 
-		// This player gets to answer
-		m.game.ActivePlayer = &userID
+	// Record press with RTT compensation
+	if m.buttonPress.Press(userID, player.Username, rtt) {
+		log.Printf("Button pressed by %s (RTT: %v)", player.Username, rtt)
 
-		// Stop timer
-		m.timer.Stop()
-
-		// Log event
-		event := domain.NewGameEvent(m.game.ID, domain.EventButtonPressed).
-			WithUser(userID).
-			WithQuestion(m.game.CurrentQuestion.ID)
-		m.eventLogger.LogEvent(m.ctx, event)
-
-		// Broadcast button press
-		latency := m.buttonPress.GetLatency()
-		msg := websocket.NewButtonPressedMessage(userID, player.Username, latency)
-		if data, err := msg.ToJSON(); err == nil {
-			m.hub.Broadcast(m.game.ID, data)
+		// Check if this is the first press - start collection window
+		if m.buttonPress.GetPressCount() == 1 {
+			// Start a short collection window (150ms) to gather all near-simultaneous presses
+			// After this window, we determine the winner
+			go m.finishButtonPressCollection()
 		}
-
-		// Transition to answer judging phase (player answers verbally, host judges)
-		m.updateGameStatus(domain.GameStatusAnswerJudging)
-		m.BroadcastState()
-
-		// Start timer for host to judge the answer
-		m.timer.Start(30 * time.Second)
 	}
+}
+
+// finishButtonPressCollection waits for collection window and determines winner
+func (m *Manager) finishButtonPressCollection() {
+	// Wait for collection window (150ms to account for network jitter)
+	time.Sleep(150 * time.Millisecond)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Make sure we're still in button press phase
+	if m.game.Status != domain.GameStatusButtonPress {
+		return
+	}
+
+	// Close collection and determine winner
+	m.buttonPress.Close()
+
+	winner := m.buttonPress.GetWinner()
+	if winner == nil {
+		// No presses recorded (shouldn't happen if we got here)
+		return
+	}
+
+	// Stop main timer
+	m.timer.Stop()
+
+	// Set winner as active player
+	m.game.ActivePlayer = &winner.UserID
+
+	// Log event
+	event := domain.NewGameEvent(m.game.ID, domain.EventButtonPressed).
+		WithUser(winner.UserID).
+		WithQuestion(m.game.CurrentQuestion.ID).
+		WithData("rtt_ms", winner.RTT.Milliseconds()).
+		WithData("reaction_time_ms", m.buttonPress.GetReactionTime(winner))
+	m.eventLogger.LogEvent(m.ctx, event)
+
+	// Build all_presses for response
+	allPresses := m.buttonPress.GetAllPresses()
+	pressInfos := make([]websocket.PressInfo, len(allPresses))
+	for i, entry := range allPresses {
+		pressInfos[i] = websocket.PressInfo{
+			UserID:   entry.UserID,
+			Username: entry.Username,
+			TimeMS:   m.buttonPress.GetReactionTime(&entry),
+		}
+	}
+
+	// Broadcast button press result with all presses
+	reactionTime := m.buttonPress.GetReactionTime(winner)
+	msg := websocket.NewButtonPressedMessage(winner.UserID, winner.Username, reactionTime, pressInfos)
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+	}
+
+	log.Printf("Button winner: %s (reaction: %dms, total presses: %d)",
+		winner.Username, reactionTime, len(allPresses))
+
+	// Transition to answer judging phase (player answers verbally, host judges)
+	m.updateGameStatus(domain.GameStatusAnswerJudging)
+	m.BroadcastState()
+
+	// Start timer for host to judge the answer
+	m.timer.Start(30 * time.Second)
 }
 
 // handleSubmitAnswer handles answer submission
@@ -204,7 +253,7 @@ func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
 	if correct {
 		player.AddScore(questionPrice)
 		scoreDelta = questionPrice
-	} else if m.game.Settings.AllowWrongAnswer {
+	} else {
 		player.SubtractScore(questionPrice)
 		scoreDelta = -questionPrice
 	}
@@ -296,10 +345,8 @@ func (m *Manager) handleAnswerTimeout() {
 	player := m.game.Players[*m.game.ActivePlayer]
 
 	// Penalize for timeout
-	if m.game.Settings.AllowWrongAnswer {
-		questionPrice := m.game.CurrentQuestion.Price
-		player.SubtractScore(questionPrice)
-	}
+	questionPrice := m.game.CurrentQuestion.Price
+	player.SubtractScore(questionPrice)
 
 	log.Printf("Answer timeout for player %s", player.Username)
 
@@ -319,8 +366,45 @@ func (m *Manager) handleAnswerTimeout() {
 	m.continueGame()
 }
 
-// skipQuestion skips the current question (no one pressed button)
+// skipQuestion skips the current question (no one pressed button or timeout during collection)
 func (m *Manager) skipQuestion() {
+	// Close button press collection if still open
+	m.buttonPress.Close()
+
+	// Check if there were any presses during timeout
+	if m.buttonPress.HasPresses() {
+		// Someone pressed but we timed out - determine winner anyway
+		winner := m.buttonPress.GetWinner()
+		if winner != nil {
+			log.Printf("Question timeout but had presses, winner: %s", winner.Username)
+			m.game.ActivePlayer = &winner.UserID
+
+			// Build all_presses for response
+			allPresses := m.buttonPress.GetAllPresses()
+			pressInfos := make([]websocket.PressInfo, len(allPresses))
+			for i, entry := range allPresses {
+				pressInfos[i] = websocket.PressInfo{
+					UserID:   entry.UserID,
+					Username: entry.Username,
+					TimeMS:   m.buttonPress.GetReactionTime(&entry),
+				}
+			}
+
+			// Broadcast button press result
+			reactionTime := m.buttonPress.GetReactionTime(winner)
+			msg := websocket.NewButtonPressedMessage(winner.UserID, winner.Username, reactionTime, pressInfos)
+			if data, err := msg.ToJSON(); err == nil {
+				m.hub.Broadcast(m.game.ID, data)
+			}
+
+			// Transition to answer judging
+			m.updateGameStatus(domain.GameStatusAnswerJudging)
+			m.BroadcastState()
+			m.timer.Start(30 * time.Second)
+			return
+		}
+	}
+
 	log.Printf("Question skipped (no button press)")
 	m.continueGame()
 }
@@ -364,17 +448,22 @@ func (m *Manager) endRound() {
 	// Broadcast round end
 	m.BroadcastState()
 
-	// Wait a bit, then start next round or end game
-	time.Sleep(5 * time.Second)
+	// Schedule next round/game end in a goroutine to avoid deadlock
+	currentRound := m.game.CurrentRound
+	totalRounds := len(m.pack.Rounds)
+	
+	go func() {
+		time.Sleep(5 * time.Second)
+		
+		m.mu.Lock()
+		defer m.mu.Unlock()
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.game.CurrentRound < len(m.pack.Rounds) {
-		m.startRound(m.game.CurrentRound + 1)
-	} else {
-		m.endGame()
-	}
+		if currentRound < totalRounds {
+			m.startRound(currentRound + 1)
+		} else {
+			m.endGame()
+		}
+	}()
 }
 
 // endGame ends the game
@@ -385,15 +474,70 @@ func (m *Manager) endGame() {
 	now := time.Now()
 	m.game.FinishedAt = &now
 
+	// Calculate winners
+	m.game.Winners = m.calculateWinners()
+	m.game.FinalScores = m.calculateFinalScores()
+
 	// Log event
 	event := domain.NewGameEvent(m.game.ID, domain.EventGameFinished)
 	m.eventLogger.LogEvent(m.ctx, event)
 
-	// Broadcast game end
+	// Broadcast game end with winners
 	m.BroadcastState()
 
-	// Game is complete
-	m.updateGameStatus(domain.GameStatusFinished)
+	// Stop timer ticker as game is done
+	if m.timerTicker != nil {
+		m.timerTicker.Stop()
+	}
+}
+
+// calculateWinners calculates the game winners (top 3 players)
+func (m *Manager) calculateWinners() []domain.PlayerScore {
+	scores := m.calculateFinalScores()
+	
+	// Top 3 are winners
+	winners := make([]domain.PlayerScore, 0)
+	for i, score := range scores {
+		if i >= 3 {
+			break
+		}
+		winners = append(winners, score)
+	}
+	
+	return winners
+}
+
+// calculateFinalScores calculates and ranks all players by score
+func (m *Manager) calculateFinalScores() []domain.PlayerScore {
+	scores := make([]domain.PlayerScore, 0)
+	
+	// Collect scores (exclude host)
+	for userID, player := range m.game.Players {
+		if player.Role == domain.PlayerRoleHost {
+			continue
+		}
+		scores = append(scores, domain.PlayerScore{
+			UserID:   userID,
+			Username: player.Username,
+			Score:    player.Score,
+		})
+	}
+	
+	// Sort by score descending
+	for i := 0; i < len(scores); i++ {
+		for j := i + 1; j < len(scores); j++ {
+			if scores[j].Score > scores[i].Score {
+				scores[i], scores[j] = scores[j], scores[i]
+			}
+		}
+	}
+	
+	// Assign ranks
+	for i := range scores {
+		scores[i].Rank = i + 1
+	}
+	
+	return scores
 }
 
 // handleMediaLoadProgress handles client's media loading progress

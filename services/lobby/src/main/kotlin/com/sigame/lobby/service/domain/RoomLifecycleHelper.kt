@@ -128,9 +128,7 @@ class RoomLifecycleHelper(
         val roomSettings = RoomSettings(
             roomId = roomId,
             timeForAnswer = settings?.timeForAnswer ?: 30,
-            timeForChoice = settings?.timeForChoice ?: 60,
-            allowWrongAnswer = settings?.allowWrongAnswer ?: true,
-            showRightAnswer = settings?.showRightAnswer ?: true
+            timeForChoice = settings?.timeForChoice ?: 60
         )
         settingsRepository.insert(roomSettings)
     }
@@ -150,9 +148,7 @@ class RoomLifecycleHelper(
         val settings = settingsRepository.findByRoomId(roomId)
         return GameSettings(
             timeForAnswer = settings?.timeForAnswer ?: 30,
-            timeForChoice = settings?.timeForChoice ?: 60,
-            allowWrongAnswer = settings?.allowWrongAnswer ?: true,
-            showRightAnswer = settings?.showRightAnswer ?: true
+            timeForChoice = settings?.timeForChoice ?: 60
         )
     }
 
@@ -227,15 +223,11 @@ class RoomLifecycleHelper(
     fun mergeSettings(roomId: UUID, current: RoomSettings?, request: UpdateRoomSettingsRequest): RoomSettings =
         current?.copy(
             timeForAnswer = request.timeForAnswer ?: current.timeForAnswer,
-            timeForChoice = request.timeForChoice ?: current.timeForChoice,
-            allowWrongAnswer = request.allowWrongAnswer ?: current.allowWrongAnswer,
-            showRightAnswer = request.showRightAnswer ?: current.showRightAnswer
+            timeForChoice = request.timeForChoice ?: current.timeForChoice
         ) ?: RoomSettings(
             roomId = roomId,
             timeForAnswer = request.timeForAnswer ?: 30,
-            timeForChoice = request.timeForChoice ?: 60,
-            allowWrongAnswer = request.allowWrongAnswer ?: true,
-            showRightAnswer = request.showRightAnswer ?: true
+            timeForChoice = request.timeForChoice ?: 60
         )
 
     suspend fun saveSettings(settings: RoomSettings, isNew: Boolean) {
@@ -248,9 +240,7 @@ class RoomLifecycleHelper(
 
     fun toSettingsDto(settings: RoomSettings) = RoomSettingsDto(
         timeForAnswer = settings.timeForAnswer,
-        timeForChoice = settings.timeForChoice,
-        allowWrongAnswer = settings.allowWrongAnswer,
-        showRightAnswer = settings.showRightAnswer
+        timeForChoice = settings.timeForChoice
     )
 
     fun recordRoomCreatedMetrics() {

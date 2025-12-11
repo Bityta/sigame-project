@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,11 +16,14 @@ const (
 	// Time allowed to read the next pong message from the peer
 	pongWait = 60 * time.Second
 
-	// Send pings to peer with this period (must be less than pongWait)
-	pingPeriod = (pongWait * 9) / 10
+	// Send JSON PING to peer with this period for RTT measurement (5 seconds as per spec)
+	jsonPingPeriod = 5 * time.Second
 
 	// Maximum message size allowed from peer
 	maxMessageSize = 8192
+
+	// Maximum number of RTT samples to keep for averaging
+	maxRTTSamples = 10
 )
 
 // Client represents a WebSocket client connection
@@ -29,17 +33,69 @@ type Client struct {
 	send   chan []byte
 	userID uuid.UUID
 	gameID uuid.UUID
+
+	// RTT tracking for ping compensation
+	rttSamples     []time.Duration
+	avgRTT         time.Duration
+	lastPingSentAt time.Time
+	rttMu          sync.RWMutex
 }
 
 // NewClient creates a new WebSocket client
 func NewClient(hub *Hub, conn *websocket.Conn, userID, gameID uuid.UUID) *Client {
 	return &Client{
-		hub:    hub,
-		conn:   conn,
-		send:   make(chan []byte, 256),
-		userID: userID,
-		gameID: gameID,
+		hub:        hub,
+		conn:       conn,
+		send:       make(chan []byte, 256),
+		userID:     userID,
+		gameID:     gameID,
+		rttSamples: make([]time.Duration, 0, maxRTTSamples),
 	}
+}
+
+// UpdateRTT updates the RTT with a new sample and recalculates average
+func (c *Client) UpdateRTT(rtt time.Duration) {
+	c.rttMu.Lock()
+	defer c.rttMu.Unlock()
+
+	// Add new sample
+	c.rttSamples = append(c.rttSamples, rtt)
+
+	// Keep only last maxRTTSamples
+	if len(c.rttSamples) > maxRTTSamples {
+		c.rttSamples = c.rttSamples[1:]
+	}
+
+	// Calculate average RTT
+	var total time.Duration
+	for _, sample := range c.rttSamples {
+		total += sample
+	}
+	c.avgRTT = total / time.Duration(len(c.rttSamples))
+
+	log.Printf("[RTT] User %s: new sample=%v, avg=%v (samples=%d)",
+		c.userID, rtt, c.avgRTT, len(c.rttSamples))
+}
+
+// GetRTT returns the average RTT for this client
+func (c *Client) GetRTT() time.Duration {
+	c.rttMu.RLock()
+	defer c.rttMu.RUnlock()
+	return c.avgRTT
+}
+
+// SetLastPingSentAt records when the last ping was sent
+func (c *Client) SetLastPingSentAt(t time.Time) {
+	c.rttMu.Lock()
+	defer c.rttMu.Unlock()
+	c.lastPingSentAt = t
+}
+
+// GetLastPingSentAt returns when the last ping was sent
+func (c *Client) GetLastPingSentAt() time.Time {
+	c.rttMu.RLock()
+	defer c.rttMu.RUnlock()
+	return c.lastPingSentAt
 }
 
 // readPump pumps messages from the WebSocket connection to the hub
@@ -87,9 +143,10 @@ func (c *Client) readPump() {
 
 // writePump pumps messages from the hub to the WebSocket connection
 func (c *Client) writePump() {
-	ticker := time.NewTicker(pingPeriod)
+	// JSON PING ticker for RTT measurement (5 seconds)
+	jsonPingTicker := time.NewTicker(jsonPingPeriod)
 	defer func() {
-		ticker.Stop()
+		jsonPingTicker.Stop()
 		c.conn.Close()
 	}()
 
@@ -120,9 +177,21 @@ func (c *Client) writePump() {
 				return
 			}
 
-		case <-ticker.C:
+		case <-jsonPingTicker.C:
+			// Send JSON PING for RTT measurement
+			now := time.Now()
+			c.SetLastPingSentAt(now)
+
+			pingMsg := NewPingMessage(now.UnixMilli())
+			data, err := pingMsg.ToJSON()
+			if err != nil {
+				log.Printf("[PING] Failed to marshal ping message: %v", err)
+				continue
+			}
+
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Printf("[PING] Failed to send ping: %v", err)
 				return
 			}
 		}

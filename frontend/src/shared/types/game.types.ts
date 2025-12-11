@@ -4,6 +4,7 @@
 
 export type GameStatus = 
   | 'waiting'
+  | 'rounds_overview'
   | 'round_start'
   | 'question_select'
   | 'question_show'
@@ -21,6 +22,7 @@ export type WSMessageType =
   | 'PRESS_BUTTON'
   | 'SUBMIT_ANSWER'
   | 'JUDGE_ANSWER'
+  | 'PONG'           // Response to PING for RTT measurement
   | 'MEDIA_LOAD_PROGRESS'
   | 'MEDIA_LOAD_COMPLETE'
   // Server -> Client
@@ -31,12 +33,26 @@ export type WSMessageType =
   | 'ROUND_COMPLETE'
   | 'GAME_COMPLETE'
   | 'ERROR'
+  | 'PING'           // RTT measurement ping
   | 'ROUND_MEDIA_MANIFEST'
   | 'START_MEDIA';
 
 export interface WSMessage<T = any> {
   type: WSMessageType;
   payload?: T;
+}
+
+export interface RoundOverview {
+  roundNumber: number;
+  name: string;
+  themeNames: string[];
+}
+
+export interface PlayerScore {
+  userId: string;
+  username: string;
+  score: number;
+  rank: number;
 }
 
 export interface GameState {
@@ -50,6 +66,9 @@ export interface GameState {
   currentQuestion?: QuestionState;
   timeRemaining?: number;
   message?: string;
+  allRounds?: RoundOverview[];
+  winners?: PlayerScore[];
+  finalScores?: PlayerScore[];
 }
 
 export interface PlayerState {
@@ -72,14 +91,33 @@ export interface QuestionState {
   available: boolean;
   text?: string;
   mediaType?: string;
-  mediaUrl?: string;
-  mediaDurationMs?: number;
+  mediaUrl?: string; // URL to media file (image/audio/video)
+  mediaDurationMs?: number; // Duration in ms (for audio/video)
+  answer?: string; // Only for host
+}
+
+// PING/PONG for RTT measurement
+export interface PingPayload {
+  server_time: number;  // Server timestamp in milliseconds
+}
+
+export interface PongPayload {
+  server_time: number;  // Echo back from PING
+  client_time: number;  // Client's current timestamp
+}
+
+// Button press info for a single player
+export interface PressInfo {
+  user_id: string;
+  username: string;
+  time_ms: number;  // Adjusted reaction time in milliseconds
 }
 
 export interface ButtonPressedPayload {
-  userId: string;
-  username: string;
-  latencyMs: number;
+  winner_id: string;
+  winner_name: string;
+  reaction_time_ms: number;  // Winner's adjusted reaction time
+  all_presses: PressInfo[];  // All button presses sorted by adjusted time
 }
 
 export interface AnswerResultPayload {
@@ -168,4 +206,3 @@ export interface StartMediaPayload {
   start_at: number;  // Unix timestamp in ms
   duration_ms: number;
 }
-

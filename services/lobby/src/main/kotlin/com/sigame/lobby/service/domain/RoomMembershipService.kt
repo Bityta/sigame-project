@@ -2,6 +2,7 @@ package com.sigame.lobby.service.domain
 
 import com.sigame.lobby.domain.dto.JoinRoomRequest
 import com.sigame.lobby.domain.dto.RoomDto
+import com.sigame.lobby.domain.dto.StartGameResponse
 import mu.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -10,7 +11,10 @@ import java.util.UUID
 private val logger = KotlinLogging.logger {}
 
 @Service
-class RoomMembershipService(private val helper: RoomMembershipHelper) {
+class RoomMembershipService(
+    private val helper: RoomMembershipHelper,
+    private val lifecycleService: RoomLifecycleService
+) {
 
     @Transactional
     suspend fun joinRoom(roomId: UUID, userId: UUID, request: JoinRoomRequest): RoomDto {
@@ -62,5 +66,24 @@ class RoomMembershipService(private val helper: RoomMembershipHelper) {
         helper.validateTransfer(ctx.room, currentHostId, newHostId, ctx.player, roomId)
 
         helper.onHostTransferred(ctx.room, currentHostId, ctx.player)
+    }
+
+    /**
+     * Set player ready status. Auto-starts game when all players are ready.
+     * Returns StartGameResponse if game started, null otherwise.
+     */
+    @Transactional
+    suspend fun setReadyStatus(roomId: UUID, userId: UUID, isReady: Boolean): StartGameResponse? {
+        logger.info { "User $userId setting ready=$isReady in room $roomId" }
+
+        val result = helper.setPlayerReady(roomId, userId, isReady)
+        
+        // Auto-start game when all players are ready (minimum 2 players)
+        if (result.allPlayersReady && result.totalCount >= 2) {
+            logger.info { "All ${result.totalCount} players ready in room $roomId, auto-starting game" }
+            return lifecycleService.startRoom(roomId, result.hostId)
+        }
+        
+        return null
     }
 }

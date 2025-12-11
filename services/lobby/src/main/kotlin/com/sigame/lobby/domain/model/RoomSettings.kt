@@ -15,10 +15,6 @@ data class RoomSettings(
     val timeForAnswer: Int = 30,
     @Column("time_for_choice")
     val timeForChoice: Int = 60,
-    @Column("allow_wrong_answer")
-    val allowWrongAnswer: Boolean = true,
-    @Column("show_right_answer")
-    val showRightAnswer: Boolean = true,
     @Column("created_at")
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Column("updated_at")

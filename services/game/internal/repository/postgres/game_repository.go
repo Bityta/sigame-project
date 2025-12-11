@@ -318,3 +318,62 @@ func (r *GameRepository) GetGamesByRoomID(ctx context.Context, roomID uuid.UUID)
 	return games, nil
 }
 
+// GetActiveGameForUser retrieves an active game where the user is a participant
+func (r *GameRepository) GetActiveGameForUser(ctx context.Context, userID uuid.UUID) (*domain.Game, error) {
+	query := `
+		SELECT gs.id, gs.room_id, gs.pack_id, gs.status, gs.current_round, gs.current_phase, 
+		       gs.started_at, gs.finished_at, gs.created_at, gs.updated_at
+		FROM game_sessions gs
+		INNER JOIN game_players gp ON gs.id = gp.game_id
+		WHERE gp.user_id = $1 
+		  AND gp.is_active = true
+		  AND gs.status NOT IN ('finished', 'cancelled', 'game_end')
+		ORDER BY gs.created_at DESC
+		LIMIT 1
+	`
+
+	game := &domain.Game{
+		Players: make(map[uuid.UUID]*domain.Player),
+	}
+
+	var startedAt, finishedAt sql.NullTime
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&game.ID,
+		&game.RoomID,
+		&game.PackID,
+		&game.Status,
+		&game.CurrentRound,
+		&game.CurrentPhase,
+		&startedAt,
+		&finishedAt,
+		&game.CreatedAt,
+		&game.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, domain.ErrGameNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active game for user: %w", err)
+	}
+
+	if startedAt.Valid {
+		game.StartedAt = &startedAt.Time
+	}
+	if finishedAt.Valid {
+		game.FinishedAt = &finishedAt.Time
+	}
+
+	// Load players
+	players, err := r.getGamePlayers(ctx, game.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, player := range players {
+		game.Players[player.UserID] = player
+	}
+
+	return game, nil
+}
+

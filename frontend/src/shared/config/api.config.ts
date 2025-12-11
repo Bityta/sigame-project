@@ -38,11 +38,13 @@ export const API_CONFIG = {
       UPDATE_SETTINGS: (id: string) => `/api/lobby/rooms/${id}/settings`,
       KICK_PLAYER: (id: string) => `/api/lobby/rooms/${id}/kick`,
       TRANSFER_HOST: (id: string) => `/api/lobby/rooms/${id}/transfer-host`,
+      SET_READY: (id: string) => `/api/lobby/rooms/${id}/ready`,
     },
     // Game
     GAME: {
       SESSION: (id: string) => `/api/game/${id}`,
       WS: (id: string) => `/api/game/${id}/ws`,
+      MY_ACTIVE: '/api/game/my-active',
     },
     // Packs
     PACK: {
