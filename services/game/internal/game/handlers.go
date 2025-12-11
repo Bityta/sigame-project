@@ -86,7 +86,7 @@ func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question)
 	m.timer.Start(3 * time.Second) // 3 seconds to read
 }
 
-// handlePressButton handles button press
+// handlePressButton handles button press with RTT compensation
 func (m *Manager) handlePressButton(userID uuid.UUID) {
 	if m.game.Status != domain.GameStatusButtonPress {
 		return
@@ -102,36 +102,85 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 		return
 	}
 
-	// Try to press button (atomic)
-	if m.buttonPress.Press(userID) {
-		log.Printf("Button pressed by %s", player.Username)
+	// Get client's RTT for compensation
+	rtt := m.hub.GetClientRTT(m.game.ID, userID)
 
-		// This player gets to answer
-		m.game.ActivePlayer = &userID
+	// Record press with RTT compensation
+	if m.buttonPress.Press(userID, player.Username, rtt) {
+		log.Printf("Button pressed by %s (RTT: %v)", player.Username, rtt)
 
-		// Stop timer
-		m.timer.Stop()
-
-		// Log event
-		event := domain.NewGameEvent(m.game.ID, domain.EventButtonPressed).
-			WithUser(userID).
-			WithQuestion(m.game.CurrentQuestion.ID)
-		m.eventLogger.LogEvent(m.ctx, event)
-
-		// Broadcast button press
-		latency := m.buttonPress.GetLatency()
-		msg := websocket.NewButtonPressedMessage(userID, player.Username, latency)
-		if data, err := msg.ToJSON(); err == nil {
-			m.hub.Broadcast(m.game.ID, data)
+		// Check if this is the first press - start collection window
+		if m.buttonPress.GetPressCount() == 1 {
+			// Start a short collection window (150ms) to gather all near-simultaneous presses
+			// After this window, we determine the winner
+			go m.finishButtonPressCollection()
 		}
-
-		// Transition to answer judging phase (player answers verbally, host judges)
-		m.updateGameStatus(domain.GameStatusAnswerJudging)
-		m.BroadcastState()
-
-		// Start timer for host to judge the answer
-		m.timer.Start(30 * time.Second)
 	}
+}
+
+// finishButtonPressCollection waits for collection window and determines winner
+func (m *Manager) finishButtonPressCollection() {
+	// Wait for collection window (150ms to account for network jitter)
+	time.Sleep(150 * time.Millisecond)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Make sure we're still in button press phase
+	if m.game.Status != domain.GameStatusButtonPress {
+		return
+	}
+
+	// Close collection and determine winner
+	m.buttonPress.Close()
+
+	winner := m.buttonPress.GetWinner()
+	if winner == nil {
+		// No presses recorded (shouldn't happen if we got here)
+		return
+	}
+
+	// Stop main timer
+	m.timer.Stop()
+
+	// Set winner as active player
+	m.game.ActivePlayer = &winner.UserID
+
+	// Log event
+	event := domain.NewGameEvent(m.game.ID, domain.EventButtonPressed).
+		WithUser(winner.UserID).
+		WithQuestion(m.game.CurrentQuestion.ID).
+		WithData("rtt_ms", winner.RTT.Milliseconds()).
+		WithData("reaction_time_ms", m.buttonPress.GetReactionTime(winner))
+	m.eventLogger.LogEvent(m.ctx, event)
+
+	// Build all_presses for response
+	allPresses := m.buttonPress.GetAllPresses()
+	pressInfos := make([]websocket.PressInfo, len(allPresses))
+	for i, entry := range allPresses {
+		pressInfos[i] = websocket.PressInfo{
+			UserID:   entry.UserID,
+			Username: entry.Username,
+			TimeMS:   m.buttonPress.GetReactionTime(&entry),
+		}
+	}
+
+	// Broadcast button press result with all presses
+	reactionTime := m.buttonPress.GetReactionTime(winner)
+	msg := websocket.NewButtonPressedMessage(winner.UserID, winner.Username, reactionTime, pressInfos)
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+	}
+
+	log.Printf("Button winner: %s (reaction: %dms, total presses: %d)",
+		winner.Username, reactionTime, len(allPresses))
+
+	// Transition to answer judging phase (player answers verbally, host judges)
+	m.updateGameStatus(domain.GameStatusAnswerJudging)
+	m.BroadcastState()
+
+	// Start timer for host to judge the answer
+	m.timer.Start(30 * time.Second)
 }
 
 // handleSubmitAnswer handles answer submission
@@ -287,8 +336,45 @@ func (m *Manager) handleAnswerTimeout() {
 	m.continueGame()
 }
 
-// skipQuestion skips the current question (no one pressed button)
+// skipQuestion skips the current question (no one pressed button or timeout during collection)
 func (m *Manager) skipQuestion() {
+	// Close button press collection if still open
+	m.buttonPress.Close()
+
+	// Check if there were any presses during timeout
+	if m.buttonPress.HasPresses() {
+		// Someone pressed but we timed out - determine winner anyway
+		winner := m.buttonPress.GetWinner()
+		if winner != nil {
+			log.Printf("Question timeout but had presses, winner: %s", winner.Username)
+			m.game.ActivePlayer = &winner.UserID
+
+			// Build all_presses for response
+			allPresses := m.buttonPress.GetAllPresses()
+			pressInfos := make([]websocket.PressInfo, len(allPresses))
+			for i, entry := range allPresses {
+				pressInfos[i] = websocket.PressInfo{
+					UserID:   entry.UserID,
+					Username: entry.Username,
+					TimeMS:   m.buttonPress.GetReactionTime(&entry),
+				}
+			}
+
+			// Broadcast button press result
+			reactionTime := m.buttonPress.GetReactionTime(winner)
+			msg := websocket.NewButtonPressedMessage(winner.UserID, winner.Username, reactionTime, pressInfos)
+			if data, err := msg.ToJSON(); err == nil {
+				m.hub.Broadcast(m.game.ID, data)
+			}
+
+			// Transition to answer judging
+			m.updateGameStatus(domain.GameStatusAnswerJudging)
+			m.BroadcastState()
+			m.timer.Start(30 * time.Second)
+			return
+		}
+	}
+
 	log.Printf("Question skipped (no button press)")
 	m.continueGame()
 }

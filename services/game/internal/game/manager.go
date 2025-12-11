@@ -35,6 +35,7 @@ type PlayerAction struct {
 // Hub interface for broadcasting messages to game clients
 type Hub interface {
 	Broadcast(gameID uuid.UUID, message []byte)
+	GetClientRTT(gameID, userID uuid.UUID) time.Duration
 }
 
 // EventLogger interface for logging events
