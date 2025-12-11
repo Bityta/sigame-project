@@ -1,0 +1,77 @@
+.for-all-answer-input {
+  text-align: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #00d9ff;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.for-all-answer-input--host,
+.for-all-answer-input--submitted {
+  opacity: 0.9;
+}
+
+.for-all-answer-input__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.for-all-answer-input__icon {
+  font-size: 48px;
+}
+
+.for-all-answer-input__title {
+  font-size: 28px;
+  color: #00d9ff;
+  margin: 0;
+  font-family: 'Merriweather', serif;
+}
+
+.for-all-answer-input__description {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.for-all-answer-input__timer {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.for-all-answer-input__time {
+  color: #00d9ff;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.for-all-answer-input__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.for-all-answer-input__input {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 18px;
+  border: 2px solid rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.for-all-answer-input__input:focus {
+  border-color: #00d9ff;
+}
+
+.for-all-answer-input__input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+

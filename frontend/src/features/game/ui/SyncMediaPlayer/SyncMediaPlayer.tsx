@@ -34,21 +34,35 @@ export const SyncMediaPlayer: React.FC<SyncMediaPlayerProps> = ({
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const startTimeoutRef = useRef<number | null>(null);
+  
+  // Store the current media source to avoid reloading when startMedia becomes null
+  const currentSourceRef = useRef<string>('');
+  const currentMediaTypeRef = useRef<string>('video');
 
   // Get media source - prefer cached, fallback to direct URL
   const getMediaSource = useCallback((): string => {
+    // If we already have a loaded source and startMedia is null, keep using the current source
+    if (!startMedia && currentSourceRef.current) {
+      return currentSourceRef.current;
+    }
+    
     if (!startMedia) return fallbackUrl || '';
 
     // Try to get from cache first
     const cachedUrl = mediaCache.getObjectUrl(startMedia.media_id);
     if (cachedUrl) {
       console.log('[SyncMediaPlayer] Using cached media:', startMedia.media_id);
+      currentSourceRef.current = cachedUrl;
+      currentMediaTypeRef.current = startMedia.media_type;
       return cachedUrl;
     }
 
     // Fallback to direct URL
     console.log('[SyncMediaPlayer] Using direct URL:', startMedia.url);
-    return startMedia.url || fallbackUrl || '';
+    const url = startMedia.url || fallbackUrl || '';
+    currentSourceRef.current = url;
+    currentMediaTypeRef.current = startMedia.media_type;
+    return url;
   }, [startMedia, fallbackUrl]);
 
   // Schedule playback at the specified time
@@ -93,10 +107,16 @@ export const SyncMediaPlayer: React.FC<SyncMediaPlayerProps> = ({
 
   // Setup when startMedia changes
   useEffect(() => {
+    // Only reset state when we get NEW startMedia, not when it becomes null
     if (!startMedia) return;
 
-    setError(null);
-    setIsReady(false);
+    // Only reset if this is a different media
+    const newSource = startMedia.url || '';
+    if (currentSourceRef.current && currentSourceRef.current !== newSource && 
+        !currentSourceRef.current.includes(startMedia.media_id)) {
+      setError(null);
+      setIsReady(false);
+    }
 
     // Clear any pending timeout
     if (startTimeoutRef.current) {
@@ -134,11 +154,12 @@ export const SyncMediaPlayer: React.FC<SyncMediaPlayerProps> = ({
 
   const mediaSource = getMediaSource();
 
-  if (!startMedia && !fallbackUrl) {
+  if (!startMedia && !fallbackUrl && !currentSourceRef.current) {
     return null;
   }
 
-  const mediaType = startMedia?.media_type || 'video';
+  // Use stored media type if startMedia is null but we have a loaded source
+  const mediaType = startMedia?.media_type || currentMediaTypeRef.current || 'video';
 
   if (error) {
     return (

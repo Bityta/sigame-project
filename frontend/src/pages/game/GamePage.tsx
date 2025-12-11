@@ -2,9 +2,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useRef, useEffect, useState } from 'react';
 import { useGameWebSocket } from '@/entities/game';
 import { useCurrentUser } from '@/entities/user';
-import { GameBoard, PlayerList, QuestionView, RoundsOverview, RoundIntro, GameEnd } from '@/features/game';
+import { 
+  GameBoard, 
+  PlayerList, 
+  QuestionView, 
+  RoundsOverview, 
+  RoundIntro, 
+  GameEnd,
+  SecretTransferPanel,
+  StakeBettingPanel,
+  ForAllAnswerInput,
+  ForAllResults,
+} from '@/features/game';
 import { Button, Spinner } from '@/shared/ui';
 import { ROUTES, TEXTS } from '@/shared/config';
+import type { ForAllResultsPayload, SecretTransferredPayload, StakePlacedPayload } from '@/shared/types';
 import './GamePage.css';
 
 export const GamePage = () => {
@@ -19,6 +31,10 @@ export const GamePage = () => {
   const lastStatusRef = useRef<string>('');
   const maxTimeSeenRef = useRef<number>(10); // Track highest timeRemaining seen
 
+  // State for special question types
+  const [forAllResults, setForAllResults] = useState<ForAllResultsPayload | null>(null);
+  const [hasSubmittedForAll, setHasSubmittedForAll] = useState(false);
+
   const {
     isConnected,
     gameState,
@@ -26,6 +42,10 @@ export const GamePage = () => {
     selectQuestion,
     pressButton,
     judgeAnswer,
+    transferSecret,
+    placeStake,
+    submitForAllAnswer,
+    subscribe,
   } = useGameWebSocket({
     gameId: gameId!,
     userId: user?.id || '',
@@ -33,6 +53,37 @@ export const GamePage = () => {
       console.error('Game error:', error);
     },
   });
+
+  // Subscribe to special question type events
+  useEffect(() => {
+    const unsubForAllResults = subscribe<ForAllResultsPayload>('FOR_ALL_RESULTS', (payload) => {
+      setForAllResults(payload);
+    });
+
+    const unsubSecretTransferred = subscribe<SecretTransferredPayload>('SECRET_TRANSFERRED', (payload) => {
+      console.log('Secret transferred:', payload);
+    });
+
+    const unsubStakePlaced = subscribe<StakePlacedPayload>('STAKE_PLACED', (payload) => {
+      console.log('Stake placed:', payload);
+    });
+
+    return () => {
+      unsubForAllResults();
+      unsubSecretTransferred();
+      unsubStakePlaced();
+    };
+  }, [subscribe]);
+
+  // Reset forAll state when status changes
+  useEffect(() => {
+    if (gameState?.status !== 'for_all_answering' && gameState?.status !== 'for_all_results') {
+      setHasSubmittedForAll(false);
+    }
+    if (gameState?.status !== 'for_all_results') {
+      setForAllResults(null);
+    }
+  }, [gameState?.status]);
   
   // Start CSS animation when entering question_select or button_press
   useEffect(() => {
@@ -86,6 +137,12 @@ export const GamePage = () => {
     navigate(ROUTES.LOBBY);
   };
 
+  // Handler for submitting forAll answer
+  const handleSubmitForAllAnswer = (answer: string) => {
+    submitForAllAnswer(answer);
+    setHasSubmittedForAll(true);
+  };
+
   // Determine turn indicator text
   const getTurnIndicator = () => {
     switch (gameState.status) {
@@ -95,6 +152,15 @@ export const GamePage = () => {
         return isHost ? 'Ждём, пока игрок нажмёт кнопку...' : 'Жмите кнопку!';
       case 'answer_judging':
         return isHost ? 'Оцените ответ игрока' : 'Ждём решения ведущего...';
+      case 'secret_transfer':
+        return isHost ? 'Выберите игрока для передачи вопроса' : 'Кот в мешке! Ждём выбора ведущего...';
+      case 'stake_betting':
+        const isActiveForStake = gameState.activePlayer === user?.id;
+        return isActiveForStake ? 'Сделайте ставку!' : 'Ждём ставку игрока...';
+      case 'for_all_answering':
+        return isHost ? 'Игроки отвечают...' : 'Введите ваш ответ!';
+      case 'for_all_results':
+        return 'Результаты';
       default:
         return '';
     }
@@ -178,6 +244,54 @@ export const GamePage = () => {
             themes={gameState.themes}
             onQuestionSelect={handleQuestionSelect}
             canSelectQuestion={canSelectQuestion}
+          />
+        )}
+
+        {/* Secret Transfer Panel */}
+        {gameState.status === 'secret_transfer' && isHost && (
+          <SecretTransferPanel
+            players={gameState.players}
+            onTransfer={transferSecret}
+            timeRemaining={gameState.timeRemaining}
+            currentUserId={user?.id}
+          />
+        )}
+
+        {/* Secret Transfer - waiting for host (non-host players) */}
+        {gameState.status === 'secret_transfer' && !isHost && (
+          <div className="game-page__special-waiting">
+            <span className="game-page__special-waiting-icon">🐱</span>
+            <h2>Кот в мешке!</h2>
+            <p>Ведущий выбирает, кому передать вопрос...</p>
+          </div>
+        )}
+
+        {/* Stake Betting Panel */}
+        {gameState.status === 'stake_betting' && gameState.stakeInfo && (
+          <StakeBettingPanel
+            stakeInfo={gameState.stakeInfo}
+            playerScore={currentPlayer?.score || 0}
+            onPlaceStake={placeStake}
+            timeRemaining={gameState.timeRemaining}
+            isActivePlayer={gameState.activePlayer === user?.id}
+          />
+        )}
+
+        {/* ForAll Answer Input */}
+        {gameState.status === 'for_all_answering' && (
+          <ForAllAnswerInput
+            onSubmit={handleSubmitForAllAnswer}
+            timeRemaining={gameState.timeRemaining}
+            hasSubmitted={hasSubmittedForAll}
+            isHost={isHost}
+          />
+        )}
+
+        {/* ForAll Results */}
+        {gameState.status === 'for_all_results' && forAllResults && (
+          <ForAllResults
+            results={forAllResults.results}
+            correctAnswer={forAllResults.correct_answer}
           />
         )}
 

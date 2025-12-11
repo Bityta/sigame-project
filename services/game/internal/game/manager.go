@@ -13,18 +13,21 @@ import (
 
 // Manager manages a single game session
 type Manager struct {
-	game          *domain.Game
-	pack          *domain.Pack
-	hub           Hub
-	ctx           context.Context
-	cancel        context.CancelFunc
-	actionChan    chan *PlayerAction
-	timer         *Timer
-	timerTicker   *time.Ticker
-	buttonPress   *ButtonPress
-	mediaTracker  *MediaTracker
-	mu            sync.RWMutex
-	eventLogger   EventLogger
+	game            *domain.Game
+	pack            *domain.Pack
+	hub             Hub
+	ctx             context.Context
+	cancel          context.CancelFunc
+	actionChan      chan *PlayerAction
+	timer           *Timer
+	timerTicker     *time.Ticker
+	buttonPress     *ButtonPress
+	mediaTracker    *MediaTracker
+	forAllCollector *ForAllCollector
+	stakeInfo       *domain.StakeInfo     // Current stake info for stake questions
+	secretTarget    *uuid.UUID            // Target player for secret questions
+	mu              sync.RWMutex
+	eventLogger     EventLogger
 }
 
 // PlayerAction represents an action from a player
@@ -49,16 +52,17 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Manager{
-		game:         game,
-		pack:         pack,
-		hub:          hub,
-		ctx:          ctx,
-		cancel:       cancel,
-		actionChan:   make(chan *PlayerAction, 100),
-		timer:        NewTimer(),
-		buttonPress:  NewButtonPress(),
-		mediaTracker: NewMediaTracker(0),
-		eventLogger:  eventLogger,
+		game:            game,
+		pack:            pack,
+		hub:             hub,
+		ctx:             ctx,
+		cancel:          cancel,
+		actionChan:      make(chan *PlayerAction, 100),
+		timer:           NewTimer(),
+		buttonPress:     NewButtonPress(),
+		mediaTracker:    NewMediaTracker(0),
+		forAllCollector: NewForAllCollector(),
+		eventLogger:     eventLogger,
 	}
 }
 
@@ -118,7 +122,10 @@ func (m *Manager) handleTimerTick() {
 	case domain.GameStatusQuestionSelect,
 		domain.GameStatusButtonPress,
 		domain.GameStatusAnswering,
-		domain.GameStatusAnswerJudging:
+		domain.GameStatusAnswerJudging,
+		domain.GameStatusSecretTransfer,
+		domain.GameStatusStakeBetting,
+		domain.GameStatusForAllAnswering:
 		// Broadcast current state with updated timer
 		m.BroadcastStateUnlocked()
 	}
@@ -170,6 +177,16 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 
 	case websocket.MessageTypeMediaLoadComplete:
 		m.handleMediaLoadComplete(action)
+
+	// Special question type handlers
+	case websocket.MessageTypeTransferSecret:
+		m.handleTransferSecret(action)
+
+	case websocket.MessageTypePlaceStake:
+		m.handlePlaceStake(action)
+
+	case websocket.MessageTypeSubmitForAllAnswer:
+		m.handleSubmitForAllAnswer(action)
 
 	default:
 		log.Printf("Unknown message type: %s", action.Message.Type)
@@ -371,6 +388,15 @@ func (m *Manager) buildGameState() *domain.GameState {
 		state.FinalScores = m.game.FinalScores
 	}
 
+	// Add special question type fields
+	if m.stakeInfo != nil && m.game.Status == domain.GameStatusStakeBetting {
+		state.StakeInfo = m.stakeInfo
+	}
+
+	if m.secretTarget != nil {
+		state.SecretTarget = m.secretTarget
+	}
+
 	return state
 }
 
@@ -395,8 +421,8 @@ func (m *Manager) handleTimeout() {
 		m.autoSelectQuestion()
 
 	case domain.GameStatusQuestionShow:
-		// Question was shown, now allow button press
-		m.transitionToButtonPress()
+		// Question was shown, now allow button press or direct answer for special types
+		m.transitionFromQuestionShow()
 
 	case domain.GameStatusButtonPress:
 		// No one pressed the button, skip question
@@ -409,7 +435,50 @@ func (m *Manager) handleTimeout() {
 	case domain.GameStatusAnswerJudging:
 		// Host didn't judge in time - treat as wrong answer
 		m.handleAnswerTimeout()
+
+	// Special question type timeouts
+	case domain.GameStatusSecretTransfer:
+		// Host didn't transfer in time - auto-select first available player
+		m.handleSecretTransferTimeout()
+
+	case domain.GameStatusStakeBetting:
+		// Player didn't place stake - use minimum bet
+		m.handleStakeBettingTimeout()
+
+	case domain.GameStatusForAllAnswering:
+		// Time's up for forAll question
+		m.finishForAllQuestion()
+
+	case domain.GameStatusForAllResults:
+		// Results shown, continue game
+		m.continueGame()
 	}
+}
+
+// transitionFromQuestionShow handles transition from question_show based on question type
+func (m *Manager) transitionFromQuestionShow() {
+	if m.game.CurrentQuestion == nil {
+		m.transitionToButtonPress()
+		return
+	}
+
+	questionType := m.game.CurrentQuestion.GetType()
+	switch questionType {
+	case domain.QuestionTypeSecret, domain.QuestionTypeStake:
+		// For secret and stake, go directly to answer judging (player answers verbally)
+		m.transitionToAnswerJudging()
+	default:
+		// Normal flow - button press
+		m.transitionToButtonPress()
+	}
+}
+
+// transitionToAnswerJudging moves to answer judging for secret/stake questions
+func (m *Manager) transitionToAnswerJudging() {
+	log.Printf("Transitioning to answer_judging phase for special question")
+	m.updateGameStatus(domain.GameStatusAnswerJudging)
+	m.BroadcastState()
+	m.timer.Start(30 * time.Second)
 }
 
 // transitionToQuestionSelect moves from round_start to question_select

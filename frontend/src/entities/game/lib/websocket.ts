@@ -267,6 +267,36 @@ export class GameWebSocket {
     });
   }
 
+  // --- Special question type actions ---
+
+  /**
+   * Передать секретный вопрос игроку (только для хоста)
+   */
+  transferSecret(targetUserId: string): void {
+    this.sendGameMessage('TRANSFER_SECRET', {
+      target_user_id: targetUserId,
+    });
+  }
+
+  /**
+   * Сделать ставку (для stake вопроса)
+   */
+  placeStake(amount: number, allIn: boolean = false): void {
+    this.sendGameMessage('PLACE_STAKE', {
+      amount,
+      all_in: allIn,
+    });
+  }
+
+  /**
+   * Отправить ответ на вопрос для всех
+   */
+  submitForAllAnswer(answer: string): void {
+    this.sendGameMessage('SUBMIT_FOR_ALL_ANSWER', {
+      answer,
+    });
+  }
+
   /**
    * Отправить игровое сообщение с user_id и game_id на верхнем уровне
    */

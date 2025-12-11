@@ -23,6 +23,12 @@ const (
 	GameStatusGameEnd        GameStatus = "game_end"
 	GameStatusFinished       GameStatus = "finished"
 	GameStatusCancelled      GameStatus = "cancelled"
+
+	// Special question type statuses
+	GameStatusSecretTransfer  GameStatus = "secret_transfer"   // Хост выбирает игрока для передачи кота
+	GameStatusStakeBetting    GameStatus = "stake_betting"     // Игрок делает ставку
+	GameStatusForAllAnswering GameStatus = "for_all_answering" // Все отвечают одновременно
+	GameStatusForAllResults   GameStatus = "for_all_results"   // Показ результатов вопроса для всех
 )
 
 // Game represents the entire game session (Entity - internal model)
@@ -78,6 +84,28 @@ type GameState struct {
 	AllRounds       []RoundOverview        `json:"allRounds,omitempty"` // for rounds_overview status
 	Winners         []PlayerScore          `json:"winners,omitempty"`   // for game_end status
 	FinalScores     []PlayerScore          `json:"finalScores,omitempty"` // for game_end status
+
+	// Special question type fields
+	StakeInfo       *StakeInfo             `json:"stakeInfo,omitempty"`       // for stake_betting status
+	SecretTarget    *uuid.UUID             `json:"secretTarget,omitempty"`    // target player for secret question
+	ForAllResults   []ForAllAnswerResult   `json:"forAllResults,omitempty"`   // results for forAll question
+}
+
+// StakeInfo contains information for stake betting
+type StakeInfo struct {
+	MinBet     int  `json:"minBet"`     // Minimum bet (question price)
+	MaxBet     int  `json:"maxBet"`     // Maximum bet (player's score or all-in)
+	CurrentBet int  `json:"currentBet"` // Currently placed bet (0 if not placed yet)
+	IsAllIn    bool `json:"isAllIn"`    // True if player bet all their points
+}
+
+// ForAllAnswerResult contains the result for a single player in forAll question
+type ForAllAnswerResult struct {
+	UserID     uuid.UUID `json:"userId"`
+	Username   string    `json:"username"`
+	Answer     string    `json:"answer"`
+	IsCorrect  bool      `json:"isCorrect"`
+	ScoreDelta int       `json:"scoreDelta"`
 }
 
 // ThemeState represents a theme with questions availability (DTO)
@@ -88,12 +116,13 @@ type ThemeState struct {
 }
 
 // QuestionState represents question availability in UI (DTO)
-// Required: id, price, available
+// Required: id, price, available, type
 // Optional: text, mediaType, mediaUrl, mediaDurationMs (only when question is shown), answer (only for host)
 type QuestionState struct {
 	ID              string `json:"id" binding:"required"`
 	Price           int    `json:"price" binding:"required"`
 	Available       bool   `json:"available" binding:"required"`
+	Type            string `json:"type" binding:"required"`   // normal, secret, stake, forAll
 	Text            string `json:"text,omitempty"`            // only when shown
 	MediaType       string `json:"mediaType,omitempty"`       // only when shown
 	MediaURL        string `json:"mediaUrl,omitempty"`        // only when shown (image/audio/video URL)
