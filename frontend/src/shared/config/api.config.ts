@@ -9,11 +9,11 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 };
 
 export const API_CONFIG = {
-  // Base URLs для микросервисов
-  AUTH_BASE_URL: getEnvVar('VITE_AUTH_API_URL', 'http://localhost:8001'),
-  LOBBY_BASE_URL: getEnvVar('VITE_LOBBY_API_URL', 'http://localhost:8002'),
-  GAME_BASE_URL: getEnvVar('VITE_GAME_API_URL', 'http://localhost:8003'),
-  PACK_BASE_URL: getEnvVar('VITE_PACK_API_URL', 'http://localhost:8004'),
+  // Base URLs для микросервисов (пустые = относительные пути, для nginx proxy)
+  AUTH_BASE_URL: getEnvVar('VITE_AUTH_API_URL', ''),
+  LOBBY_BASE_URL: getEnvVar('VITE_LOBBY_API_URL', ''),
+  GAME_BASE_URL: getEnvVar('VITE_GAME_API_URL', ''),
+  PACK_BASE_URL: getEnvVar('VITE_PACK_API_URL', ''),
   
   // Endpoints
   ENDPOINTS: {
