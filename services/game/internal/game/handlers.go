@@ -59,9 +59,9 @@ func (m *Manager) handleSelectQuestion(action *PlayerAction) {
 	m.selectQuestion(selectedTheme, selectedQuestion)
 }
 
-// selectQuestion selects a question and shows it
+// selectQuestion selects a question and routes based on question type
 func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question) {
-	log.Printf("Question selected: %s - %s", theme.Name, question.ID)
+	log.Printf("Question selected: %s - %s (type: %s)", theme.Name, question.ID, question.GetType())
 
 	// Mark question as used
 	question.MarkAsUsed()
@@ -70,14 +70,35 @@ func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question)
 	m.game.CurrentQuestion = question
 	m.game.CurrentTheme = &theme.Name
 
+	// Clear special type state
+	m.stakeInfo = nil
+	m.secretTarget = nil
+
 	// Log event
 	event := domain.NewGameEvent(m.game.ID, domain.EventQuestionSelected).
 		WithRound(m.game.CurrentRound).
 		WithQuestion(question.ID).
 		WithData("theme", theme.Name).
-		WithData("price", question.Price)
+		WithData("price", question.Price).
+		WithData("type", string(question.GetType()))
 	m.eventLogger.LogEvent(m.ctx, event)
 
+	// Route based on question type
+	questionType := question.GetType()
+	switch questionType {
+	case domain.QuestionTypeSecret:
+		m.startSecretQuestion(question)
+	case domain.QuestionTypeStake:
+		m.startStakeQuestion(question)
+	case domain.QuestionTypeForAll:
+		m.startForAllQuestion(question)
+	default:
+		m.startNormalQuestion(question)
+	}
+}
+
+// startNormalQuestion handles normal question flow
+func (m *Manager) startNormalQuestion(question *domain.Question) {
 	// Show question
 	m.updateGameStatus(domain.GameStatusQuestionShow)
 	m.BroadcastState()
@@ -94,6 +115,87 @@ func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question)
 		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
 	}
 	m.timer.Start(readTime)
+}
+
+// startSecretQuestion handles secret (Кот в мешке) question
+func (m *Manager) startSecretQuestion(question *domain.Question) {
+	log.Printf("Starting secret question - host must transfer to another player")
+
+	// Show that it's a secret question (but don't show the content yet)
+	m.updateGameStatus(domain.GameStatusSecretTransfer)
+	m.BroadcastState()
+
+	// Give host 30 seconds to choose a player
+	m.timer.Start(30 * time.Second)
+}
+
+// startStakeQuestion handles stake (Ва-банк) question
+func (m *Manager) startStakeQuestion(question *domain.Question) {
+	log.Printf("Starting stake question - active player must place bet")
+
+	// The player who selected this question makes the stake
+	// Find who selected (the one with lowest score who's not host)
+	activePlayerID := m.selectActivePlayer()
+	m.game.ActivePlayer = &activePlayerID
+
+	activePlayer := m.game.Players[activePlayerID]
+
+	// Calculate min/max bet
+	minBet := question.Price
+	maxBet := activePlayer.Score
+	if maxBet < minBet {
+		maxBet = minBet // Can always bet at least the question price
+	}
+
+	m.stakeInfo = &domain.StakeInfo{
+		MinBet:     minBet,
+		MaxBet:     maxBet,
+		CurrentBet: 0,
+		IsAllIn:    false,
+	}
+
+	m.updateGameStatus(domain.GameStatusStakeBetting)
+	m.BroadcastState()
+
+	// Give player 20 seconds to place bet
+	m.timer.Start(20 * time.Second)
+}
+
+// startForAllQuestion handles forAll question
+func (m *Manager) startForAllQuestion(question *domain.Question) {
+	log.Printf("Starting forAll question - all players will answer")
+
+	// Initialize collector
+	m.forAllCollector.Start(question.Answer, question.Price)
+
+	// Show question
+	m.updateGameStatus(domain.GameStatusQuestionShow)
+	m.BroadcastState()
+
+	// If question has media, send START_MEDIA for synchronized playback
+	if question.MediaType != "" && question.MediaType != "text" && question.MediaURL != "" {
+		m.sendStartMedia(question)
+	}
+
+	// After showing question, transition to answering phase
+	readTime := 3 * time.Second
+	if question.MediaDurationMs > 0 {
+		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
+	}
+
+	// We'll transition in a goroutine after the read time
+	go func() {
+		time.Sleep(readTime)
+		m.mu.Lock()
+		defer m.mu.Unlock()
+
+		if m.game.Status == domain.GameStatusQuestionShow && m.game.CurrentQuestion != nil &&
+			m.game.CurrentQuestion.GetType() == domain.QuestionTypeForAll {
+			m.updateGameStatus(domain.GameStatusForAllAnswering)
+			m.BroadcastState()
+			m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+		}
+	}()
 }
 
 // sendStartMedia sends START_MEDIA command for synchronized playback
@@ -411,9 +513,12 @@ func (m *Manager) skipQuestion() {
 
 // continueGame continues to next question or ends round
 func (m *Manager) continueGame() {
-	// Clear current question
+	// Clear current question and special type state
 	m.game.CurrentQuestion = nil
 	m.game.CurrentTheme = nil
+	m.stakeInfo = nil
+	m.secretTarget = nil
+	m.forAllCollector.Reset()
 
 	// Check if round is complete
 	round := m.pack.Rounds[m.game.CurrentRound-1]
@@ -573,5 +678,269 @@ func (m *Manager) handleMediaLoadComplete(action *PlayerAction) {
 	if m.mediaTracker.AllClientsReady() {
 		log.Printf("All clients have loaded media for round %d", m.game.CurrentRound)
 	}
+}
+
+// ==================== Special Question Type Handlers ====================
+
+// handleTransferSecret handles host transferring secret question to another player
+func (m *Manager) handleTransferSecret(action *PlayerAction) {
+	if m.game.Status != domain.GameStatusSecretTransfer {
+		return
+	}
+
+	// Only host can transfer
+	hostPlayer := m.game.Players[action.UserID]
+	if hostPlayer.Role != domain.PlayerRoleHost {
+		return
+	}
+
+	// Get target player ID
+	targetUserIDStr, ok := action.Message.Payload["target_user_id"].(string)
+	if !ok {
+		return
+	}
+
+	targetUserID, err := uuid.Parse(targetUserIDStr)
+	if err != nil {
+		return
+	}
+
+	// Verify target is a valid player (not host)
+	targetPlayer, exists := m.game.Players[targetUserID]
+	if !exists || targetPlayer.Role == domain.PlayerRoleHost {
+		return
+	}
+
+	m.transferSecretToPlayer(action.UserID, targetUserID)
+}
+
+// transferSecretToPlayer executes the secret transfer
+func (m *Manager) transferSecretToPlayer(fromUserID, toUserID uuid.UUID) {
+	m.timer.Stop()
+
+	fromPlayer := m.game.Players[fromUserID]
+	toPlayer := m.game.Players[toUserID]
+
+	log.Printf("Secret question transferred from %s to %s", fromPlayer.Username, toPlayer.Username)
+
+	// Set target as active player
+	m.game.ActivePlayer = &toUserID
+	m.secretTarget = &toUserID
+
+	// Broadcast transfer notification
+	msg := websocket.NewSecretTransferredMessage(fromUserID, fromPlayer.Username, toUserID, toPlayer.Username)
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+	}
+
+	// Now show the question content
+	m.updateGameStatus(domain.GameStatusQuestionShow)
+	m.BroadcastState()
+
+	// If question has media, send START_MEDIA
+	if m.game.CurrentQuestion.MediaType != "" && m.game.CurrentQuestion.MediaType != "text" {
+		m.sendStartMedia(m.game.CurrentQuestion)
+	}
+
+	// Wait for question to be read, then go to answer judging (target must answer)
+	readTime := 3 * time.Second
+	if m.game.CurrentQuestion.MediaDurationMs > 0 {
+		readTime += time.Duration(m.game.CurrentQuestion.MediaDurationMs) * time.Millisecond
+	}
+	m.timer.Start(readTime)
+}
+
+// handleSecretTransferTimeout auto-selects first available player for secret transfer
+func (m *Manager) handleSecretTransferTimeout() {
+	log.Printf("Secret transfer timeout - auto-selecting player")
+
+	hostID := m.findHost()
+
+	// Find first non-host player
+	for userID, player := range m.game.Players {
+		if player.Role != domain.PlayerRoleHost {
+			m.transferSecretToPlayer(hostID, userID)
+			return
+		}
+	}
+
+	// No players found (shouldn't happen) - skip question
+	m.continueGame()
+}
+
+// handlePlaceStake handles player placing a stake
+func (m *Manager) handlePlaceStake(action *PlayerAction) {
+	if m.game.Status != domain.GameStatusStakeBetting {
+		return
+	}
+
+	// Only active player can place stake
+	if m.game.ActivePlayer == nil || *m.game.ActivePlayer != action.UserID {
+		return
+	}
+
+	// Get stake amount
+	amount, ok := action.Message.Payload["amount"].(float64)
+	if !ok {
+		return
+	}
+
+	allIn, _ := action.Message.Payload["all_in"].(bool)
+
+	m.placeStake(action.UserID, int(amount), allIn)
+}
+
+// placeStake executes the stake placement
+func (m *Manager) placeStake(userID uuid.UUID, amount int, allIn bool) {
+	m.timer.Stop()
+
+	player := m.game.Players[userID]
+
+	// Validate amount
+	if m.stakeInfo == nil {
+		return
+	}
+
+	if amount < m.stakeInfo.MinBet {
+		amount = m.stakeInfo.MinBet
+	}
+	if amount > m.stakeInfo.MaxBet {
+		amount = m.stakeInfo.MaxBet
+	}
+	if allIn {
+		amount = player.Score
+		if amount < m.stakeInfo.MinBet {
+			amount = m.stakeInfo.MinBet
+		}
+	}
+
+	m.stakeInfo.CurrentBet = amount
+	m.stakeInfo.IsAllIn = allIn
+
+	log.Printf("Player %s placed stake: %d (all-in: %v)", player.Username, amount, allIn)
+
+	// Broadcast stake notification
+	msg := websocket.NewStakePlacedMessage(userID, player.Username, amount, allIn)
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+	}
+
+	// Update question price to the stake amount for scoring
+	m.game.CurrentQuestion.Price = amount
+
+	// Now show the question
+	m.updateGameStatus(domain.GameStatusQuestionShow)
+	m.BroadcastState()
+
+	// If question has media, send START_MEDIA
+	if m.game.CurrentQuestion.MediaType != "" && m.game.CurrentQuestion.MediaType != "text" {
+		m.sendStartMedia(m.game.CurrentQuestion)
+	}
+
+	// Wait for question to be read, then go to answer judging
+	readTime := 3 * time.Second
+	if m.game.CurrentQuestion.MediaDurationMs > 0 {
+		readTime += time.Duration(m.game.CurrentQuestion.MediaDurationMs) * time.Millisecond
+	}
+	m.timer.Start(readTime)
+}
+
+// handleStakeBettingTimeout uses minimum bet when player doesn't respond
+func (m *Manager) handleStakeBettingTimeout() {
+	if m.game.ActivePlayer == nil || m.stakeInfo == nil {
+		m.continueGame()
+		return
+	}
+
+	log.Printf("Stake betting timeout - using minimum bet")
+	m.placeStake(*m.game.ActivePlayer, m.stakeInfo.MinBet, false)
+}
+
+// handleSubmitForAllAnswer handles player submitting answer for forAll question
+func (m *Manager) handleSubmitForAllAnswer(action *PlayerAction) {
+	if m.game.Status != domain.GameStatusForAllAnswering {
+		return
+	}
+
+	player, ok := m.game.Players[action.UserID]
+	if !ok || !player.IsActive {
+		return
+	}
+
+	// Host doesn't participate
+	if player.Role == domain.PlayerRoleHost {
+		return
+	}
+
+	// Get answer
+	answerStr, ok := action.Message.Payload["answer"].(string)
+	if !ok {
+		return
+	}
+
+	// Submit to collector
+	if m.forAllCollector.SubmitAnswer(action.UserID, player.Username, answerStr) {
+		log.Printf("ForAll answer from %s: %s", player.Username, answerStr)
+	}
+
+	// Check if all players have answered
+	expectedAnswers := 0
+	for _, p := range m.game.Players {
+		if p.Role != domain.PlayerRoleHost && p.IsActive {
+			expectedAnswers++
+		}
+	}
+
+	if m.forAllCollector.GetAnswerCount() >= expectedAnswers {
+		// All answers received, finish early
+		m.timer.Stop()
+		m.finishForAllQuestion()
+	}
+}
+
+// finishForAllQuestion processes all answers and shows results
+func (m *Manager) finishForAllQuestion() {
+	log.Printf("Finishing forAll question")
+
+	m.forAllCollector.Close()
+
+	// Get results
+	results := m.forAllCollector.GetResults(func(userAnswer, correctAnswer string) bool {
+		return m.game.CurrentQuestion.ValidateAnswer(userAnswer)
+	})
+
+	// Apply scores and build result list
+	resultList := make([]domain.ForAllAnswerResult, 0, len(results))
+	for userID, result := range results {
+		player := m.game.Players[userID]
+		if result.IsCorrect {
+			player.AddScore(result.ScoreDelta)
+		} else {
+			player.SubtractScore(-result.ScoreDelta) // ScoreDelta is negative for wrong answers
+		}
+
+		resultList = append(resultList, domain.ForAllAnswerResult{
+			UserID:     result.UserID,
+			Username:   result.Username,
+			Answer:     result.Answer,
+			IsCorrect:  result.IsCorrect,
+			ScoreDelta: result.ScoreDelta,
+		})
+
+		log.Printf("ForAll result for %s: correct=%v, delta=%d", result.Username, result.IsCorrect, result.ScoreDelta)
+	}
+
+	// Broadcast results
+	msg := websocket.NewForAllResultsMessage(m.forAllCollector.GetCorrectAnswer(), resultList)
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+	}
+
+	// Show results screen
+	m.updateGameStatus(domain.GameStatusForAllResults)
+	m.BroadcastState()
+
+	// Wait 5 seconds to show results, then continue
+	m.timer.Start(5 * time.Second)
 }
 

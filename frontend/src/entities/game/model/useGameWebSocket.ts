@@ -127,6 +127,20 @@ export const useGameWebSocket = ({
     wsRef.current?.judgeAnswer(answerUserId, correct);
   }, []);
 
+  // --- Special question type actions ---
+
+  const transferSecret = useCallback((targetUserId: string) => {
+    wsRef.current?.transferSecret(targetUserId);
+  }, []);
+
+  const placeStake = useCallback((amount: number, allIn: boolean = false) => {
+    wsRef.current?.placeStake(amount, allIn);
+  }, []);
+
+  const submitForAllAnswer = useCallback((answer: string) => {
+    wsRef.current?.submitForAllAnswer(answer);
+  }, []);
+
   // Подписка на кастомные события
   const subscribe = useCallback(
     <T = unknown>(type: WSMessageType, handler: (payload: T) => void) => {
@@ -144,6 +158,10 @@ export const useGameWebSocket = ({
     pressButton,
     submitAnswer,
     judgeAnswer,
+    // Special question type actions
+    transferSecret,
+    placeStake,
+    submitForAllAnswer,
     subscribe,
   };
 };

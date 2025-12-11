@@ -27,6 +27,12 @@ const (
 	MessageTypeMediaLoadProgress MessageType = "MEDIA_LOAD_PROGRESS"
 	// MessageTypeMediaLoadComplete indicates all media loaded
 	MessageTypeMediaLoadComplete MessageType = "MEDIA_LOAD_COMPLETE"
+	// MessageTypeTransferSecret - host transfers secret question to player
+	MessageTypeTransferSecret MessageType = "TRANSFER_SECRET"
+	// MessageTypePlaceStake - player places a stake for stake question
+	MessageTypePlaceStake MessageType = "PLACE_STAKE"
+	// MessageTypeSubmitForAllAnswer - player submits answer for forAll question
+	MessageTypeSubmitForAllAnswer MessageType = "SUBMIT_FOR_ALL_ANSWER"
 
 	// Server -> Client messages
 	// MessageTypeStateUpdate indicates game state update
@@ -49,6 +55,12 @@ const (
 	MessageTypeRoundMediaManifest MessageType = "ROUND_MEDIA_MANIFEST"
 	// MessageTypeStartMedia commands synchronized media playback
 	MessageTypeStartMedia MessageType = "START_MEDIA"
+	// MessageTypeSecretTransferred - notification that secret question was transferred
+	MessageTypeSecretTransferred MessageType = "SECRET_TRANSFERRED"
+	// MessageTypeStakePlaced - notification that stake was placed
+	MessageTypeStakePlaced MessageType = "STAKE_PLACED"
+	// MessageTypeForAllResults - results of forAll question
+	MessageTypeForAllResults MessageType = "FOR_ALL_RESULTS"
 )
 
 // ClientMessage represents a message from client to server
@@ -183,6 +195,44 @@ type StartMediaPayload struct {
 	DurationMS int64  `json:"duration_ms"`  // Media duration for sync
 }
 
+// TransferSecretPayload represents the payload for transferring secret question
+type TransferSecretPayload struct {
+	TargetUserID uuid.UUID `json:"target_user_id"`
+}
+
+// PlaceStakePayload represents the payload for placing a stake
+type PlaceStakePayload struct {
+	Amount int  `json:"amount"`
+	AllIn  bool `json:"all_in"` // If true, bet all points
+}
+
+// SubmitForAllAnswerPayload represents the payload for forAll answer
+type SubmitForAllAnswerPayload struct {
+	Answer string `json:"answer"`
+}
+
+// SecretTransferredPayload notification that secret was transferred
+type SecretTransferredPayload struct {
+	FromUserID   uuid.UUID `json:"from_user_id"`
+	FromUsername string    `json:"from_username"`
+	ToUserID     uuid.UUID `json:"to_user_id"`
+	ToUsername   string    `json:"to_username"`
+}
+
+// StakePlacedPayload notification that stake was placed
+type StakePlacedPayload struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	Amount   int       `json:"amount"`
+	AllIn    bool      `json:"all_in"`
+}
+
+// ForAllResultsPayload contains results for all players
+type ForAllResultsPayload struct {
+	CorrectAnswer string                      `json:"correct_answer"`
+	Results       []domain.ForAllAnswerResult `json:"results"`
+}
+
 // NewClientMessage creates a ClientMessage from JSON bytes
 func NewClientMessage(data []byte) (*ClientMessage, error) {
 	var msg ClientMessage
@@ -265,5 +315,33 @@ func NewStartMediaMessage(mediaID, mediaType, url string, startAt, durationMS in
 		URL:        url,
 		StartAt:    startAt,
 		DurationMS: durationMS,
+	})
+}
+
+// NewSecretTransferredMessage creates a secret transferred notification
+func NewSecretTransferredMessage(fromUserID uuid.UUID, fromUsername string, toUserID uuid.UUID, toUsername string) *ServerMessage {
+	return NewServerMessage(MessageTypeSecretTransferred, SecretTransferredPayload{
+		FromUserID:   fromUserID,
+		FromUsername: fromUsername,
+		ToUserID:     toUserID,
+		ToUsername:   toUsername,
+	})
+}
+
+// NewStakePlacedMessage creates a stake placed notification
+func NewStakePlacedMessage(userID uuid.UUID, username string, amount int, allIn bool) *ServerMessage {
+	return NewServerMessage(MessageTypeStakePlaced, StakePlacedPayload{
+		UserID:   userID,
+		Username: username,
+		Amount:   amount,
+		AllIn:    allIn,
+	})
+}
+
+// NewForAllResultsMessage creates a forAll results message
+func NewForAllResultsMessage(correctAnswer string, results []domain.ForAllAnswerResult) *ServerMessage {
+	return NewServerMessage(MessageTypeForAllResults, ForAllResultsPayload{
+		CorrectAnswer: correctAnswer,
+		Results:       results,
 	})
 }

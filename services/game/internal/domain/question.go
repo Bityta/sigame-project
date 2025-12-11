@@ -6,16 +6,42 @@ import (
 	"github.com/google/uuid"
 )
 
+// QuestionType represents the type of question
+type QuestionType string
+
+// Question type constants
+const (
+	QuestionTypeNormal QuestionType = "normal" // Обычный вопрос
+	QuestionTypeSecret QuestionType = "secret" // Кот в мешке - передаётся другому игроку
+	QuestionTypeStake  QuestionType = "stake"  // Ва-банк - игрок делает ставку
+	QuestionTypeForAll QuestionType = "forAll" // Вопрос для всех одновременно
+)
+
 // Question represents a question in the game
 type Question struct {
-	ID              string `json:"id"`
-	Price           int    `json:"price"`
-	Text            string `json:"text"`
-	Answer          string `json:"answer"`
-	MediaType       string `json:"media_type"`
-	MediaURL        string `json:"media_url"`
-	MediaDurationMs int    `json:"media_duration_ms"`
-	Used            bool   `json:"used"`
+	ID              string       `json:"id"`
+	Price           int          `json:"price"`
+	Text            string       `json:"text"`
+	Answer          string       `json:"answer"`
+	Type            QuestionType `json:"type"`
+	MediaType       string       `json:"media_type"`
+	MediaURL        string       `json:"media_url"`
+	MediaDurationMs int          `json:"media_duration_ms"`
+	Used            bool         `json:"used"`
+}
+
+// GetType returns the question type, defaulting to normal if not set
+func (q *Question) GetType() QuestionType {
+	if q.Type == "" {
+		return QuestionTypeNormal
+	}
+	return q.Type
+}
+
+// IsSpecialType returns true if the question has a special type (not normal)
+func (q *Question) IsSpecialType() bool {
+	t := q.GetType()
+	return t == QuestionTypeSecret || t == QuestionTypeStake || t == QuestionTypeForAll
 }
 
 // Theme represents a theme with questions
@@ -69,6 +95,7 @@ func (q *Question) ToState(includeText bool) QuestionState {
 		ID:        q.ID,
 		Price:     q.Price,
 		Available: !q.Used,
+		Type:      string(q.GetType()),
 	}
 
 	if includeText {

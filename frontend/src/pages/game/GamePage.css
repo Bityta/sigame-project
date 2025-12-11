@@ -425,3 +425,44 @@
     gap: 0.25rem;
   }
 }
+
+/* Special Question Waiting State */
+.game-page__special-waiting {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #e94560;
+  border-radius: 12px;
+  padding: 3rem;
+  text-align: center;
+  color: white;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.game-page__special-waiting-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 1rem;
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.game-page__special-waiting h2 {
+  font-size: 1.75rem;
+  color: #e94560;
+  margin: 0 0 0.5rem 0;
+  font-family: 'Merriweather', serif;
+}
+
+.game-page__special-waiting p {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}

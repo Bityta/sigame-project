@@ -13,7 +13,14 @@ export type GameStatus =
   | 'answer_judging'
   | 'round_end'
   | 'game_end'
-  | 'finished';
+  | 'finished'
+  // Special question type statuses
+  | 'secret_transfer'    // Host chooses player for secret question
+  | 'stake_betting'      // Player places a stake
+  | 'for_all_answering'  // All players answering
+  | 'for_all_results';   // Showing forAll results
+
+export type QuestionType = 'normal' | 'secret' | 'stake' | 'forAll';
 
 export type WSMessageType = 
   // Client -> Server
@@ -25,6 +32,9 @@ export type WSMessageType =
   | 'PONG'           // Response to PING for RTT measurement
   | 'MEDIA_LOAD_PROGRESS'
   | 'MEDIA_LOAD_COMPLETE'
+  | 'TRANSFER_SECRET'      // Host transfers secret question
+  | 'PLACE_STAKE'          // Player places stake
+  | 'SUBMIT_FOR_ALL_ANSWER' // Player submits forAll answer
   // Server -> Client
   | 'STATE_UPDATE'
   | 'QUESTION_SELECTED'
@@ -35,7 +45,10 @@ export type WSMessageType =
   | 'ERROR'
   | 'PING'           // RTT measurement ping
   | 'ROUND_MEDIA_MANIFEST'
-  | 'START_MEDIA';
+  | 'START_MEDIA'
+  | 'SECRET_TRANSFERRED'   // Secret question transferred notification
+  | 'STAKE_PLACED'         // Stake placed notification
+  | 'FOR_ALL_RESULTS';     // ForAll results
 
 export interface WSMessage<T = any> {
   type: WSMessageType;
@@ -69,6 +82,27 @@ export interface GameState {
   allRounds?: RoundOverview[];
   winners?: PlayerScore[];
   finalScores?: PlayerScore[];
+  // Special question type fields
+  stakeInfo?: StakeInfo;
+  secretTarget?: string; // Target player ID for secret question
+  forAllResults?: ForAllAnswerResult[];
+}
+
+// Stake betting info
+export interface StakeInfo {
+  minBet: number;
+  maxBet: number;
+  currentBet: number;
+  isAllIn: boolean;
+}
+
+// ForAll question result for a single player
+export interface ForAllAnswerResult {
+  userId: string;
+  username: string;
+  answer: string;
+  isCorrect: boolean;
+  scoreDelta: number;
 }
 
 export interface PlayerState {
@@ -89,6 +123,7 @@ export interface QuestionState {
   id: string;
   price: number;
   available: boolean;
+  type: QuestionType; // normal, secret, stake, forAll
   text?: string;
   mediaType?: string;
   mediaUrl?: string; // URL to media file (image/audio/video)
@@ -205,4 +240,44 @@ export interface StartMediaPayload {
   url: string;
   start_at: number;  // Unix timestamp in ms
   duration_ms: number;
+}
+
+// Special question type payloads
+
+// Client -> Server: Transfer secret question to player
+export interface TransferSecretPayload {
+  target_user_id: string;
+}
+
+// Client -> Server: Place stake
+export interface PlaceStakePayload {
+  amount: number;
+  all_in: boolean;
+}
+
+// Client -> Server: Submit forAll answer
+export interface SubmitForAllAnswerPayload {
+  answer: string;
+}
+
+// Server -> Client: Secret transferred notification
+export interface SecretTransferredPayload {
+  from_user_id: string;
+  from_username: string;
+  to_user_id: string;
+  to_username: string;
+}
+
+// Server -> Client: Stake placed notification
+export interface StakePlacedPayload {
+  user_id: string;
+  username: string;
+  amount: number;
+  all_in: boolean;
+}
+
+// Server -> Client: ForAll results
+export interface ForAllResultsPayload {
+  correct_answer: string;
+  results: ForAllAnswerResult[];
 }

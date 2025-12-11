@@ -8,12 +8,13 @@ class Question(BaseModel):
     """Question model (DTO)
     
     Required: id, price, text, answer
-    Optional: media_type, media_url, media_duration_ms
+    Optional: type, media_type, media_url, media_duration_ms
     """
     id: str = Field(..., description="Unique identifier of the question")
     price: int = Field(..., description="Question price/difficulty (points)", ge=0)
     text: str = Field(..., description="Question text", min_length=1)
     answer: str = Field(..., description="Correct answer", min_length=1)
+    type: str = Field(default="normal", description="Question type: normal, secret, stake, forAll")
     media_type: str = Field(default="text", description="Media type: text, image, audio, video")
     media_url: Optional[str] = Field(default=None, description="URL to media file (image, audio, video)")
     media_duration_ms: int = Field(default=0, description="Media duration in milliseconds (for audio/video)")
@@ -25,6 +26,7 @@ class Question(BaseModel):
                 "price": 100,
                 "text": "What is the capital of France?",
                 "answer": "Paris",
+                "type": "normal",
                 "media_type": "text",
                 "media_url": None,
                 "media_duration_ms": 0
