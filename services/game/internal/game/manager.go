@@ -22,6 +22,7 @@ type Manager struct {
 	timer         *Timer
 	timerTicker   *time.Ticker
 	buttonPress   *ButtonPress
+	mediaTracker  *MediaTracker
 	mu            sync.RWMutex
 	eventLogger   EventLogger
 }
@@ -48,15 +49,16 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Manager{
-		game:        game,
-		pack:        pack,
-		hub:         hub,
-		ctx:         ctx,
-		cancel:      cancel,
-		actionChan:  make(chan *PlayerAction, 100),
-		timer:       NewTimer(),
-		buttonPress: NewButtonPress(),
-		eventLogger: eventLogger,
+		game:         game,
+		pack:         pack,
+		hub:          hub,
+		ctx:          ctx,
+		cancel:       cancel,
+		actionChan:   make(chan *PlayerAction, 100),
+		timer:        NewTimer(),
+		buttonPress:  NewButtonPress(),
+		mediaTracker: NewMediaTracker(0),
+		eventLogger:  eventLogger,
 	}
 }
 
@@ -163,6 +165,12 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 	case websocket.MessageTypeJudgeAnswer:
 		m.handleJudgeAnswer(action)
 
+	case websocket.MessageTypeMediaLoadProgress:
+		m.handleMediaLoadProgress(action)
+
+	case websocket.MessageTypeMediaLoadComplete:
+		m.handleMediaLoadComplete(action)
+
 	default:
 		log.Printf("Unknown message type: %s", action.Message.Type)
 	}
@@ -211,6 +219,26 @@ func (m *Manager) startRound(roundNumber int) {
 	event := domain.NewGameEvent(m.game.ID, domain.EventRoundStarted).
 		WithRound(roundNumber)
 	m.eventLogger.LogEvent(context.Background(), event)
+
+	// Build and send media manifest for preloading
+	round := m.pack.Rounds[roundNumber-1]
+	m.mediaTracker.Reset(roundNumber)
+	m.mediaTracker.BuildManifest(round)
+
+	// Register all players for media tracking
+	for userID := range m.game.Players {
+		m.mediaTracker.RegisterClient(userID)
+	}
+
+	// Send media manifest if there's media to load
+	if m.mediaTracker.HasMedia() {
+		manifest, totalSize := m.mediaTracker.GetManifest()
+		msg := websocket.NewRoundMediaManifestMessage(roundNumber, manifest, totalSize)
+		if data, err := msg.ToJSON(); err == nil {
+			m.hub.Broadcast(m.game.ID, data)
+		}
+		log.Printf("Sent media manifest for round %d: %d files, %d bytes", roundNumber, len(manifest), totalSize)
+	}
 
 	// Show round intro screen
 	m.BroadcastState()
@@ -439,4 +467,3 @@ func (m *Manager) getPlayerIDs() []string {
 }
 
 // Continue with more manager methods in the next file...
-

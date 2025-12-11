@@ -139,4 +139,3 @@ type GetGameResponse struct {
 	StartedAt    *time.Time    `json:"started_at,omitempty"`
 	FinishedAt   *time.Time    `json:"finished_at,omitempty"`
 }
-

@@ -23,6 +23,8 @@ export type WSMessageType =
   | 'SUBMIT_ANSWER'
   | 'JUDGE_ANSWER'
   | 'PONG'           // Response to PING for RTT measurement
+  | 'MEDIA_LOAD_PROGRESS'
+  | 'MEDIA_LOAD_COMPLETE'
   // Server -> Client
   | 'STATE_UPDATE'
   | 'QUESTION_SELECTED'
@@ -31,7 +33,9 @@ export type WSMessageType =
   | 'ROUND_COMPLETE'
   | 'GAME_COMPLETE'
   | 'ERROR'
-  | 'PING';          // RTT measurement ping
+  | 'PING'           // RTT measurement ping
+  | 'ROUND_MEDIA_MANIFEST'
+  | 'START_MEDIA';
 
 export interface WSMessage<T = any> {
   type: WSMessageType;
@@ -162,3 +166,43 @@ export interface CreateGameResponse {
   status: string;
 }
 
+// Media sync types
+export interface QuestionRef {
+  theme: number;
+  price: number;
+}
+
+export interface MediaItem {
+  id: string;
+  type: 'image' | 'audio' | 'video';
+  url: string;
+  size: number;
+  question_ref: QuestionRef;
+}
+
+export interface RoundMediaManifestPayload {
+  round: number;
+  media: MediaItem[];
+  total_size: number;
+  total_count: number;
+}
+
+export interface MediaLoadProgressPayload {
+  loaded: number;
+  total: number;
+  bytes_loaded: number;
+  percent: number;
+}
+
+export interface MediaLoadCompletePayload {
+  round: number;
+  loaded_count: number;
+}
+
+export interface StartMediaPayload {
+  media_id: string;
+  media_type: 'image' | 'audio' | 'video';
+  url: string;
+  start_at: number;  // Unix timestamp in ms
+  duration_ms: number;
+}

@@ -22,6 +22,7 @@ export const GamePage = () => {
   const {
     isConnected,
     gameState,
+    startMedia,
     selectQuestion,
     pressButton,
     judgeAnswer,
@@ -190,6 +191,7 @@ export const GamePage = () => {
             timeRemaining={gameState.status === 'button_press' ? gameState.timeRemaining : undefined}
             isHost={isHost}
             hideAnswer={false}
+            startMedia={startMedia}
           />
         )}
 

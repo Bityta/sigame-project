@@ -82,8 +82,38 @@ func (m *Manager) selectQuestion(theme *domain.Theme, question *domain.Question)
 	m.updateGameStatus(domain.GameStatusQuestionShow)
 	m.BroadcastState()
 
+	// If question has media, send START_MEDIA for synchronized playback
+	if question.MediaType != "" && question.MediaType != "text" && question.MediaURL != "" {
+		m.sendStartMedia(question)
+	}
+
 	// Wait a bit for question to be read, then handleTimeout will transition to button_press
-	m.timer.Start(3 * time.Second) // 3 seconds to read
+	// Add media duration to read time if present
+	readTime := 3 * time.Second
+	if question.MediaDurationMs > 0 {
+		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
+	}
+	m.timer.Start(readTime)
+}
+
+// sendStartMedia sends START_MEDIA command for synchronized playback
+func (m *Manager) sendStartMedia(question *domain.Question) {
+	// Start playback 300ms from now to allow for network delay
+	startAt := time.Now().Add(300 * time.Millisecond).UnixMilli()
+
+	mediaID := question.ID + "_media"
+	msg := websocket.NewStartMediaMessage(
+		mediaID,
+		question.MediaType,
+		question.MediaURL,
+		startAt,
+		int64(question.MediaDurationMs),
+	)
+
+	if data, err := msg.ToJSON(); err == nil {
+		m.hub.Broadcast(m.game.ID, data)
+		log.Printf("Sent START_MEDIA for %s, start_at: %d", mediaID, startAt)
+	}
 }
 
 // handlePressButton handles button press with RTT compensation
@@ -508,5 +538,40 @@ func (m *Manager) calculateFinalScores() []domain.PlayerScore {
 	}
 	
 	return scores
+}
+
+// handleMediaLoadProgress handles client's media loading progress
+func (m *Manager) handleMediaLoadProgress(action *PlayerAction) {
+	// Extract progress data from payload
+	loaded, _ := action.Message.Payload["loaded"].(float64)
+	total, _ := action.Message.Payload["total"].(float64)
+	bytesLoaded, _ := action.Message.Payload["bytes_loaded"].(float64)
+	percent, _ := action.Message.Payload["percent"].(float64)
+
+	m.mediaTracker.UpdateProgress(
+		action.UserID,
+		int(loaded),
+		int(total),
+		int64(bytesLoaded),
+		int(percent),
+	)
+
+	log.Printf("Media load progress from %s: %d%% (%d/%d files)",
+		action.UserID, int(percent), int(loaded), int(total))
+}
+
+// handleMediaLoadComplete handles client finishing media loading
+func (m *Manager) handleMediaLoadComplete(action *PlayerAction) {
+	// Extract data from payload
+	loadedCount, _ := action.Message.Payload["loaded_count"].(float64)
+
+	m.mediaTracker.MarkComplete(action.UserID, int(loadedCount))
+
+	log.Printf("Media load complete from %s: %d files loaded", action.UserID, int(loadedCount))
+
+	// Check if all clients are ready
+	if m.mediaTracker.AllClientsReady() {
+		log.Printf("All clients have loaded media for round %d", m.game.CurrentRound)
+	}
 }
 
