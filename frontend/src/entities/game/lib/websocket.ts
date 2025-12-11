@@ -9,7 +9,6 @@ import type {
   WSMessageType,
   GameState,
   PingPayload,
-  PongPayload,
 } from '@/shared/types';
 
 type MessageHandler<T = unknown> = (payload: T) => void;
@@ -151,12 +150,12 @@ export class GameWebSocket {
    * Handle PING message - respond with PONG for RTT measurement
    */
   private handlePing(payload: PingPayload): void {
-    const pongPayload: PongPayload = {
+    const pongPayload = {
       server_time: payload.server_time,
       client_time: Date.now(),
     };
 
-    this.sendGameMessage('PONG', pongPayload);
+    this.sendGameMessage('PONG', pongPayload as Record<string, unknown>);
   }
 
   /**
