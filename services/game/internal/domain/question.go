@@ -8,12 +8,14 @@ import (
 
 // Question represents a question in the game
 type Question struct {
-	ID        string `json:"id"`
-	Price     int    `json:"price"`
-	Text      string `json:"text"`
-	Answer    string `json:"answer"`
-	MediaType string `json:"media_type"`
-	Used      bool   `json:"used"`
+	ID              string `json:"id"`
+	Price           int    `json:"price"`
+	Text            string `json:"text"`
+	Answer          string `json:"answer"`
+	MediaType       string `json:"media_type"`
+	MediaURL        string `json:"media_url"`
+	MediaDurationMs int    `json:"media_duration_ms"`
+	Used            bool   `json:"used"`
 }
 
 // Theme represents a theme with questions
@@ -72,6 +74,8 @@ func (q *Question) ToState(includeText bool) QuestionState {
 	if includeText {
 		state.Text = q.Text
 		state.MediaType = q.MediaType
+		state.MediaURL = q.MediaURL
+		state.MediaDurationMs = q.MediaDurationMs
 	}
 
 	return state

@@ -21,6 +21,8 @@ export type WSMessageType =
   | 'PRESS_BUTTON'
   | 'SUBMIT_ANSWER'
   | 'JUDGE_ANSWER'
+  | 'MEDIA_LOAD_PROGRESS'
+  | 'MEDIA_LOAD_COMPLETE'
   // Server -> Client
   | 'STATE_UPDATE'
   | 'QUESTION_SELECTED'
@@ -28,7 +30,9 @@ export type WSMessageType =
   | 'ANSWER_RESULT'
   | 'ROUND_COMPLETE'
   | 'GAME_COMPLETE'
-  | 'ERROR';
+  | 'ERROR'
+  | 'ROUND_MEDIA_MANIFEST'
+  | 'START_MEDIA';
 
 export interface WSMessage<T = any> {
   type: WSMessageType;
@@ -68,6 +72,8 @@ export interface QuestionState {
   available: boolean;
   text?: string;
   mediaType?: string;
+  mediaUrl?: string;
+  mediaDurationMs?: number;
 }
 
 export interface ButtonPressedPayload {
@@ -120,5 +126,46 @@ export interface CreateGameResponse {
   gameId: string;
   websocketUrl: string;
   status: string;
+}
+
+// Media sync types
+export interface QuestionRef {
+  theme: number;
+  price: number;
+}
+
+export interface MediaItem {
+  id: string;
+  type: 'image' | 'audio' | 'video';
+  url: string;
+  size: number;
+  question_ref: QuestionRef;
+}
+
+export interface RoundMediaManifestPayload {
+  round: number;
+  media: MediaItem[];
+  total_size: number;
+  total_count: number;
+}
+
+export interface MediaLoadProgressPayload {
+  loaded: number;
+  total: number;
+  bytes_loaded: number;
+  percent: number;
+}
+
+export interface MediaLoadCompletePayload {
+  round: number;
+  loaded_count: number;
+}
+
+export interface StartMediaPayload {
+  media_id: string;
+  media_type: 'image' | 'audio' | 'video';
+  url: string;
+  start_at: number;  // Unix timestamp in ms
+  duration_ms: number;
 }
 

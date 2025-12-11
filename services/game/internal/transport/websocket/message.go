@@ -12,6 +12,7 @@ type MessageType string
 
 // WebSocket message type constants (client to server and server to client)
 const (
+	// Client -> Server messages
 	// MessageTypeReady indicates player is ready
 	MessageTypeReady MessageType = "READY"
 	// MessageTypeSelectQuestion indicates question selection
@@ -22,7 +23,12 @@ const (
 	MessageTypeSubmitAnswer MessageType = "SUBMIT_ANSWER"
 	// MessageTypeJudgeAnswer indicates answer judging
 	MessageTypeJudgeAnswer MessageType = "JUDGE_ANSWER"
+	// MessageTypeMediaLoadProgress indicates media loading progress
+	MessageTypeMediaLoadProgress MessageType = "MEDIA_LOAD_PROGRESS"
+	// MessageTypeMediaLoadComplete indicates all media loaded
+	MessageTypeMediaLoadComplete MessageType = "MEDIA_LOAD_COMPLETE"
 
+	// Server -> Client messages
 	// MessageTypeStateUpdate indicates game state update
 	MessageTypeStateUpdate MessageType = "STATE_UPDATE"
 	// MessageTypeQuestionSelected indicates question was selected
@@ -37,6 +43,10 @@ const (
 	MessageTypeGameComplete MessageType = "GAME_COMPLETE"
 	// MessageTypeError indicates an error occurred
 	MessageTypeError MessageType = "ERROR"
+	// MessageTypeRoundMediaManifest contains all media for the round
+	MessageTypeRoundMediaManifest MessageType = "ROUND_MEDIA_MANIFEST"
+	// MessageTypeStartMedia commands synchronized media playback
+	MessageTypeStartMedia MessageType = "START_MEDIA"
 )
 
 // ClientMessage represents a message from client to server
@@ -106,6 +116,52 @@ type ErrorPayload struct {
 	Code    string `json:"code,omitempty"`
 }
 
+// MediaItem represents a single media file in the manifest
+type MediaItem struct {
+	ID           string       `json:"id"`
+	Type         string       `json:"type"` // "image", "audio", "video"
+	URL          string       `json:"url"`
+	Size         int64        `json:"size"` // bytes
+	QuestionRef  QuestionRef  `json:"question_ref"`
+}
+
+// QuestionRef identifies which question the media belongs to
+type QuestionRef struct {
+	ThemeIndex    int `json:"theme"`
+	QuestionPrice int `json:"price"`
+}
+
+// RoundMediaManifestPayload contains all media for preloading
+type RoundMediaManifestPayload struct {
+	Round      int         `json:"round"`
+	Media      []MediaItem `json:"media"`
+	TotalSize  int64       `json:"total_size"`
+	TotalCount int         `json:"total_count"`
+}
+
+// MediaLoadProgressPayload represents client's media loading progress
+type MediaLoadProgressPayload struct {
+	Loaded      int   `json:"loaded"`
+	Total       int   `json:"total"`
+	BytesLoaded int64 `json:"bytes_loaded"`
+	Percent     int   `json:"percent"`
+}
+
+// MediaLoadCompletePayload indicates all media loaded
+type MediaLoadCompletePayload struct {
+	Round       int `json:"round"`
+	LoadedCount int `json:"loaded_count"`
+}
+
+// StartMediaPayload commands synchronized media playback
+type StartMediaPayload struct {
+	MediaID    string `json:"media_id"`
+	MediaType  string `json:"media_type"` // "image", "audio", "video"
+	URL        string `json:"url"`
+	StartAt    int64  `json:"start_at"`     // Unix timestamp in ms when to start
+	DurationMS int64  `json:"duration_ms"`  // Media duration for sync
+}
+
 // NewClientMessage creates a ClientMessage from JSON bytes
 func NewClientMessage(data []byte) (*ClientMessage, error) {
 	var msg ClientMessage
@@ -159,6 +215,27 @@ func NewErrorMessage(message, code string) *ServerMessage {
 	return NewServerMessage(MessageTypeError, ErrorPayload{
 		Message: message,
 		Code:    code,
+	})
+}
+
+// NewRoundMediaManifestMessage creates a media manifest message
+func NewRoundMediaManifestMessage(round int, media []MediaItem, totalSize int64) *ServerMessage {
+	return NewServerMessage(MessageTypeRoundMediaManifest, RoundMediaManifestPayload{
+		Round:      round,
+		Media:      media,
+		TotalSize:  totalSize,
+		TotalCount: len(media),
+	})
+}
+
+// NewStartMediaMessage creates a start media message for synchronized playback
+func NewStartMediaMessage(mediaID, mediaType, url string, startAt, durationMS int64) *ServerMessage {
+	return NewServerMessage(MessageTypeStartMedia, StartMediaPayload{
+		MediaID:    mediaID,
+		MediaType:  mediaType,
+		URL:        url,
+		StartAt:    startAt,
+		DurationMS: durationMS,
 	})
 }
 

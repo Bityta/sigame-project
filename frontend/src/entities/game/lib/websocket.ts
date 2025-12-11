@@ -8,7 +8,10 @@ import type {
   WSMessage,
   WSMessageType,
   GameState,
+  RoundMediaManifestPayload,
+  StartMediaPayload,
 } from '@/shared/types';
+import { mediaCache, type MediaLoadProgress } from './mediaCache';
 
 type MessageHandler<T = unknown> = (payload: T) => void;
 
@@ -20,10 +23,32 @@ export class GameWebSocket {
   private reconnectDelay = 1000;
   private gameId: string;
   private userId: string;
+  private progressIntervalId: number | null = null;
 
   constructor(gameId: string, userId: string) {
     this.gameId = gameId;
     this.userId = userId;
+    this.setupMediaCallbacks();
+  }
+
+  /**
+   * Setup media cache callbacks
+   */
+  private setupMediaCallbacks(): void {
+    // Progress callback - send updates to server every 500ms
+    let lastReportTime = 0;
+    mediaCache.setProgressCallback((progress: MediaLoadProgress) => {
+      const now = Date.now();
+      if (now - lastReportTime >= 500) {
+        this.sendMediaLoadProgress(progress);
+        lastReportTime = now;
+      }
+    });
+
+    // Complete callback - notify server when done
+    mediaCache.setCompleteCallback((round: number, loadedCount: number) => {
+      this.sendMediaLoadComplete(round, loadedCount);
+    });
   }
 
   /**
@@ -133,10 +158,27 @@ export class GameWebSocket {
    * Обработать входящее сообщение
    */
   private handleMessage(message: WSMessage): void {
+    // Handle media manifest - start preloading
+    if (message.type === 'ROUND_MEDIA_MANIFEST') {
+      this.handleMediaManifest(message.payload as RoundMediaManifestPayload);
+    }
+
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach((handler) => handler(message.payload));
     }
+  }
+
+  /**
+   * Handle ROUND_MEDIA_MANIFEST - start preloading media
+   */
+  private handleMediaManifest(payload: RoundMediaManifestPayload): void {
+    console.log(`[GameWS] Received media manifest for round ${payload.round}: ${payload.total_count} files`);
+    
+    // Start preloading in background
+    mediaCache.preloadRound(payload).catch((error) => {
+      console.error('[GameWS] Media preload error:', error);
+    });
   }
 
   /**
@@ -223,6 +265,37 @@ export class GameWebSocket {
     };
     console.log('[GameWS] Отправка:', type, message);
     this.ws.send(JSON.stringify(message));
+  }
+
+  // --- Media sync methods ---
+
+  /**
+   * Send media loading progress to server
+   */
+  private sendMediaLoadProgress(progress: MediaLoadProgress): void {
+    this.sendGameMessage('MEDIA_LOAD_PROGRESS', {
+      loaded: progress.loaded,
+      total: progress.total,
+      bytes_loaded: progress.bytesLoaded,
+      percent: progress.percent,
+    });
+  }
+
+  /**
+   * Send media loading complete notification
+   */
+  private sendMediaLoadComplete(round: number, loadedCount: number): void {
+    this.sendGameMessage('MEDIA_LOAD_COMPLETE', {
+      round,
+      loaded_count: loadedCount,
+    });
+  }
+
+  /**
+   * Get media cache for accessing preloaded media
+   */
+  getMediaCache() {
+    return mediaCache;
   }
 }
 

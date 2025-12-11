@@ -13,16 +13,17 @@ import (
 
 // Manager manages a single game session
 type Manager struct {
-	game        *domain.Game
-	pack        *domain.Pack
-	hub         Hub
-	ctx         context.Context
-	cancel      context.CancelFunc
-	actionChan  chan *PlayerAction
-	timer       *Timer
-	buttonPress *ButtonPress
-	mu          sync.RWMutex
-	eventLogger EventLogger
+	game         *domain.Game
+	pack         *domain.Pack
+	hub          Hub
+	ctx          context.Context
+	cancel       context.CancelFunc
+	actionChan   chan *PlayerAction
+	timer        *Timer
+	buttonPress  *ButtonPress
+	mediaTracker *MediaTracker
+	mu           sync.RWMutex
+	eventLogger  EventLogger
 }
 
 // PlayerAction represents an action from a player
@@ -46,15 +47,16 @@ func NewManager(game *domain.Game, pack *domain.Pack, hub Hub, eventLogger Event
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Manager{
-		game:        game,
-		pack:        pack,
-		hub:         hub,
-		ctx:         ctx,
-		cancel:      cancel,
-		actionChan:  make(chan *PlayerAction, 100),
-		timer:       NewTimer(),
-		buttonPress: NewButtonPress(),
-		eventLogger: eventLogger,
+		game:         game,
+		pack:         pack,
+		hub:          hub,
+		ctx:          ctx,
+		cancel:       cancel,
+		actionChan:   make(chan *PlayerAction, 100),
+		timer:        NewTimer(),
+		buttonPress:  NewButtonPress(),
+		mediaTracker: NewMediaTracker(0),
+		eventLogger:  eventLogger,
 	}
 }
 
@@ -124,6 +126,12 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 
 	case websocket.MessageTypeJudgeAnswer:
 		m.handleJudgeAnswer(action)
+
+	case websocket.MessageTypeMediaLoadProgress:
+		m.handleMediaLoadProgress(action)
+
+	case websocket.MessageTypeMediaLoadComplete:
+		m.handleMediaLoadComplete(action)
 
 	default:
 		log.Printf("Unknown message type: %s", action.Message.Type)
@@ -195,6 +203,26 @@ func (m *Manager) startRound(roundNumber int) {
 		WithRound(roundNumber)
 	m.eventLogger.LogEvent(context.Background(), event)
 
+	// Build and send media manifest for preloading
+	round := m.pack.Rounds[roundNumber-1]
+	m.mediaTracker.Reset(roundNumber)
+	m.mediaTracker.BuildManifest(round)
+
+	// Register all players for media tracking
+	for userID := range m.game.Players {
+		m.mediaTracker.RegisterClient(userID)
+	}
+
+	// Send media manifest if there's media to load
+	if m.mediaTracker.HasMedia() {
+		manifest, totalSize := m.mediaTracker.GetManifest()
+		msg := websocket.NewRoundMediaManifestMessage(roundNumber, manifest, totalSize)
+		if data, err := msg.ToJSON(); err == nil {
+			m.hub.Broadcast(m.game.ID, data)
+		}
+		log.Printf("Sent media manifest for round %d: %d files, %d bytes", roundNumber, len(manifest), totalSize)
+	}
+
 	// Show themes to all players
 	m.BroadcastState()
 
@@ -203,6 +231,8 @@ func (m *Manager) startRound(roundNumber int) {
 	m.game.ActivePlayer = &hostID
 
 	// Transition to question selection
+	// If there's media, we might want to wait for loading first
+	// For now, proceed immediately (clients load in background)
 	m.updateGameStatus(domain.GameStatusQuestionSelect)
 	m.BroadcastState()
 

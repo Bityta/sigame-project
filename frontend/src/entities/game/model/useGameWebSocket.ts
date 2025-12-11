@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { GameWebSocket } from '../lib/websocket';
-import type { WSMessageType, GameState } from '@/shared/types';
+import type { WSMessageType, GameState, StartMediaPayload } from '@/shared/types';
 
 interface UseGameWebSocketOptions {
   gameId: string;
@@ -23,6 +23,7 @@ export const useGameWebSocket = ({
   const wsRef = useRef<GameWebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [startMedia, setStartMedia] = useState<StartMediaPayload | null>(null);
   
   // Храним колбэки в ref чтобы избежать пересоздания useEffect
   const onStateUpdateRef = useRef(onStateUpdate);
@@ -54,6 +55,17 @@ export const useGameWebSocket = ({
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
       setGameState(state);
       onStateUpdateRef.current?.(state);
+      
+      // Clear startMedia when question changes or game state changes
+      if (state.status !== 'question_show' && state.status !== 'button_press') {
+        setStartMedia(null);
+      }
+    });
+
+    // Подписываемся на START_MEDIA для синхронного воспроизведения
+    const unsubStartMedia = ws.on<StartMediaPayload>('START_MEDIA', (payload) => {
+      console.log('[useGameWebSocket] START_MEDIA received:', payload);
+      setStartMedia(payload);
     });
 
     // Подписываемся на ошибки
@@ -64,6 +76,7 @@ export const useGameWebSocket = ({
     // Cleanup при размонтировании
     return () => {
       unsubStateUpdate();
+      unsubStartMedia();
       unsubError();
       ws.disconnect();
       setIsConnected(false);
@@ -102,6 +115,7 @@ export const useGameWebSocket = ({
   return {
     isConnected,
     gameState,
+    startMedia,
     sendReady,
     selectQuestion,
     pressButton,

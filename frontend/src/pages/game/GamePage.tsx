@@ -14,6 +14,7 @@ export const GamePage = () => {
   const {
     isConnected,
     gameState,
+    startMedia,
     sendReady,
     selectQuestion,
     pressButton,
@@ -132,6 +133,7 @@ export const GamePage = () => {
               canPressButton={canPressButton}
               onPressButton={pressButton}
               timeRemaining={gameState.timeRemaining}
+              startMedia={startMedia}
             />
           )}
 

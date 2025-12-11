@@ -4,7 +4,8 @@
  */
 
 import { Card, Button } from '@/shared/ui';
-import type { QuestionState } from '@/shared/types';
+import type { QuestionState, StartMediaPayload } from '@/shared/types';
+import { SyncMediaPlayer } from '../SyncMediaPlayer/SyncMediaPlayer';
 import './QuestionView.css';
 
 interface QuestionViewProps {
@@ -12,6 +13,7 @@ interface QuestionViewProps {
   canPressButton: boolean;
   onPressButton?: () => void;
   timeRemaining?: number;
+  startMedia?: StartMediaPayload | null;
 }
 
 export const QuestionView = ({
@@ -19,7 +21,10 @@ export const QuestionView = ({
   canPressButton,
   onPressButton,
   timeRemaining,
+  startMedia,
 }: QuestionViewProps) => {
+  const hasMedia = question.mediaType && question.mediaType !== 'text';
+
   return (
     <Card className="question-view" padding="large">
       <div className="question-view__header">
@@ -33,9 +38,15 @@ export const QuestionView = ({
         <div className="question-view__text">{question.text}</div>
       )}
 
-      {question.mediaType && question.mediaType !== 'text' && (
+      {hasMedia && (
         <div className="question-view__media">
-          <p>Медиа: {question.mediaType}</p>
+          <SyncMediaPlayer
+            startMedia={startMedia || null}
+            fallbackUrl={question.mediaUrl}
+            autoPlay={true}
+            muted={false}
+            controls={true}
+          />
         </div>
       )}
 

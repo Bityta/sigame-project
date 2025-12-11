@@ -3,5 +3,6 @@
  */
 
 export * from './lib/websocket';
+export * from './lib/mediaCache';
 export * from './model/useGameWebSocket';
 
