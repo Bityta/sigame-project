@@ -1,6 +1,7 @@
 /**
  * Game Feature - PlayerList
  * Ведущий слева, игроки справа
+ * Показывает аватары и статус подключения
  */
 
 import type { PlayerState } from '@/shared/types';
@@ -11,6 +12,40 @@ interface PlayerListProps {
   activePlayer?: string;
   currentUserId?: string;
 }
+
+// Функция для получения инициалов
+const getInitials = (name: string) => {
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Компонент аватара
+const Avatar = ({ player, isHost = false }: { player: PlayerState; isHost?: boolean }) => {
+  const hasAvatar = player.avatarUrl && player.avatarUrl.length > 0;
+  
+  if (isHost) {
+    return (
+      <div className={`player-avatar player-avatar--host ${!player.isConnected ? 'player-avatar--disconnected' : ''}`}>
+        {hasAvatar ? (
+          <img src={player.avatarUrl} alt={player.username} className="player-avatar__img" />
+        ) : (
+          '👑'
+        )}
+        {!player.isConnected && <span className="player-avatar__offline-badge">⚫</span>}
+      </div>
+    );
+  }
+  
+  return (
+    <div className={`player-avatar player-avatar--player ${!player.isConnected ? 'player-avatar--disconnected' : ''}`}>
+      {hasAvatar ? (
+        <img src={player.avatarUrl} alt={player.username} className="player-avatar__img" />
+      ) : (
+        getInitials(player.username)
+      )}
+      {!player.isConnected && <span className="player-avatar__offline-badge">⚫</span>}
+    </div>
+  );
+};
 
 export const PlayerList = ({ players, activePlayer, currentUserId }: PlayerListProps) => {
   // Отделяем ведущего от игроков
@@ -35,16 +70,23 @@ export const PlayerList = ({ players, activePlayer, currentUserId }: PlayerListP
     return '';
   };
 
+  const getConnectionStatus = (player: PlayerState) => {
+    if (!player.isConnected) return 'Отключён';
+    return null;
+  };
+
   return (
     <div className="players-panel">
       {/* Ведущий слева */}
       {host && (
         <div className="players-panel__host">
-          <div className={`player-card player-card--host ${currentUserId === host.userId ? 'player-card--you' : ''}`}>
-            <div className="player-avatar player-avatar--host">👑</div>
+          <div className={`player-card player-card--host ${currentUserId === host.userId ? 'player-card--you' : ''} ${!host.isConnected ? 'player-card--disconnected' : ''}`}>
+            <Avatar player={host} isHost />
             <div className="player-info">
               <div className="player-name">{host.username}</div>
-              <div className="player-status">Ведущий</div>
+              <div className={`player-status ${!host.isConnected ? 'player-status--disconnected' : ''}`}>
+                {getConnectionStatus(host) || 'Ведущий'}
+              </div>
             </div>
           </div>
         </div>
@@ -55,26 +97,26 @@ export const PlayerList = ({ players, activePlayer, currentUserId }: PlayerListP
         {gamePlayers.map((player, index) => {
           const rank = getRank(index);
           const isAnswering = player.userId === activePlayer;
+          const isDisconnected = !player.isConnected;
           
           return (
             <div
               key={player.userId}
               className={`player-card ${
                 isAnswering ? 'player-card--answering' : ''
-              } ${currentUserId === player.userId ? 'player-card--you' : ''}`}
+              } ${currentUserId === player.userId ? 'player-card--you' : ''} ${isDisconnected ? 'player-card--disconnected' : ''}`}
             >
               {/* Бейдж позиции */}
               <span className={`player-rank ${getRankClass(rank)}`}>
                 {rank}
               </span>
               
-              <div className="player-avatar player-avatar--player">
-                {player.username.substring(0, 2).toUpperCase()}
-              </div>
+              <Avatar player={player} />
+              
               <div className="player-info">
                 <div className="player-name">{player.username}</div>
-                <div className={`player-status ${isAnswering ? 'player-status--answering' : ''}`}>
-                  {isAnswering ? '🎤 Отвечает!' : 'Игрок'}
+                <div className={`player-status ${isAnswering ? 'player-status--answering' : ''} ${isDisconnected ? 'player-status--disconnected' : ''}`}>
+                  {isDisconnected ? '📵 Отключён' : (isAnswering ? '🎤 Отвечает!' : 'Игрок')}
                 </div>
               </div>
               <span className={`player-score ${getScoreClass(player.score)}`}>
