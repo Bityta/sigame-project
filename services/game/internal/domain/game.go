@@ -89,14 +89,16 @@ type ThemeState struct {
 
 // QuestionState represents question availability in UI (DTO)
 // Required: id, price, available
-// Optional: text, mediaType (only when question is shown), answer (only for host)
+// Optional: text, mediaType, mediaUrl, mediaDurationMs (only when question is shown), answer (only for host)
 type QuestionState struct {
-	ID        string `json:"id" binding:"required"`
-	Price     int    `json:"price" binding:"required"`
-	Available bool   `json:"available" binding:"required"`
-	Text      string `json:"text,omitempty"`      // only when shown
-	MediaType string `json:"mediaType,omitempty"` // only when shown
-	Answer    string `json:"answer,omitempty"`    // only for host (correct answer)
+	ID              string `json:"id" binding:"required"`
+	Price           int    `json:"price" binding:"required"`
+	Available       bool   `json:"available" binding:"required"`
+	Text            string `json:"text,omitempty"`            // only when shown
+	MediaType       string `json:"mediaType,omitempty"`       // only when shown
+	MediaURL        string `json:"mediaUrl,omitempty"`        // only when shown (image/audio/video URL)
+	MediaDurationMs int    `json:"mediaDurationMs,omitempty"` // only for audio/video (duration in ms)
+	Answer          string `json:"answer,omitempty"`          // only for host (correct answer)
 }
 
 // CreateGameRequest is the request to create a new game (DTO)

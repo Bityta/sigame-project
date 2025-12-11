@@ -85,6 +85,8 @@ export interface QuestionState {
   available: boolean;
   text?: string;
   mediaType?: string;
+  mediaUrl?: string; // URL to media file (image/audio/video)
+  mediaDurationMs?: number; // Duration in ms (for audio/video)
   answer?: string; // Only for host
 }
 
