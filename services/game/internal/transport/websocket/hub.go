@@ -3,6 +3,7 @@ package websocket
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -130,6 +131,12 @@ func (h *Hub) unregisterClient(client *Client) {
 
 // handleClientMessage handles a message from a client
 func (h *Hub) handleClientMessage(wrapper *ClientMessageWrapper) {
+	// Handle PONG messages directly in hub (for RTT measurement)
+	if wrapper.message.Type == MessageTypePong {
+		h.handlePong(wrapper)
+		return
+	}
+
 	h.mu.RLock()
 	manager, exists := h.managers[wrapper.client.GetGameID()]
 	h.mu.RUnlock()
@@ -145,6 +152,62 @@ func (h *Hub) handleClientMessage(wrapper *ClientMessageWrapper) {
 
 	// Forward message to game manager
 	manager.HandleClientMessage(wrapper.client.GetUserID(), wrapper.message)
+}
+
+// handlePong processes PONG messages and calculates RTT
+func (h *Hub) handlePong(wrapper *ClientMessageWrapper) {
+	now := time.Now()
+
+	// Extract server_time from payload
+	serverTimeRaw, ok := wrapper.message.Payload["server_time"]
+	if !ok {
+		log.Printf("[PONG] Missing server_time in PONG from user %s", wrapper.client.GetUserID())
+		return
+	}
+
+	// Handle both float64 (JSON default) and int64
+	var serverTimeMs int64
+	switch v := serverTimeRaw.(type) {
+	case float64:
+		serverTimeMs = int64(v)
+	case int64:
+		serverTimeMs = v
+	default:
+		log.Printf("[PONG] Invalid server_time type from user %s: %T", wrapper.client.GetUserID(), serverTimeRaw)
+		return
+	}
+
+	// Calculate RTT: current time - server_time from ping
+	serverTime := time.UnixMilli(serverTimeMs)
+	rtt := now.Sub(serverTime)
+
+	// Sanity check: RTT should be positive and reasonable (< 10 seconds)
+	if rtt < 0 || rtt > 10*time.Second {
+		log.Printf("[PONG] Invalid RTT %v from user %s, ignoring", rtt, wrapper.client.GetUserID())
+		return
+	}
+
+	// Update client's RTT
+	wrapper.client.UpdateRTT(rtt)
+}
+
+// GetClientRTT returns the RTT for a specific client in a game
+func (h *Hub) GetClientRTT(gameID, userID uuid.UUID) time.Duration {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	clients, ok := h.games[gameID]
+	if !ok {
+		return 0
+	}
+
+	for client := range clients {
+		if client.GetUserID() == userID {
+			return client.GetRTT()
+		}
+	}
+
+	return 0
 }
 
 // broadcastToGame broadcasts a message to all clients in a game

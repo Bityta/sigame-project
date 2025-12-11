@@ -22,6 +22,7 @@ export type WSMessageType =
   | 'PRESS_BUTTON'
   | 'SUBMIT_ANSWER'
   | 'JUDGE_ANSWER'
+  | 'PONG'           // Response to PING for RTT measurement
   // Server -> Client
   | 'STATE_UPDATE'
   | 'QUESTION_SELECTED'
@@ -29,7 +30,8 @@ export type WSMessageType =
   | 'ANSWER_RESULT'
   | 'ROUND_COMPLETE'
   | 'GAME_COMPLETE'
-  | 'ERROR';
+  | 'ERROR'
+  | 'PING';          // RTT measurement ping
 
 export interface WSMessage<T = any> {
   type: WSMessageType;
@@ -90,10 +92,28 @@ export interface QuestionState {
   answer?: string; // Only for host
 }
 
-export interface ButtonPressedPayload {
-  userId: string;
+// PING/PONG for RTT measurement
+export interface PingPayload {
+  server_time: number;  // Server timestamp in milliseconds
+}
+
+export interface PongPayload {
+  server_time: number;  // Echo back from PING
+  client_time: number;  // Client's current timestamp
+}
+
+// Button press info for a single player
+export interface PressInfo {
+  user_id: string;
   username: string;
-  latencyMs: number;
+  time_ms: number;  // Adjusted reaction time in milliseconds
+}
+
+export interface ButtonPressedPayload {
+  winner_id: string;
+  winner_name: string;
+  reaction_time_ms: number;  // Winner's adjusted reaction time
+  all_presses: PressInfo[];  // All button presses sorted by adjusted time
 }
 
 export interface AnswerResultPayload {

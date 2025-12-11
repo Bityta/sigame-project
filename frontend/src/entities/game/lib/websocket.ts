@@ -8,6 +8,8 @@ import type {
   WSMessage,
   WSMessageType,
   GameState,
+  PingPayload,
+  PongPayload,
 } from '@/shared/types';
 
 type MessageHandler<T = unknown> = (payload: T) => void;
@@ -133,10 +135,28 @@ export class GameWebSocket {
    * Обработать входящее сообщение
    */
   private handleMessage(message: WSMessage): void {
+    // Handle PING automatically - respond with PONG for RTT measurement
+    if (message.type === 'PING') {
+      this.handlePing(message.payload as PingPayload);
+      return;
+    }
+
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach((handler) => handler(message.payload));
     }
+  }
+
+  /**
+   * Handle PING message - respond with PONG for RTT measurement
+   */
+  private handlePing(payload: PingPayload): void {
+    const pongPayload: PongPayload = {
+      server_time: payload.server_time,
+      client_time: Date.now(),
+    };
+
+    this.sendGameMessage('PONG', pongPayload);
   }
 
   /**

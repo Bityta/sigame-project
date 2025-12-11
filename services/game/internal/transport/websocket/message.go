@@ -20,6 +20,8 @@ const (
 	MessageTypeSubmitAnswer MessageType = "SUBMIT_ANSWER"
 	// MessageTypeJudgeAnswer indicates answer judging
 	MessageTypeJudgeAnswer MessageType = "JUDGE_ANSWER"
+	// MessageTypePong is client response to PING for RTT measurement
+	MessageTypePong MessageType = "PONG"
 
 	// MessageTypeStateUpdate indicates game state update
 	MessageTypeStateUpdate MessageType = "STATE_UPDATE"
@@ -35,6 +37,8 @@ const (
 	MessageTypeGameComplete MessageType = "GAME_COMPLETE"
 	// MessageTypeError indicates an error occurred
 	MessageTypeError MessageType = "ERROR"
+	// MessageTypePing is server ping for RTT measurement
+	MessageTypePing MessageType = "PING"
 )
 
 // ClientMessage represents a message from client to server
@@ -68,11 +72,30 @@ type JudgeAnswerPayload struct {
 	Correct bool      `json:"correct"`
 }
 
+// PingPayload represents the payload for PING message (server to client)
+type PingPayload struct {
+	ServerTime int64 `json:"server_time"`
+}
+
+// PongPayload represents the payload for PONG message (client to server)
+type PongPayload struct {
+	ServerTime int64 `json:"server_time"`
+	ClientTime int64 `json:"client_time"`
+}
+
+// PressInfo represents information about a single button press
+type PressInfo struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+	TimeMS   int64     `json:"time_ms"` // Adjusted reaction time in milliseconds
+}
+
 // ButtonPressedPayload represents the payload when a button is pressed
 type ButtonPressedPayload struct {
-	UserID    uuid.UUID `json:"user_id"`
-	Username  string    `json:"username"`
-	LatencyMS int64     `json:"latency_ms"`
+	WinnerID       uuid.UUID   `json:"winner_id"`
+	WinnerName     string      `json:"winner_name"`
+	ReactionTimeMS int64       `json:"reaction_time_ms"` // Winner's adjusted reaction time
+	AllPresses     []PressInfo `json:"all_presses"`      // All button presses sorted by adjusted time
 }
 
 // AnswerResultPayload represents the payload for answer result
@@ -131,12 +154,20 @@ func NewStateUpdateMessage(state *domain.GameState) *ServerMessage {
 	return NewServerMessage(MessageTypeStateUpdate, state)
 }
 
-// NewButtonPressedMessage creates a button pressed message
-func NewButtonPressedMessage(userID uuid.UUID, username string, latencyMS int64) *ServerMessage {
+// NewPingMessage creates a PING message for RTT measurement
+func NewPingMessage(serverTime int64) *ServerMessage {
+	return NewServerMessage(MessageTypePing, PingPayload{
+		ServerTime: serverTime,
+	})
+}
+
+// NewButtonPressedMessage creates a button pressed message with all press info
+func NewButtonPressedMessage(winnerID uuid.UUID, winnerName string, reactionTimeMS int64, allPresses []PressInfo) *ServerMessage {
 	return NewServerMessage(MessageTypeButtonPressed, ButtonPressedPayload{
-		UserID:    userID,
-		Username:  username,
-		LatencyMS: latencyMS,
+		WinnerID:       winnerID,
+		WinnerName:     winnerName,
+		ReactionTimeMS: reactionTimeMS,
+		AllPresses:     allPresses,
 	})
 }
 
