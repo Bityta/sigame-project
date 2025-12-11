@@ -202,14 +202,14 @@ def get_pack_3() -> Dict[str, Any]:
 
 
 def get_pack_4() -> Dict[str, Any]:
-    """Pack 4: Медиа-пак - вопросы с изображениями для тестирования медиа"""
+    """Pack 4: Медиа-пак - вопросы с изображениями и видео для тестирования медиа"""
     return {
         "id": PACK_ID_4,
         "name": "Медиа-пак (тест)",
         "author": "SIGame Team",
-        "description": "Пак с изображениями для тестирования медиа-контента",
+        "description": "Пак с изображениями и видео для тестирования медиа-контента",
         "rounds_count": 1,
-        "questions_count": 9,
+        "questions_count": 12,
         "created_at": "2024-01-01T00:00:00Z",
         "rounds": [
             {
@@ -285,10 +285,43 @@ def get_pack_4() -> Dict[str, Any]:
                     },
                     {
                         "id": "theme-4-3",
-                        "name": "Смешанные вопросы",
+                        "name": "Видео вопросы",
                         "questions": [
                             {
                                 "id": "q-4-3-1",
+                                "price": 100,
+                                "text": "Что показано в этом видео?",
+                                "answer": "Кролики",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                                "media_duration_ms": 10000
+                            },
+                            {
+                                "id": "q-4-3-2",
+                                "price": 200,
+                                "text": "Какое событие происходит на видео?",
+                                "answer": "Слёзы радости",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                                "media_duration_ms": 10000
+                            },
+                            {
+                                "id": "q-4-3-3",
+                                "price": 300,
+                                "text": "Что демонстрируется в ролике?",
+                                "answer": "Стеклянные шары",
+                                "media_type": "video",
+                                "media_url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                                "media_duration_ms": 15000
+                            },
+                        ]
+                    },
+                    {
+                        "id": "theme-4-4",
+                        "name": "Смешанные вопросы",
+                        "questions": [
+                            {
+                                "id": "q-4-4-1",
                                 "price": 100,
                                 "text": "Обычный текстовый вопрос: Столица Италии?",
                                 "answer": "Рим",
@@ -297,7 +330,7 @@ def get_pack_4() -> Dict[str, Any]:
                                 "media_duration_ms": 0
                             },
                             {
-                                "id": "q-4-3-2",
+                                "id": "q-4-4-2",
                                 "price": 200,
                                 "text": "Какое животное на картинке?",
                                 "answer": "Животное",
@@ -306,7 +339,7 @@ def get_pack_4() -> Dict[str, Any]:
                                 "media_duration_ms": 0
                             },
                             {
-                                "id": "q-4-3-3",
+                                "id": "q-4-4-3",
                                 "price": 300,
                                 "text": "Ещё один текстовый: Сколько континентов на Земле?",
                                 "answer": "7",
