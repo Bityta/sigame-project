@@ -199,22 +199,24 @@ func (m *Manager) logEvent(eventType event.Type) *event.Event {
 func (m *Manager) saveGameState() {
 	ctx := context.Background()
 
-	m.mu.Lock()
+	var gameCopy *domainGame.Game
+	m.mu.RLock()
 	m.game.UpdatedAt = time.Now()
-	m.mu.Unlock()
+	gameCopy = m.game
+	m.mu.RUnlock()
 
 	go func() {
-		m.saveGameStateWithRetry(ctx, MaxSaveRetries, SaveRetryDelay)
+		m.saveGameStateWithRetry(ctx, gameCopy, MaxSaveRetries, SaveRetryDelay)
 	}()
 }
 
-func (m *Manager) saveGameStateWithRetry(ctx context.Context, maxRetries int, retryDelay time.Duration) {
+func (m *Manager) saveGameStateWithRetry(ctx context.Context, game *domainGame.Game, maxRetries int, retryDelay time.Duration) {
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
 			time.Sleep(retryDelay)
 		}
 
-		if err := m.gameCache.SaveGameState(ctx, m.game); err != nil {
+		if err := m.gameCache.SaveGameState(ctx, game); err != nil {
 			logger.Errorf(ctx, "Failed to save game state to cache (attempt %d/%d): %v", attempt+1, maxRetries, err)
 			if attempt == maxRetries-1 {
 				logger.Errorf(ctx, "Failed to save game state to cache after %d attempts", maxRetries)
@@ -222,7 +224,7 @@ func (m *Manager) saveGameStateWithRetry(ctx context.Context, maxRetries int, re
 			continue
 		}
 
-		if err := m.gameRepository.UpdateGameSession(ctx, m.game); err != nil {
+		if err := m.gameRepository.UpdateGameSession(ctx, game); err != nil {
 			logger.Errorf(ctx, "Failed to update game session (attempt %d/%d): %v", attempt+1, maxRetries, err)
 			if attempt == maxRetries-1 {
 				logger.Errorf(ctx, "Failed to update game session after %d attempts", maxRetries)
