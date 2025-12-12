@@ -178,11 +178,16 @@ func (m *Manager) handlePlayerAction(action *PlayerAction) {
 
 func (m *Manager) SetPlayerConnected(userID uuid.UUID, connected bool) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	playerFound := false
 	if player, err := m.game.GetPlayer(userID); err == nil {
 		player.SetConnected(connected)
+		playerFound = true
 		logger.Infof(m.ctx, "[SetPlayerConnected] Player %s (%s) connected=%v", userID, player.Username, connected)
+	}
+	m.mu.Unlock()
+
+	// Broadcast state after connection status change (outside lock to avoid deadlock)
+	if playerFound {
 		m.BroadcastState()
 	}
 }
