@@ -186,7 +186,6 @@ func (m *Manager) SetPlayerConnected(userID uuid.UUID, connected bool) {
 	}
 	m.mu.Unlock()
 
-	// Broadcast state after connection status change (outside lock to avoid deadlock)
 	if playerFound {
 		m.BroadcastState()
 	}
