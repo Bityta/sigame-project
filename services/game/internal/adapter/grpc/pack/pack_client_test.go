@@ -20,8 +20,8 @@ func TestNewPackClient(t *testing.T) {
 		t.Error("NewPackClient() returned nil client")
 	}
 
-	if client.baseURL != "http:
-		t.Errorf("NewPackClient() baseURL = %s, want http:
+	if client.baseURL != "http://localhost:8001" {
+		t.Errorf("NewPackClient() baseURL = %s, want http://localhost:8001", client.baseURL)
 	}
 
 	if client.httpClient == nil {
@@ -58,7 +58,7 @@ func TestPackClient_GetPackContent_Success(t *testing.T) {
 								Text:            "Question 1",
 								Answer:          "Answer 1",
 								MediaType:       "image",
-								MediaURL:        "http:
+								MediaURL:        "http://example.com/image.jpg",
 								MediaDurationMs: 5000,
 							},
 						},

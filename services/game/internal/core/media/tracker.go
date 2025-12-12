@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
-	"sigame/game/internal/domain/player"
 	"sigame/game/internal/transport/ws/message"
 )
 
@@ -23,7 +21,7 @@ type MediaLoadStatus struct {
 
 type MediaTracker struct {
 	roundNumber int
-	manifest    []websocket.MediaItem
+	manifest    []message.MediaItem
 	totalSize   int64
 	clients     map[uuid.UUID]*MediaLoadStatus
 	mu          sync.RWMutex
@@ -32,16 +30,16 @@ type MediaTracker struct {
 func NewMediaTracker(roundNumber int) *MediaTracker {
 	return &MediaTracker{
 		roundNumber: roundNumber,
-		manifest:    make([]websocket.MediaItem, 0),
+		manifest:    make([]message.MediaItem, 0),
 		clients:     make(map[uuid.UUID]*MediaLoadStatus),
 	}
 }
 
-func (mt *MediaTracker) BuildManifest(round *domain.Round) {
+func (mt *MediaTracker) BuildManifest(round *pack.Round) {
 	mt.mu.Lock()
 	defer mt.mu.Unlock()
 
-	mt.manifest = make([]websocket.MediaItem, 0)
+	mt.manifest = make([]message.MediaItem, 0)
 	mt.totalSize = 0
 
 	for themeIdx, theme := range round.Themes {
@@ -52,12 +50,12 @@ func (mt *MediaTracker) BuildManifest(round *domain.Round) {
 
 			mediaID := buildMediaID(mt.roundNumber, themeIdx, question.Price)
 
-			item := websocket.MediaItem{
+			item := message.MediaItem{
 				ID:   mediaID,
 				Type: question.MediaType,
 				URL:  question.MediaURL,
 				Size: estimateMediaSize(question.MediaType),
-				QuestionRef: websocket.QuestionRef{
+				QuestionRef: message.QuestionRef{
 					ThemeIndex:    themeIdx,
 					QuestionPrice: question.Price,
 				},
@@ -69,7 +67,7 @@ func (mt *MediaTracker) BuildManifest(round *domain.Round) {
 	}
 }
 
-func (mt *MediaTracker) GetManifest() ([]websocket.MediaItem, int64) {
+func (mt *MediaTracker) GetManifest() ([]message.MediaItem, int64) {
 	mt.mu.RLock()
 	defer mt.mu.RUnlock()
 	return mt.manifest, mt.totalSize
@@ -122,7 +120,7 @@ func (mt *MediaTracker) MarkComplete(userID uuid.UUID, loadedCount int) {
 
 	status.Loaded = loadedCount
 	status.Complete = true
-	status.Percent = PercentComplete
+	status.Percent = 100
 	status.UpdatedAt = time.Now()
 }
 
@@ -162,7 +160,7 @@ func (mt *MediaTracker) GetOverallProgress() (totalPercent int, clientsReady int
 
 	totalClients = len(mt.clients)
 	if totalClients == 0 {
-		return PercentComplete, 0, 0
+		return 100, 0, 0
 	}
 
 	var totalPct int
@@ -177,7 +175,7 @@ func (mt *MediaTracker) GetOverallProgress() (totalPercent int, clientsReady int
 	return
 }
 
-func (mt *MediaTracker) FindMediaByQuestion(themeIndex, price int) *websocket.MediaItem {
+func (mt *MediaTracker) FindMediaByQuestion(themeIndex, price int) *message.MediaItem {
 	mt.mu.RLock()
 	defer mt.mu.RUnlock()
 
@@ -195,7 +193,7 @@ func (mt *MediaTracker) Reset(roundNumber int) {
 	defer mt.mu.Unlock()
 
 	mt.roundNumber = roundNumber
-	mt.manifest = make([]websocket.MediaItem, 0)
+	mt.manifest = make([]message.MediaItem, 0)
 	mt.totalSize = 0
 	mt.clients = make(map[uuid.UUID]*MediaLoadStatus)
 }

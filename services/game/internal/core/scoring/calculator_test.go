@@ -4,31 +4,29 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"sigame/game/internal/domain/game"
-	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
 )
 
 func TestCalculateScores(t *testing.T) {
-	player1 := &domain.Player{
+	player1 := &player.Player{
 		UserID:   uuid.New(),
 		Username: "player1",
 		Score:    100,
 	}
 
-	player2 := &domain.Player{
+	player2 := &player.Player{
 		UserID:   uuid.New(),
 		Username: "player2",
 		Score:    200,
 	}
 
-	player3 := &domain.Player{
+	player3 := &player.Player{
 		UserID:   uuid.New(),
 		Username: "player3",
 		Score:    150,
 	}
 
-	players := map[string]*domain.Player{
+	players := map[string]*player.Player{
 		"player1": player1,
 		"player2": player2,
 		"player3": player3,
@@ -78,7 +76,7 @@ func TestCalculateScores(t *testing.T) {
 }
 
 func TestCalculateScores_Empty(t *testing.T) {
-	players := map[string]*domain.Player{}
+	players := map[string]*player.Player{}
 
 	scores := CalculateScores(players)
 
@@ -88,7 +86,7 @@ func TestCalculateScores_Empty(t *testing.T) {
 }
 
 func TestCalculateScores_Sorted(t *testing.T) {
-	players := map[string]*domain.Player{
+	players := map[string]*player.Player{
 		"p1": {UserID: uuid.New(), Username: "p1", Score: 50},
 		"p2": {UserID: uuid.New(), Username: "p2", Score: 100},
 		"p3": {UserID: uuid.New(), Username: "p3", Score: 75},
@@ -125,7 +123,7 @@ func TestCalculateScores_Sorted(t *testing.T) {
 }
 
 func TestGetWinners(t *testing.T) {
-	scores := []domain.PlayerScore{
+	scores := []player.Score{
 		{UserID: uuid.New(), Username: "winner1", Score: 200, Rank: 1},
 		{UserID: uuid.New(), Username: "winner2", Score: 200, Rank: 1},
 		{UserID: uuid.New(), Username: "loser1", Score: 100, Rank: 3},
@@ -154,7 +152,7 @@ func TestGetWinners(t *testing.T) {
 }
 
 func TestGetWinners_Empty(t *testing.T) {
-	scores := []domain.PlayerScore{}
+	scores := []player.Score{}
 
 	winners := GetWinners(scores)
 
@@ -168,7 +166,7 @@ func TestGetWinners_Empty(t *testing.T) {
 }
 
 func TestGetWinners_MultipleWinners(t *testing.T) {
-	scores := []domain.PlayerScore{
+	scores := []player.Score{
 		{UserID: uuid.New(), Username: "winner1", Score: 150, Rank: 1},
 		{UserID: uuid.New(), Username: "winner2", Score: 150, Rank: 1},
 		{UserID: uuid.New(), Username: "winner3", Score: 150, Rank: 1},
@@ -189,7 +187,7 @@ func TestGetWinners_MultipleWinners(t *testing.T) {
 }
 
 func TestGetWinners_SingleWinner(t *testing.T) {
-	scores := []domain.PlayerScore{
+	scores := []player.Score{
 		{UserID: uuid.New(), Username: "winner", Score: 200, Rank: 1},
 		{UserID: uuid.New(), Username: "loser1", Score: 100, Rank: 2},
 		{UserID: uuid.New(), Username: "loser2", Score: 50, Rank: 3},
@@ -211,7 +209,7 @@ func TestGetWinners_SingleWinner(t *testing.T) {
 }
 
 func TestGetWinners_AllSameScore(t *testing.T) {
-	scores := []domain.PlayerScore{
+	scores := []player.Score{
 		{UserID: uuid.New(), Username: "p1", Score: 100, Rank: 1},
 		{UserID: uuid.New(), Username: "p2", Score: 100, Rank: 1},
 		{UserID: uuid.New(), Username: "p3", Score: 100, Rank: 1},
@@ -225,7 +223,7 @@ func TestGetWinners_AllSameScore(t *testing.T) {
 }
 
 func TestCalculateScores_WithZeroScores(t *testing.T) {
-	players := map[string]*domain.Player{
+	players := map[string]*player.Player{
 		"p1": {UserID: uuid.New(), Username: "p1", Score: 0},
 		"p2": {UserID: uuid.New(), Username: "p2", Score: 100},
 		"p3": {UserID: uuid.New(), Username: "p3", Score: 0},

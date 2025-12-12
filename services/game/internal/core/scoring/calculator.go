@@ -3,19 +3,19 @@ package scoring
 import (
 	"sort"
 
-	"sigame/game/internal/domain/game"
-	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
 )
 
-func CalculateScores(players map[string]*domain.Player) []domain.PlayerScore {
-	scores := make([]domain.PlayerScore, 0, len(players))
+const RankStartIndex = 1
 
-	for _, player := range players {
-		scores = append(scores, domain.PlayerScore{
-			UserID:   player.UserID,
-			Username: player.Username,
-			Score:    player.Score,
+func CalculateScores(players map[string]*player.Player) []player.Score {
+	scores := make([]player.Score, 0, len(players))
+
+	for _, p := range players {
+		scores = append(scores, player.Score{
+			UserID:   p.UserID,
+			Username: p.Username,
+			Score:    p.Score,
 		})
 	}
 
@@ -30,13 +30,13 @@ func CalculateScores(players map[string]*domain.Player) []domain.PlayerScore {
 	return scores
 }
 
-func GetWinners(scores []domain.PlayerScore) []domain.PlayerScore {
+func GetWinners(scores []player.Score) []player.Score {
 	if len(scores) == 0 {
-		return []domain.PlayerScore{}
+		return []player.Score{}
 	}
 
 	maxScore := scores[0].Score
-	winners := make([]domain.PlayerScore, 0)
+	winners := make([]player.Score, 0)
 
 	for _, score := range scores {
 		if score.Score == maxScore {

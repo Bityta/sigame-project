@@ -7,25 +7,25 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewButtonPress(t *testing.T) {
-	bp := NewButtonPress()
+func TestNew(t *testing.T) {
+	bp := New()
 
 	if bp == nil {
-		t.Fatal("NewButtonPress() returned nil")
+		t.Fatal("New() returned nil")
 	}
 	if bp.closed {
-		t.Error("NewButtonPress() closed = true, want false")
+		t.Error("New() closed = true, want false")
 	}
 	if len(bp.entries) != 0 {
-		t.Errorf("NewButtonPress() entries length = %d, want 0", len(bp.entries))
+		t.Errorf("New() entries length = %d, want 0", len(bp.entries))
 	}
 	if len(bp.pressedUsers) != 0 {
-		t.Errorf("NewButtonPress() pressedUsers length = %d, want 0", len(bp.pressedUsers))
+		t.Errorf("New() pressedUsers length = %d, want 0", len(bp.pressedUsers))
 	}
 }
 
 func TestButtonPress_Reset(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	userID := uuid.New()
 
 	bp.Press(userID, "user1", 100*time.Millisecond)
@@ -48,7 +48,7 @@ func TestButtonPress_Reset(t *testing.T) {
 }
 
 func TestButtonPress_Press(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	userID := uuid.New()
@@ -69,7 +69,7 @@ func TestButtonPress_Press(t *testing.T) {
 }
 
 func TestButtonPress_Press_Duplicate(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	userID := uuid.New()
@@ -87,7 +87,7 @@ func TestButtonPress_Press_Duplicate(t *testing.T) {
 }
 
 func TestButtonPress_Press_Closed(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 	bp.Close()
 
@@ -103,7 +103,7 @@ func TestButtonPress_Press_Closed(t *testing.T) {
 }
 
 func TestButtonPress_Close(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	bp.Close()
@@ -114,7 +114,7 @@ func TestButtonPress_Close(t *testing.T) {
 }
 
 func TestButtonPress_IsClosed(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.IsClosed() {
@@ -129,7 +129,7 @@ func TestButtonPress_IsClosed(t *testing.T) {
 }
 
 func TestButtonPress_HasPresses(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.HasPresses() {
@@ -144,7 +144,7 @@ func TestButtonPress_HasPresses(t *testing.T) {
 }
 
 func TestButtonPress_GetPressCount(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.GetPressCount() != 0 {
@@ -160,7 +160,7 @@ func TestButtonPress_GetPressCount(t *testing.T) {
 }
 
 func TestButtonPress_GetWinner(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.GetWinner() != nil {
@@ -198,7 +198,7 @@ func TestButtonPress_GetWinner(t *testing.T) {
 }
 
 func TestButtonPress_GetAllPresses(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.GetAllPresses() != nil {
@@ -229,10 +229,10 @@ func TestButtonPress_GetAllPresses(t *testing.T) {
 }
 
 func TestButtonPress_GetReactionTime(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
-	entry := &ButtonPressEntry{
+	entry := &PressEntry{
 		AdjustedTime: time.Now(),
 	}
 
@@ -259,7 +259,7 @@ func TestButtonPress_GetReactionTime(t *testing.T) {
 }
 
 func TestButtonPress_GetReactionTime_NilEntry(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	if bp.GetReactionTime(nil) != 0 {
@@ -268,7 +268,7 @@ func TestButtonPress_GetReactionTime_NilEntry(t *testing.T) {
 }
 
 func TestButtonPress_GetQuestionTime(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 
 	if !bp.GetQuestionTime().IsZero() {
 		t.Error("GetQuestionTime() before Reset() = non-zero, want zero")
@@ -282,7 +282,7 @@ func TestButtonPress_GetQuestionTime(t *testing.T) {
 }
 
 func TestButtonPress_RTTCompensation(t *testing.T) {
-	bp := NewButtonPress()
+	bp := New()
 	bp.Reset()
 
 	userID := uuid.New()

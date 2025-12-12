@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
-	"sigame/game/internal/domain/player"
 )
 
 func TestNewMediaTracker(t *testing.T) {
@@ -46,38 +44,38 @@ func TestNewMediaTracker(t *testing.T) {
 func TestMediaTracker_BuildManifest(t *testing.T) {
 	tracker := NewMediaTracker(1)
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 					{
 						ID:        "q2",
 						Price:      200,
 						MediaType:  MediaTypeAudio,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
 			{
 				ID:   "theme2",
 				Name: "Theme 2",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q3",
 						Price:      300,
 						MediaType:  MediaTypeVideo,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -105,15 +103,15 @@ func TestMediaTracker_BuildManifest(t *testing.T) {
 func TestMediaTracker_BuildManifest_SkipsTextOnly(t *testing.T) {
 	tracker := NewMediaTracker(1)
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
@@ -136,7 +134,7 @@ func TestMediaTracker_BuildManifest_SkipsTextOnly(t *testing.T) {
 						ID:        "q4",
 						Price:      400,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -173,20 +171,20 @@ func TestMediaTracker_GetManifest(t *testing.T) {
 		t.Errorf("Expected totalSize 0, got %d", totalSize)
 	}
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -210,8 +208,8 @@ func TestMediaTracker_GetManifest(t *testing.T) {
 		t.Errorf("Expected media type %s, got %s", MediaTypeImage, manifest[0].Type)
 	}
 
-	if manifest[0].URL != "http:
-		t.Errorf("Expected URL http:
+	if manifest[0].URL != "http://example.com/image.jpg" {
+		t.Errorf("Expected URL http://example.com/image.jpg, got %s", manifest[0].URL)
 	}
 }
 
@@ -222,20 +220,20 @@ func TestMediaTracker_HasMedia(t *testing.T) {
 		t.Error("HasMedia should return false for empty tracker")
 	}
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -267,20 +265,20 @@ func TestMediaTracker_RegisterClient(t *testing.T) {
 		t.Error("Client should be marked as complete when no media")
 	}
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -373,8 +371,8 @@ func TestMediaTracker_MarkComplete(t *testing.T) {
 		t.Error("Complete should be true")
 	}
 
-	if status.Percent != PercentComplete {
-		t.Errorf("Expected Percent %d, got %d", PercentComplete, status.Percent)
+	if status.Percent != 100 {
+		t.Errorf("Expected Percent %d, got %d", 100, status.Percent)
 	}
 
 	if status.UpdatedAt.IsZero() {
@@ -457,8 +455,8 @@ func TestMediaTracker_GetOverallProgress(t *testing.T) {
 
 	totalPercent, clientsReady, totalClients := tracker.GetOverallProgress()
 
-	if totalPercent != PercentComplete {
-		t.Errorf("Expected totalPercent %d, got %d", PercentComplete, totalPercent)
+	if totalPercent != 100 {
+		t.Errorf("Expected totalPercent %d, got %d", 100, totalPercent)
 	}
 
 	if clientsReady != 0 {
@@ -500,38 +498,38 @@ func TestMediaTracker_GetOverallProgress(t *testing.T) {
 func TestMediaTracker_FindMediaByQuestion(t *testing.T) {
 	tracker := NewMediaTracker(1)
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 					{
 						ID:        "q2",
 						Price:      200,
 						MediaType:  MediaTypeAudio,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
 			{
 				ID:   "theme2",
 				Name: "Theme 2",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q3",
 						Price:      300,
 						MediaType:  MediaTypeVideo,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},
@@ -549,10 +547,9 @@ func TestMediaTracker_FindMediaByQuestion(t *testing.T) {
 		t.Errorf("Expected media type %s, got %s", MediaTypeImage, item.Type)
 	}
 
-	if item.URL != "http:
-		t.Errorf("Expected URL http:
+	if item.URL != "http://example.com/image.jpg" {
+		t.Errorf("Expected URL http://example.com/image.jpg, got %s", item.URL)
 	}
-
 	item = tracker.FindMediaByQuestion(1, 300)
 	if item == nil {
 		t.Fatal("Expected to find media item for theme 1, price 300")
@@ -576,20 +573,20 @@ func TestMediaTracker_FindMediaByQuestion(t *testing.T) {
 func TestMediaTracker_Reset(t *testing.T) {
 	tracker := NewMediaTracker(1)
 
-	round := &domain.Round{
+	round := &pack.Round{
 		ID:          "round1",
 		RoundNumber: 1,
 		Name:        "Round 1",
-		Themes: []*domain.Theme{
+		Themes: []*pack.Theme{
 			{
 				ID:   "theme1",
 				Name: "Theme 1",
-				Questions: []*domain.Question{
+				Questions: []*pack.Question{
 					{
 						ID:        "q1",
 						Price:      100,
 						MediaType:  MediaTypeImage,
-						MediaURL:   "http:
+						MediaURL:   "http://example.com/image.jpg",
 					},
 				},
 			},

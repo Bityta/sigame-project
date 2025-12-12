@@ -114,7 +114,7 @@ func (m *Manager) handleSecretTransferTimeout() {
 	hostID := m.findHost()
 
 	for userID, p := range m.game.Players {
-		if p.Role != 0 {
+		if !p.Role.IsHost() {
 			m.transferSecretToPlayer(hostID, userID)
 			return
 		}

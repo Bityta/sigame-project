@@ -16,16 +16,6 @@ import (
 	"sigame/game/internal/port"
 )
 
-const (
-	ActionChannelBuffer   = 256
-	TimerUpdateInterval   = 100 * time.Millisecond
-	RoundsOverviewDuration = 10 * time.Second
-	RoundIntroDuration     = 5 * time.Second
-	AnswerJudgingDuration  = 30 * time.Second
-	InitialRoundNumber     = 0
-	RankStartIndex         = 1
-)
-
 type Manager struct {
 	game            *domainGame.Game
 	pack            *pack.Pack
@@ -36,7 +26,7 @@ type Manager struct {
 	timer           *timer.Timer
 	timerTicker     *time.Ticker
 	buttonPress     *button.Press
-	mediaTracker    *media.Tracker
+	mediaTracker    *media.MediaTracker
 	forAllCollector *answer.ForAllCollector
 	stakeInfo       *domainGame.StakeInfo
 	secretTarget    *uuid.UUID
@@ -68,10 +58,10 @@ func New(game *domainGame.Game, pack *pack.Pack, hub Hub, eventLogger port.Event
 		hub:             hub,
 		ctx:             ctx,
 		cancel:          cancel,
-		actionChan:      make(chan *PlayerAction, ActionChannelBuffer),
+		actionChan:      make(chan *PlayerAction, ManagerActionChannelBuffer),
 		timer:           timer.New(),
 		buttonPress:     button.New(),
-		mediaTracker:    media.NewTracker(InitialRoundNumber),
+		mediaTracker:    media.NewMediaTracker(InitialRoundNumber),
 		forAllCollector: answer.NewForAllCollector(),
 		eventLogger:     eventLogger,
 	}

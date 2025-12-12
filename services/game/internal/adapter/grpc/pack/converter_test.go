@@ -13,7 +13,7 @@ func TestConvertQuestion(t *testing.T) {
 		Text:            "Test question",
 		Answer:          "Answer",
 		MediaType:       "image",
-		MediaURL:        "http:
+		MediaURL:        "http://example.com/image.jpg",
 		MediaDurationMs: 5000,
 	}
 

@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-func TestNewTimer(t *testing.T) {
-	timer := NewTimer()
+func TestNew(t *testing.T) {
+	timer := New()
 
 	if timer == nil {
-		t.Fatal("NewTimer returned nil")
+		t.Fatal("New returned nil")
 	}
 
 	if timer.C == nil {
@@ -30,7 +30,7 @@ func TestNewTimer(t *testing.T) {
 }
 
 func TestTimer_Start(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 	duration := 100 * time.Millisecond
 
 	timer.Start(duration)
@@ -48,7 +48,7 @@ func TestTimer_Start(t *testing.T) {
 }
 
 func TestTimer_Start_StopsPrevious(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 	firstDuration := 200 * time.Millisecond
 	secondDuration := 100 * time.Millisecond
 
@@ -80,7 +80,7 @@ func TestTimer_Start_StopsPrevious(t *testing.T) {
 }
 
 func TestTimer_Stop(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 	duration := 200 * time.Millisecond
 
 	timer.Start(duration)
@@ -104,7 +104,7 @@ func TestTimer_Stop(t *testing.T) {
 }
 
 func TestTimer_IsActive(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 
 	if timer.IsActive() {
 		t.Error("New timer should not be active")
@@ -124,11 +124,11 @@ func TestTimer_IsActive(t *testing.T) {
 }
 
 func TestTimer_Remaining(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 
 	remaining := timer.Remaining()
-	if remaining != TimerInactiveRemaining {
-		t.Errorf("Expected remaining %d for inactive timer, got %d", TimerInactiveRemaining, remaining)
+	if remaining != InactiveRemaining {
+		t.Errorf("Expected remaining %d for inactive timer, got %d", InactiveRemaining, remaining)
 	}
 
 	duration := 2 * time.Second
@@ -149,13 +149,13 @@ func TestTimer_Remaining(t *testing.T) {
 	timer.Stop()
 
 	remaining = timer.Remaining()
-	if remaining != TimerInactiveRemaining {
-		t.Errorf("Expected remaining %d after Stop, got %d", TimerInactiveRemaining, remaining)
+	if remaining != InactiveRemaining {
+		t.Errorf("Expected remaining %d after Stop, got %d", InactiveRemaining, remaining)
 	}
 }
 
 func TestTimer_Channel(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 	duration := 50 * time.Millisecond
 
 	timer.Start(duration)
@@ -184,20 +184,20 @@ func TestTimer_Channel(t *testing.T) {
 }
 
 func TestTimer_Remaining_Negative(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 	duration := 10 * time.Millisecond
 
 	timer.Start(duration)
 	time.Sleep(50 * time.Millisecond)
 
 	remaining := timer.Remaining()
-	if remaining != TimerInactiveRemaining {
-		t.Errorf("Expected remaining %d after timer expired, got %d", TimerInactiveRemaining, remaining)
+	if remaining != InactiveRemaining {
+		t.Errorf("Expected remaining %d after timer expired, got %d", InactiveRemaining, remaining)
 	}
 }
 
 func TestTimer_MultipleStarts(t *testing.T) {
-	timer := NewTimer()
+	timer := New()
 
 	for i := 0; i < 5; i++ {
 		timer.Start(50 * time.Millisecond)

@@ -433,8 +433,8 @@ func (m *Manager) handleSubmitForAllAnswer(action *PlayerAction) {
 
 	if m.forAllCollector.SubmitAnswer(action.UserID, p.Username, answerStr) {
 		expectedAnswers := 0
-		for _, player := range m.game.Players {
-			if player.Role != player.RoleHost && player.IsActive {
+		for _, p := range m.game.Players {
+			if p.Role != player.RoleHost && p.IsActive {
 				expectedAnswers++
 			}
 		}

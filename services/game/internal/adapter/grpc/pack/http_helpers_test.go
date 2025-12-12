@@ -14,24 +14,24 @@ func TestBuildURL(t *testing.T) {
 	}{
 		{
 			name:     "pack content URL",
-			baseURL:  "http:
+			baseURL:  "http://example.com",
 			path:     PathPackContent,
 			args:     []interface{}{"123e4567-e89b-12d3-a456-426614174000"},
-			expected: "http:
+			expected: "http://example.com/api/packs/123e4567-e89b-12d3-a456-426614174000/content",
 		},
 		{
 			name:     "pack URL",
-			baseURL:  "http:
+			baseURL:  "http://example.com",
 			path:     PathPack,
 			args:     []interface{}{"123e4567-e89b-12d3-a456-426614174000"},
-			expected: "http:
+			expected: "http://example.com/api/packs/123e4567-e89b-12d3-a456-426614174000",
 		},
 		{
 			name:     "no args",
-			baseURL:  "http:
+			baseURL:  "http://example.com",
 			path:     "/api/test",
 			args:     []interface{}{},
-			expected: "http:
+			expected: "http://example.com/api/test",
 		},
 	}
 
@@ -44,4 +44,3 @@ func TestBuildURL(t *testing.T) {
 		})
 	}
 }
-

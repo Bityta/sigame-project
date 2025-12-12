@@ -5,9 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"sigame/game/internal/domain/game"
-	"sigame/game/internal/domain/pack"
-	"sigame/game/internal/domain/player"
 	"sigame/game/internal/domain/event"
 )
 
