@@ -3,161 +3,109 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	
-	"github.com/sigame/game/internal/config"
-	grpcClient "github.com/sigame/game/internal/grpc"
-	"github.com/sigame/game/internal/metrics"
-	"github.com/sigame/game/internal/repository/postgres"
-	"github.com/sigame/game/internal/repository/redis"
-	"github.com/sigame/game/internal/tracing"
-	"github.com/sigame/game/internal/transport/rest"
-	"github.com/sigame/game/internal/transport/websocket"
+	"github.com/sigame/game/internal/infrastructure/config"
+	"github.com/sigame/game/internal/infrastructure/logger"
+	"github.com/sigame/game/internal/infrastructure/tracing"
 )
 
 func main() {
-	// Load configuration
+	logger.Init(ServiceName)
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Errorf(nil, "Failed to load config: %v", err)
+		os.Exit(1)
 	}
 
-	log.Printf("Starting Game Service...")
-	log.Printf("HTTP Port: %s", cfg.Server.HTTPPort)
-	log.Printf("WS Port: %s", cfg.Server.WSPort)
-	log.Printf("Mode: %s", cfg.Server.Mode)
+	logger.Infof(nil, "Starting Game Service...")
+	logger.Infof(nil, "HTTP Port: %s", cfg.Server.HTTPPort)
+	logger.Infof(nil, "WS Port: %s", cfg.Server.WSPort)
 
-	// Initialize OpenTelemetry tracer
-	tp, err := tracing.InitTracer("game-service")
+	tp, err := initTracer(ServiceName)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize tracer: %v", err)
-	} else {
+		logger.Warnf(nil, "Failed to initialize tracer: %v", err)
+	} else if tp != nil {
 		defer tracing.Shutdown(tp)
 	}
 
-	// Initialize metrics
-	_ = metrics.NewMetrics()
-	log.Printf("✓ Metrics initialized")
+	_ = initMetrics()
+	logger.Infof(nil, "Metrics initialized")
 
-	// Connect to PostgreSQL
-	pgClient, err := postgres.NewClient(
-		cfg.GetPostgresConnectionString(),
-		cfg.Database.MaxConns,
-		cfg.Database.MaxIdle,
-	)
+	pgClient, err := initPostgreSQL(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+		logger.Errorf(nil, "Failed to connect to PostgreSQL: %v", err)
+		os.Exit(1)
 	}
 	defer pgClient.Close()
-	log.Printf("✓ Connected to PostgreSQL")
+	logger.Infof(nil, "Connected to PostgreSQL")
 
-	// Create repositories
-	gameRepo := postgres.NewGameRepository(pgClient.GetDB())
-	eventRepo := postgres.NewEventRepository(pgClient.GetDB())
-
-	// Connect to Redis
-	redisClient, err := redis.NewClient(
-		cfg.GetRedisAddress(),
-		cfg.Redis.Password,
-		cfg.Redis.DB,
-	)
+	redisClient, err := initRedis(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logger.Errorf(nil, "Failed to connect to Redis: %v", err)
+		os.Exit(1)
 	}
 	defer redisClient.Close()
-	log.Printf("✓ Connected to Redis")
+	logger.Infof(nil, "Connected to Redis")
 
-	// Create Redis repositories
-	redisGameRepo := redis.NewGameRepository(redisClient.GetClient())
-	redisCacheRepo := redis.NewCacheRepository(redisClient.GetClient())
+	repos := initRepositories(pgClient, redisClient)
 
-	// Connect to Pack Service (gRPC)
-	packClient, err := grpcClient.NewPackClient(cfg.GetPackServiceAddress())
+	packClient, err := initPackClient(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to Pack Service: %v", err)
+		logger.Errorf(nil, "Failed to connect to Pack Service: %v", err)
+		os.Exit(1)
 	}
 	defer packClient.Close()
-	log.Printf("✓ Connected to Pack Service at %s", cfg.GetPackServiceAddress())
+	logger.Infof(nil, "Connected to Pack Service at %s", cfg.GetPackServiceAddress())
 
-	// Create WebSocket hub
-	hub := websocket.NewHub()
+	hub := initWebSocketHub()
 	go hub.Run()
-	log.Printf("✓ WebSocket hub started")
+	logger.Infof(nil, "WebSocket hub started")
 
-	// Create handlers
-	wsHandler := websocket.NewHandler(hub)
-	restHandler := rest.NewHandler(hub, packClient, gameRepo, eventRepo, redisGameRepo, redisCacheRepo)
+	handlers := initHandlers(hub, packClient, repos)
+	router := initRouter(handlers.RESTHandler, handlers.WSHandler)
 
-	// Setup router
-	router := rest.SetupRouter(restHandler, wsHandler)
-	
-	// Add OpenTelemetry middleware
-	router.Use(otelgin.Middleware("game-service"))
+	httpServer := createHTTPServer(cfg, router)
+	metricsServer := createMetricsServer()
 
-	// Create HTTP server
+	go func() {
+		logger.Infof(nil, "Metrics server listening on %s", MetricsPort)
+		if err := startMetricsServer(metricsServer, MetricsPort); err != nil && err != http.ErrServerClosed {
+			logger.Errorf(nil, "Metrics server error: %v", err)
+		}
+	}()
+
+	go func() {
+		httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
+		logger.Infof(nil, "HTTP server listening on %s", httpAddr)
+		if err := startHTTPServer(httpServer, httpAddr); err != nil && err != http.ErrServerClosed {
+			logger.Errorf(nil, "HTTP server error: %v", err)
+			os.Exit(1)
+		}
+	}()
+
 	httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
-	httpServer := &http.Server{
-		Addr:    httpAddr,
-		Handler: router,
-	}
+	logger.Infof(nil, "Game Service is ready!")
+	logger.Infof(nil, "HTTP API: %s:
+	logger.Infof(nil, "Metrics: %s:
 
-	// Start metrics server
-	metricsAddr := ":9090"
-	metricsServer := &http.Server{
-		Addr:    metricsAddr,
-		Handler: promhttp.Handler(),
-	}
-
-	go func() {
-		log.Printf("✓ Metrics server listening on %s", metricsAddr)
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("Metrics server error: %v", err)
-		}
-	}()
-
-	// Start HTTP server
-	go func() {
-		log.Printf("✓ HTTP server listening on %s", httpAddr)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-	}()
-
-	log.Printf("==============================================")
-	log.Printf("Game Service is ready!")
-	log.Printf("HTTP API: http://localhost%s", httpAddr)
-	log.Printf("Metrics: http://localhost%s/metrics", metricsAddr)
-	log.Printf("==============================================")
-
-	// Wait for interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down Game Service...")
+	logger.Infof(nil, "Shutting down Game Service...")
 
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
-	// Shutdown HTTP server
-	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
+	if err := shutdownServers(ctx, httpServer, metricsServer); err != nil {
+		logger.Errorf(nil, "Shutdown error: %v", err)
 	}
 
-	// Shutdown metrics server
-	if err := metricsServer.Shutdown(ctx); err != nil {
-		log.Printf("Metrics server shutdown error: %v", err)
-	}
-
-	log.Println("Game Service stopped gracefully")
+	logger.Infof(nil, "Game Service stopped gracefully")
 }
 
