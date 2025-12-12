@@ -4,6 +4,7 @@ import (
 	"time"
 
 	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 func (m *Manager) handleTimeout() {
