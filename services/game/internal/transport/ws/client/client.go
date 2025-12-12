@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/transport/ws/message"
 )
 
 type Hub interface {
@@ -112,7 +113,13 @@ func (c *Client) writePump() {
 			c.SetLastPingSentAt(now)
 
 			c.conn.SetWriteDeadline(time.Now().Add(WriteWait))
-			if err := c.conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"PING"}`)); err != nil {
+			pingMsg := message.NewPingMessage(now.UnixMilli())
+			pingJSON, err := pingMsg.ToJSON()
+			if err != nil {
+				logger.Errorf(nil, "[PING] Failed to marshal ping: %v", err)
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, pingJSON); err != nil {
 				logger.Errorf(nil, "[PING] Failed to send ping: %v", err)
 				return
 			}
