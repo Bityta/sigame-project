@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	domainGame "github.com/sigame/game/internal/domain/game"
+	domainGame "sigame/game/internal/domain/game"
 )
 
 func NewClientMessage(data []byte) (*ClientMessage, error) {

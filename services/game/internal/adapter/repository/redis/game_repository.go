@@ -7,13 +7,11 @@ import (
 	"strconv"
 	"time"
 
+	"database/sql"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/sigame/game/internal/infrastructure/config"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/domain/game"
+	"sigame/game/internal/infrastructure/config"
 )
 
 type GameRepository struct {
@@ -24,7 +22,7 @@ func NewGameRepository(client *redis.Client) *GameRepository {
 	return &GameRepository{client: client}
 }
 
-func (r *GameRepository) SaveGameState(ctx context.Context, game *domain.Game) error {
+func (r *GameRepository) SaveGameState(ctx context.Context, game *game.Game) error {
 	key := gameStateKey(game.ID)
 
 	data, err := json.Marshal(game)
@@ -40,18 +38,18 @@ func (r *GameRepository) SaveGameState(ctx context.Context, game *domain.Game) e
 	return nil
 }
 
-func (r *GameRepository) LoadGameState(ctx context.Context, gameID uuid.UUID) (*domain.Game, error) {
+func (r *GameRepository) LoadGameState(ctx context.Context, gameID uuid.UUID) (*game.Game, error) {
 	key := gameStateKey(gameID)
 
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		return nil, domain.ErrGameNotFound
+		return nil, sql.ErrNoRows
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to load game state: %w", err)
 	}
 
-	var game domain.Game
+	var game game.Game
 	if err := json.Unmarshal(data, &game); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal game state: %w", err)
 	}

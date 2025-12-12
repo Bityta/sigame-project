@@ -8,84 +8,83 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/domain/player"
+	"sigame/game/internal/domain/event"
+	domainGame "sigame/game/internal/domain/game"
 )
 
-func scanGame(rows *sql.Rows, game *domain.Game) error {
+func scanGame(rows *sql.Rows, g *domainGame.Game) error {
 	var startedAt, finishedAt sql.NullTime
 	err := rows.Scan(
-		&game.ID,
-		&game.RoomID,
-		&game.PackID,
-		&game.Status,
-		&game.CurrentRound,
-		&game.CurrentPhase,
+		&g.ID,
+		&g.RoomID,
+		&g.PackID,
+		&g.Status,
+		&g.CurrentRound,
+		&g.CurrentPhase,
 		&startedAt,
 		&finishedAt,
-		&game.CreatedAt,
-		&game.UpdatedAt,
+		&g.CreatedAt,
+		&g.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to scan game: %w", err)
 	}
 
-	game.StartedAt = handleNullTime(startedAt)
-	game.FinishedAt = handleNullTime(finishedAt)
+	g.StartedAt = handleNullTime(startedAt)
+	g.FinishedAt = handleNullTime(finishedAt)
 
 	return nil
 }
 
-func scanGameRow(row *sql.Row, game *domain.Game) error {
+func scanGameRow(row *sql.Row, g *domainGame.Game) error {
 	var startedAt, finishedAt sql.NullTime
 	err := row.Scan(
-		&game.ID,
-		&game.RoomID,
-		&game.PackID,
-		&game.Status,
-		&game.CurrentRound,
-		&game.CurrentPhase,
+		&g.ID,
+		&g.RoomID,
+		&g.PackID,
+		&g.Status,
+		&g.CurrentRound,
+		&g.CurrentPhase,
 		&startedAt,
 		&finishedAt,
-		&game.CreatedAt,
-		&game.UpdatedAt,
+		&g.CreatedAt,
+		&g.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to scan game: %w", err)
 	}
 
-	game.StartedAt = handleNullTime(startedAt)
-	game.FinishedAt = handleNullTime(finishedAt)
+	g.StartedAt = handleNullTime(startedAt)
+	g.FinishedAt = handleNullTime(finishedAt)
 
 	return nil
 }
 
-func scanPlayer(rows *sql.Rows, player *domain.Player) error {
+func scanPlayer(rows *sql.Rows, p *player.Player) error {
 	var role string
 	var leftAt sql.NullTime
 
 	err := rows.Scan(
-		&player.UserID,
-		&player.Username,
+		&p.UserID,
+		&p.Username,
 		&role,
-		&player.Score,
-		&player.IsActive,
-		&player.JoinedAt,
+		&p.Score,
+		&p.IsActive,
+		&p.JoinedAt,
 		&leftAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to scan player: %w", err)
 	}
 
-	player.Role = domain.PlayerRole(role)
-	player.LeftAt = handleNullTime(leftAt)
+	p.Role = player.Role(role)
+	p.LeftAt = handleNullTime(leftAt)
 
 	return nil
 }
 
-func scanEvent(rows *sql.Rows, event *domain.GameEvent) error {
+func scanEvent(rows *sql.Rows, event *event.Event) error {
 	var dataJSON []byte
 
 	err := rows.Scan(
@@ -122,7 +121,7 @@ func marshalEventData(data map[string]interface{}) ([]byte, error) {
 	return dataJSON, nil
 }
 
-func unmarshalEventData(dataJSON []byte, event *domain.GameEvent) error {
+func unmarshalEventData(dataJSON []byte, event *event.Event) error {
 	if len(dataJSON) == 0 {
 		return nil
 	}
@@ -142,29 +141,29 @@ func handleNullTime(nullTime sql.NullTime) *time.Time {
 	return nil
 }
 
-func loadGamePlayers(ctx context.Context, db *sql.DB, gameID uuid.UUID, game *domain.Game) error {
+func loadGamePlayers(ctx context.Context, db *sql.DB, gameID uuid.UUID, g *domainGame.Game) error {
 	players, err := getGamePlayers(ctx, db, gameID)
 	if err != nil {
 		return err
 	}
 
 	for _, player := range players {
-		game.Players[player.UserID] = player
+		g.Players[player.UserID] = player
 	}
 
 	return nil
 }
 
-func getGamePlayers(ctx context.Context, db *sql.DB, gameID uuid.UUID) ([]*domain.Player, error) {
+func getGamePlayers(ctx context.Context, db *sql.DB, gameID uuid.UUID) ([]*player.Player, error) {
 	rows, err := db.QueryContext(ctx, querySelectGamePlayers, gameID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get game players: %w", err)
+		return nil, fmt.Errorf("failed to get g players: %w", err)
 	}
 	defer rows.Close()
 
-	var players []*domain.Player
+	var players []*player.Player
 	for rows.Next() {
-		player := &domain.Player{}
+		player := &player.Player{}
 		if err := scanPlayer(rows, player); err != nil {
 			return nil, err
 		}

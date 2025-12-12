@@ -6,7 +6,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 func InitTracer(serviceName string) (*sdktrace.TracerProvider, error) {

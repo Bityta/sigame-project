@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
+	"sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/domain/player"
 )
 
 func TestCalculateScores(t *testing.T) {

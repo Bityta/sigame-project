@@ -3,7 +3,7 @@ package game
 import (
 	"time"
 
-	domainGame "github.com/sigame/game/internal/domain/game"
+	domainGame "sigame/game/internal/domain/game"
 )
 
 func (m *Manager) handleTimeout() {

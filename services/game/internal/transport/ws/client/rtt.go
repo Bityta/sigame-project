@@ -4,8 +4,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/logger"
 )
+
+const MaxRTTSamples = 10
 
 type RTTTracker struct {
 	samples     []time.Duration

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sigame/game/internal/infrastructure/config"
+	"sigame/game/internal/infrastructure/config"
 )
 
 func createHTTPServer(cfg *config.Config, router *gin.Engine) *http.Server {

@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/player"
 )
 
 type GameRepository struct {
@@ -21,7 +19,7 @@ func NewGameRepository(db *sql.DB) *GameRepository {
 	return &GameRepository{db: db}
 }
 
-func (r *GameRepository) CreateGameSession(ctx context.Context, game *domain.Game) error {
+func (r *GameRepository) CreateGameSession(ctx context.Context, game *domainGame.Game) error {
 	now := time.Now()
 	_, err := r.db.ExecContext(ctx, queryInsertGameSession,
 		game.ID,
@@ -47,7 +45,7 @@ func (r *GameRepository) CreateGameSession(ctx context.Context, game *domain.Gam
 	return nil
 }
 
-func (r *GameRepository) UpdateGameSession(ctx context.Context, game *domain.Game) error {
+func (r *GameRepository) UpdateGameSession(ctx context.Context, game *domainGame.Game) error {
 	_, err := r.db.ExecContext(ctx, queryUpdateGameSession,
 		game.Status,
 		game.CurrentRound,
@@ -71,27 +69,27 @@ func (r *GameRepository) UpdateGameSession(ctx context.Context, game *domain.Gam
 	return nil
 }
 
-func (r *GameRepository) GetGameSession(ctx context.Context, gameID uuid.UUID) (*domain.Game, error) {
-	game := &domain.Game{
-		Players: make(map[uuid.UUID]*domain.Player),
+func (r *GameRepository) GetGameSession(ctx context.Context, gameID uuid.UUID) (*domainGame.Game, error) {
+	g := &domainGame.Game{
+		Players: make(map[uuid.UUID]*player.Player),
 	}
 
 	row := r.db.QueryRowContext(ctx, querySelectGameSession, gameID)
-	if err := scanGameRow(row, game); err != nil {
+	if err := scanGameRow(row, g); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.ErrGameNotFound
+			return nil, sql.ErrNoRows
 		}
 		return nil, fmt.Errorf("failed to get game session: %w", err)
 	}
 
-	if err := loadGamePlayers(ctx, r.db, gameID, game); err != nil {
+	if err := loadGamePlayers(ctx, r.db, gameID, g); err != nil {
 		return nil, err
 	}
 
-	return game, nil
+	return g, nil
 }
 
-func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domain.Game) error {
+func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domainGame.Game) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -99,7 +97,7 @@ func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domain.Game
 	defer tx.Rollback()
 
 	now := time.Now()
-	_, err = tx.ExecContext(ctx, queryUpdateGameSessionFinal, domain.GameStatusFinished, now, now, game.ID)
+	_, err = tx.ExecContext(ctx, queryUpdateGameSessionFinal, domainGame.StatusFinished, now, now, game.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update game session: %w", err)
 	}
@@ -123,7 +121,7 @@ func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domain.Game
 	return nil
 }
 
-func (r *GameRepository) createGamePlayer(ctx context.Context, gameID uuid.UUID, player *domain.Player) error {
+func (r *GameRepository) createGamePlayer(ctx context.Context, gameID uuid.UUID, player *player.Player) error {
 	_, err := r.db.ExecContext(ctx, queryInsertGamePlayer,
 		gameID,
 		player.UserID,
@@ -137,51 +135,51 @@ func (r *GameRepository) createGamePlayer(ctx context.Context, gameID uuid.UUID,
 	return err
 }
 
-func (r *GameRepository) updatePlayerScore(ctx context.Context, gameID uuid.UUID, player *domain.Player) error {
+func (r *GameRepository) updatePlayerScore(ctx context.Context, gameID uuid.UUID, player *player.Player) error {
 	_, err := r.db.ExecContext(ctx, queryUpdatePlayerScore, player.Score, player.IsActive, gameID, player.UserID)
 	return err
 }
 
-func (r *GameRepository) GetGamesByRoomID(ctx context.Context, roomID uuid.UUID) ([]*domain.Game, error) {
+func (r *GameRepository) GetGamesByRoomID(ctx context.Context, roomID uuid.UUID) ([]*domainGame.Game, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectGamesByRoomID, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get games: %w", err)
 	}
 	defer rows.Close()
 
-	var games []*domain.Game
+	var games []*domainGame.Game
 	for rows.Next() {
-		game := &domain.Game{
-			Players: make(map[uuid.UUID]*domain.Player),
+		g := &domainGame.Game{
+			Players: make(map[uuid.UUID]*player.Player),
 		}
 
-		if err := scanGame(rows, game); err != nil {
+		if err := scanGame(rows, g); err != nil {
 			return nil, err
 		}
 
-		games = append(games, game)
+		games = append(games, g)
 	}
 
 	return games, nil
 }
 
-func (r *GameRepository) GetActiveGameForUser(ctx context.Context, userID uuid.UUID) (*domain.Game, error) {
-	game := &domain.Game{
-		Players: make(map[uuid.UUID]*domain.Player),
+func (r *GameRepository) GetActiveGameForUser(ctx context.Context, userID uuid.UUID) (*domainGame.Game, error) {
+	g := &domainGame.Game{
+		Players: make(map[uuid.UUID]*player.Player),
 	}
 
 	row := r.db.QueryRowContext(ctx, querySelectActiveGameForUser, userID)
-	if err := scanGameRow(row, game); err != nil {
+	if err := scanGameRow(row, g); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.ErrGameNotFound
+			return nil, sql.ErrNoRows
 		}
 		return nil, fmt.Errorf("failed to get active game for user: %w", err)
 	}
 
-	if err := loadGamePlayers(ctx, r.db, game.ID, game); err != nil {
+	if err := loadGamePlayers(ctx, r.db, g.ID, g); err != nil {
 		return nil, err
 	}
 
-	return game, nil
+	return g, nil
 }
 

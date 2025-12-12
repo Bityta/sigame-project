@@ -8,11 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/sigame/game/internal/infrastructure/config"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/infrastructure/config"
+	"sigame/game/internal/domain/pack"
 )
 
 type CacheRepository struct {
@@ -23,7 +20,7 @@ func NewCacheRepository(client *redis.Client) *CacheRepository {
 	return &CacheRepository{client: client}
 }
 
-func (r *CacheRepository) CachePack(ctx context.Context, pack *domain.Pack) error {
+func (r *CacheRepository) CachePack(ctx context.Context, pack *pack.Pack) error {
 	key := packKey(pack.ID)
 
 	data, err := json.Marshal(pack)
@@ -39,18 +36,18 @@ func (r *CacheRepository) CachePack(ctx context.Context, pack *domain.Pack) erro
 	return nil
 }
 
-func (r *CacheRepository) GetCachedPack(ctx context.Context, packID uuid.UUID) (*domain.Pack, error) {
+func (r *CacheRepository) GetCachedPack(ctx context.Context, packID uuid.UUID) (*pack.Pack, error) {
 	key := packKey(packID)
 
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		return nil, domain.ErrPackNotFound
+		return nil, fmt.Errorf("pack not found")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cached pack: %w", err)
 	}
 
-	var pack domain.Pack
+	var pack pack.Pack
 	if err := json.Unmarshal(data, &pack); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal pack: %w", err)
 	}

@@ -1,8 +1,8 @@
 package redis
 
 import (
-	domainGame "github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
+	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
 )
 
 func gameToJSON(game *domainGame.Game) ([]byte, error) {

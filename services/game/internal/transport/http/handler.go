@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/sigame/game/internal/transport/http/handler"
+	"sigame/game/internal/transport/http/handler"
 )
 
 type Handler struct {

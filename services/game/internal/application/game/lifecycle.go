@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/sigame/game/internal/domain/event"
-	domainGame "github.com/sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/event"
+	domainGame "sigame/game/internal/domain/game"
 )
 
 func (m *Manager) startGame() {

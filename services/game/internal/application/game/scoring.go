@@ -3,7 +3,7 @@ package game
 import (
 	"sort"
 
-	"github.com/sigame/game/internal/domain/player"
+	"sigame/game/internal/domain/player"
 )
 
 func (m *Manager) calculateWinners() []player.Score {

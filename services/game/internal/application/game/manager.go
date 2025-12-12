@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/core/answer"
-	"github.com/sigame/game/internal/core/button"
-	"github.com/sigame/game/internal/core/media"
-	"github.com/sigame/game/internal/core/timer"
-	"github.com/sigame/game/internal/domain/event"
-	domainGame "github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/port"
+	"sigame/game/internal/core/answer"
+	"sigame/game/internal/core/button"
+	"sigame/game/internal/core/media"
+	"sigame/game/internal/core/timer"
+	"sigame/game/internal/domain/event"
+	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/port"
 )
 
 const (

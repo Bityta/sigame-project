@@ -1,10 +1,10 @@
 package postgres
 
 import (
-	"github.com/sigame/game/internal/domain/event"
-	domainGame "github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
+	"sigame/game/internal/domain/event"
+	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/domain/player"
 )
 
 func toDomainGame(dbGame interface{}) *domainGame.Game {

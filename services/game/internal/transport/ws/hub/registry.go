@@ -1,5 +1,7 @@
 package hub
 
+import "github.com/google/uuid"
+
 func (h *Hub) registerClient(client Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -18,22 +20,22 @@ func (h *Hub) registerClient(client Client) {
 	}
 }
 
-func (h *Hub) unregisterClient(client Client) {
+func (h *Hub) unregisterClient(cl Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	gameID := client.GetGameID()
+	gameID := cl.GetGameID()
 
 	if clients, ok := h.games[gameID]; ok {
-		if _, exists := clients[client]; exists {
-			delete(clients, client)
+		if _, exists := clients[cl]; exists {
+			delete(clients, cl)
 
 			if len(clients) == 0 {
 				delete(h.games, gameID)
 			}
 
 			if manager, exists := h.managers[gameID]; exists {
-				manager.SetPlayerConnected(client.GetUserID(), false)
+				manager.SetPlayerConnected(cl.GetUserID(), false)
 			}
 		}
 	}
@@ -43,7 +45,12 @@ func (h *Hub) GetClient(gameID, userID interface{}) Client {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	clients, ok := h.games[gameID.(interface{})]
+	gid, ok := gameID.(uuid.UUID)
+	if !ok {
+		return nil
+	}
+
+	clients, ok := h.games[gid]
 	if !ok {
 		return nil
 	}

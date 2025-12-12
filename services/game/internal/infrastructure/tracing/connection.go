@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 func connectWithRetry() (*otlptrace.Exporter, error) {

@@ -6,10 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/domain/event"
 )
 
 type EventRepository struct {
@@ -20,7 +17,7 @@ func NewEventRepository(db *sql.DB) *EventRepository {
 	return &EventRepository{db: db}
 }
 
-func (r *EventRepository) LogEvent(ctx context.Context, event *domain.GameEvent) error {
+func (r *EventRepository) LogEvent(ctx context.Context, event *event.Event) error {
 	dataJSON, err := marshalEventData(event.Data)
 	if err != nil {
 		return err
@@ -44,7 +41,7 @@ func (r *EventRepository) LogEvent(ctx context.Context, event *domain.GameEvent)
 	return nil
 }
 
-func (r *EventRepository) LogEvents(ctx context.Context, events []*domain.GameEvent) error {
+func (r *EventRepository) LogEvents(ctx context.Context, events []*event.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -89,16 +86,16 @@ func (r *EventRepository) LogEvents(ctx context.Context, events []*domain.GameEv
 	return nil
 }
 
-func (r *EventRepository) GetGameEvents(ctx context.Context, gameID uuid.UUID) ([]*domain.GameEvent, error) {
+func (r *EventRepository) GetGameEvents(ctx context.Context, gameID uuid.UUID) ([]*event.Event, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectGameEvents, gameID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get events: %w", err)
 	}
 	defer rows.Close()
 
-	var events []*domain.GameEvent
+	var events []*event.Event
 	for rows.Next() {
-		event := &domain.GameEvent{}
+		event := &event.Event{}
 		if err := scanEvent(rows, event); err != nil {
 			return nil, err
 		}
@@ -108,16 +105,16 @@ func (r *EventRepository) GetGameEvents(ctx context.Context, gameID uuid.UUID) (
 	return events, nil
 }
 
-func (r *EventRepository) GetEventsByType(ctx context.Context, gameID uuid.UUID, eventType domain.EventType) ([]*domain.GameEvent, error) {
+func (r *EventRepository) GetEventsByType(ctx context.Context, gameID uuid.UUID, eventType event.Type) ([]*event.Event, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectEventsByType, gameID, eventType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get events: %w", err)
 	}
 	defer rows.Close()
 
-	var events []*domain.GameEvent
+	var events []*event.Event
 	for rows.Next() {
-		event := &domain.GameEvent{}
+		event := &event.Event{}
 		if err := scanEvent(rows, event); err != nil {
 			return nil, err
 		}

@@ -5,11 +5,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/logger"
 )
 
+type Hub interface {
+	Unregister(client interface{ GetUserID() uuid.UUID; GetGameID() uuid.UUID; GetRTT() time.Duration; Send([]byte) })
+	HandleMessage(client interface{ GetUserID() uuid.UUID; GetGameID() uuid.UUID; GetRTT() time.Duration; Send([]byte) }, msgData interface{})
+}
+
 type Client struct {
-	hub    *Hub
+	hub    Hub
 	conn   *websocket.Conn
 	send   chan []byte
 	userID uuid.UUID
@@ -17,7 +22,18 @@ type Client struct {
 	rtt    *RTTTracker
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, userID, gameID uuid.UUID) *Client {
+const (
+	MaxMessageSize  = 8192
+	PongWait        = 60 * time.Second
+	JSONPingPeriod  = 5 * time.Second
+	WriteWait       = 10 * time.Second
+)
+
+const (
+	ErrorInvalidMessageFormat = "Invalid message format"
+)
+
+func NewClient(hub Hub, conn *websocket.Conn, userID, gameID uuid.UUID) *Client {
 	return &Client{
 		hub:    hub,
 		conn:   conn,
@@ -46,7 +62,7 @@ func (c *Client) GetLastPingSentAt() time.Time {
 
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
+		c.hub.Unregister(c)
 		c.conn.Close()
 	}()
 
@@ -58,7 +74,7 @@ func (c *Client) readPump() {
 	})
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, msgData, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logger.Errorf(nil, "WebSocket error: %v", err)
@@ -66,17 +82,7 @@ func (c *Client) readPump() {
 			break
 		}
 
-		clientMsg, err := NewClientMessage(message)
-		if err != nil {
-			logger.Errorf(nil, "Failed to parse client message: %v", err)
-			sendErrorMessage(c, ErrorInvalidMessageFormat, "INVALID_MESSAGE")
-			continue
-		}
-
-		c.hub.clientMessage <- &ClientMessageWrapper{
-			client:  c,
-			message: clientMsg,
-		}
+		c.hub.HandleMessage(c, msgData)
 	}
 }
 
@@ -116,15 +122,8 @@ func (c *Client) writePump() {
 			now := time.Now()
 			c.SetLastPingSentAt(now)
 
-			pingMsg := NewPingMessage(now.UnixMilli())
-			data, err := pingMsg.ToJSON()
-			if err != nil {
-				logger.Errorf(nil, "[PING] Failed to marshal ping message: %v", err)
-				continue
-			}
-
 			c.conn.SetWriteDeadline(time.Now().Add(WriteWait))
-			if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			if err := c.conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"PING"}`)); err != nil {
 				logger.Errorf(nil, "[PING] Failed to send ping: %v", err)
 				return
 			}

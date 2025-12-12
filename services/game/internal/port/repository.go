@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/game"
 )
 
 type GameRepository interface {

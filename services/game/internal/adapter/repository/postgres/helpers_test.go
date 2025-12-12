@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/domain/player"
+	"sigame/game/internal/domain/event"
 )
 
 func TestHandleNullTime(t *testing.T) {
@@ -121,10 +121,10 @@ func TestUnmarshalEventData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			event := &domain.GameEvent{
+			event := &event.Event{
 				ID:        uuid.New(),
 				GameID:    uuid.New(),
-				EventType: domain.EventGameCreated,
+				EventType: event.TypeGameCreated,
 			}
 			err := unmarshalEventData(tt.dataJSON, event)
 			if (err != nil) != tt.wantErr {

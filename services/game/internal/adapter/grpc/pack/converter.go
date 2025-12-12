@@ -4,37 +4,34 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
+	domainPack "sigame/game/internal/domain/pack"
 )
 
-func convertPackResponse(packResp *PackContentResponse, packID uuid.UUID) (*domain.Pack, error) {
+func convertPackResponse(packResp *PackContentResponse, packID uuid.UUID) (*domainPack.Pack, error) {
 	if packResp.Error != "" {
 		return nil, fmt.Errorf("pack service returned error: %s", packResp.Error)
 	}
 
-	pack := &domain.Pack{
+	p := &domainPack.Pack{
 		ID:     packID,
 		Name:   packResp.Name,
 		Author: packResp.Author,
-		Rounds: make([]*domain.Round, len(packResp.Rounds)),
+		Rounds: make([]*domainPack.Round, len(packResp.Rounds)),
 	}
 
 	for i, r := range packResp.Rounds {
-		pack.Rounds[i] = convertRound(r)
+		p.Rounds[i] = convertRound(r)
 	}
 
-	return pack, nil
+	return p, nil
 }
 
-func convertRound(r RoundJSON) *domain.Round {
-	round := &domain.Round{
+func convertRound(r RoundJSON) *domainPack.Round {
+	round := &domainPack.Round{
 		ID:          r.ID,
 		RoundNumber: r.RoundNumber,
 		Name:        r.Name,
-		Themes:      make([]*domain.Theme, len(r.Themes)),
+		Themes:      make([]*domainPack.Theme, len(r.Themes)),
 	}
 
 	for j, t := range r.Themes {
@@ -44,11 +41,11 @@ func convertRound(r RoundJSON) *domain.Round {
 	return round
 }
 
-func convertTheme(t ThemeJSON) *domain.Theme {
-	theme := &domain.Theme{
+func convertTheme(t ThemeJSON) *domainPack.Theme{
+	theme := &domainPack.Theme{
 		ID:        t.ID,
 		Name:      t.Name,
-		Questions: make([]*domain.Question, len(t.Questions)),
+		Questions: make([]*domainPack.Question, len(t.Questions)),
 	}
 
 	for k, q := range t.Questions {
@@ -58,8 +55,8 @@ func convertTheme(t ThemeJSON) *domain.Theme {
 	return theme
 }
 
-func convertQuestion(q QuestionJSON) *domain.Question {
-	return &domain.Question{
+func convertQuestion(q QuestionJSON) *domainPack.Question {
+	return &domainPack.Question{
 		ID:              q.ID,
 		Price:           q.Price,
 		Text:            q.Text,
@@ -70,4 +67,3 @@ func convertQuestion(q QuestionJSON) *domain.Question {
 		Used:            false,
 	}
 }
-

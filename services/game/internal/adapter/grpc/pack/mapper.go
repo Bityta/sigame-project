@@ -1,7 +1,7 @@
 package pack
 
 import (
-	domainPack "github.com/sigame/game/internal/domain/pack"
+	domainPack "sigame/game/internal/domain/pack"
 )
 
 func protoToDomainPack(protoPack interface{}) *domainPack.Pack {

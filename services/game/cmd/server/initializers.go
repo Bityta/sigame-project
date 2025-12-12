@@ -2,14 +2,14 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/sigame/game/internal/infrastructure/config"
-	grpcClient "github.com/sigame/game/internal/adapter/grpc/pack"
-	"github.com/sigame/game/internal/infrastructure/metrics"
-	"github.com/sigame/game/internal/adapter/repository/postgres"
-	"github.com/sigame/game/internal/adapter/repository/redis"
-	"github.com/sigame/game/internal/infrastructure/tracing"
-	"github.com/sigame/game/internal/transport/http"
-	"github.com/sigame/game/internal/transport/ws"
+	"sigame/game/internal/infrastructure/config"
+	grpcClient "sigame/game/internal/adapter/grpc/pack"
+	"sigame/game/internal/infrastructure/metrics"
+	"sigame/game/internal/adapter/repository/postgres"
+	"sigame/game/internal/adapter/repository/redis"
+	"sigame/game/internal/infrastructure/tracing"
+	"sigame/game/internal/transport/http"
+	"sigame/game/internal/transport/ws"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 

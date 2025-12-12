@@ -2,10 +2,10 @@ package ws
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/sigame/game/internal/transport/ws/client"
-	"github.com/sigame/game/internal/transport/ws/handler"
-	"github.com/sigame/game/internal/transport/ws/hub"
-	"github.com/sigame/game/internal/transport/ws/message"
+	"sigame/game/internal/transport/ws/client"
+	"sigame/game/internal/transport/ws/handler"
+	"sigame/game/internal/transport/ws/hub"
+	"sigame/game/internal/transport/ws/message"
 )
 
 type Hub = hub.Hub
@@ -16,6 +16,14 @@ type MessageType = message.MessageType
 
 func NewHub() *Hub {
 	return hub.New()
+}
+
+func NewErrorMessage(msg, code string) *ServerMessage {
+	return message.NewErrorMessage(msg, code)
+}
+
+func NewClientMessage(data []byte) (*ClientMessage, error) {
+	return message.NewClientMessage(data)
 }
 
 type Handler struct {
@@ -31,6 +39,3 @@ func NewHandler(h *Hub) *Handler {
 func (h *Handler) HandleWebSocket(c *gin.Context) {
 	h.wsHandler.HandleWebSocket(c)
 }
-
-
-

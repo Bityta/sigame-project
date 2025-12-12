@@ -7,15 +7,12 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain/game"
-	"github.com/sigame/game/internal/domain/pack"
-	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/domain/event"
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 type PackServiceClient interface {
-	GetPackContent(ctx context.Context, packID uuid.UUID) (*domain.Pack, error)
+	GetPackContent(ctx context.Context, packID uuid.UUID) (*pack.Pack, error)
 	ValidatePackExists(ctx context.Context, packID uuid.UUID) (bool, error)
 }
 
@@ -26,10 +23,8 @@ type PackClient struct {
 
 func NewPackClient(address string) (*PackClient, error) {
 	return &PackClient{
-		baseURL: fmt.Sprintf("%s:
-		httpClient: &http.Client{
-			Timeout: DefaultHTTPTimeout,
-		},
+		baseURL:    fmt.Sprintf("http://%s", address),
+		httpClient: http.DefaultClient,
 	}, nil
 }
 
@@ -71,7 +66,7 @@ type QuestionJSON struct {
 	MediaDurationMs int      `json:"media_duration_ms"`
 }
 
-func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*domain.Pack, error) {
+func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*pack.Pack, error) {
 	url := buildURL(c.baseURL, PathPackContent, packID.String())
 
 	logger.Debugf(ctx, "Fetching pack content from: %s", url)

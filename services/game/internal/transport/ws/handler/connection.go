@@ -6,7 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/transport/ws/client"
+	"sigame/game/internal/transport/ws/hub"
+)
+
+const (
+	QueryParamUserID         = "user_id"
+	ErrorInvalidGameID       = "Invalid game ID"
+	ErrorUserIDRequired      = "user_id is required"
+	ErrorInvalidUserID       = "Invalid user ID"
+	ErrorGameNotFound        = "Game not found or not started"
 )
 
 var upgrader = websocket.Upgrader{
@@ -18,11 +28,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	hub *Hub
+	hub *hub.Hub
 }
 
-func NewHandler(hub *Hub) *Handler {
-	return &Handler{hub: hub}
+func NewHandler(h *hub.Hub) *Handler {
+	return &Handler{hub: h}
 }
 
 func (h *Handler) HandleWebSocket(c *gin.Context) {
@@ -69,9 +79,9 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 
 	logger.Debugf(ctx, "[WS] Connection upgraded, creating client for game=%s, user=%s", gameID, userID)
 
-	client := NewClient(h.hub, conn, userID, gameID)
-	h.hub.register <- client
-	client.Run()
+	cl := client.NewClient(h.hub, conn, userID, gameID)
+	h.hub.Register(cl)
+	cl.Run()
 
 	logger.Infof(ctx, "[WS] WebSocket connection established: user=%s, game=%s", userID, gameID)
 }

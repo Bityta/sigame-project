@@ -2,8 +2,8 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/sigame/game/internal/transport/http/handler"
-	"github.com/sigame/game/internal/transport/http/middleware"
+	"sigame/game/internal/transport/http/handler"
+	"sigame/game/internal/transport/http/middleware"
 )
 
 type WSHandler interface {

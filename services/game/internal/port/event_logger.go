@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/sigame/game/internal/domain/event"
+	"sigame/game/internal/domain/event"
 )
 
 type EventLogger interface {

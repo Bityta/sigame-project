@@ -1,4 +1,4 @@
-module github.com/sigame/game
+module sigame/game
 
 go 1.21
 
