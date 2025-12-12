@@ -5,6 +5,8 @@ import (
 	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
 	"sigame/game/internal/core/scoring"
+	"sigame/game/internal/infrastructure/logger"
+	wsMessage "sigame/game/internal/transport/ws/message"
 )
 
 func (m *Manager) BroadcastStateUnlocked() {
@@ -86,12 +88,46 @@ func (m *Manager) broadcastState(state *domainGame.State) {
 }
 
 func (m *Manager) serializeState(state *domainGame.State) []byte {
-	return nil
+	msg := wsMessage.NewStateUpdateMessage(state)
+	data, err := msg.ToJSON()
+	if err != nil {
+		logger.Errorf(nil, "%v", ErrSerializeState(err))
+		return nil
+	}
+	return data
 }
 
 func (m *Manager) sendStateToClient(client interface{}, state *domainGame.State) {
+	clientWithSend, ok := client.(interface{ Send([]byte) })
+	if !ok {
+		logger.Errorf(nil, "%v", ErrClientDoesNotImplementSend)
+		return
+	}
+
+	msg := wsMessage.NewStateUpdateMessage(state)
+	data, err := msg.ToJSON()
+	if err != nil {
+		logger.Errorf(nil, "%v", ErrSerializeStateForClient(err))
+		return
+	}
+
+	clientWithSend.Send(data)
 }
 
 func (m *Manager) sendRoundMediaManifest(roundNumber int, manifest interface{}, totalSize int64) {
+	mediaItems, ok := manifest.([]wsMessage.MediaItem)
+	if !ok {
+		logger.Errorf(nil, "%v", ErrInvalidManifestType)
+		return
+	}
+
+	msg := wsMessage.NewRoundMediaManifestMessage(roundNumber, mediaItems, totalSize)
+	data, err := msg.ToJSON()
+	if err != nil {
+		logger.Errorf(nil, "%v", ErrSerializeMediaManifest(err))
+		return
+	}
+
+	m.hub.Broadcast(m.game.ID, data)
 }
 

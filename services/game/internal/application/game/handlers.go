@@ -7,6 +7,8 @@ import (
 	domainGame "sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
+	"sigame/game/internal/infrastructure/logger"
+	wsMessage "sigame/game/internal/transport/ws/message"
 )
 
 func (m *Manager) findHost() uuid.UUID {
@@ -179,6 +181,58 @@ func (m *Manager) startForAllQuestion(question *pack.Question) {
 }
 
 func (m *Manager) sendStartMedia(question *pack.Question) {
+	if !question.HasMedia() {
+		return
+	}
+
+	round := m.pack.GetRound(m.game.CurrentRound)
+	if round == nil {
+		logger.Errorf(nil, "%v", ErrRoundNotFound)
+		return
+	}
+
+	var themeIndex int = -1
+	if m.game.CurrentTheme != nil {
+		for i, theme := range round.Themes {
+			if theme.Name == *m.game.CurrentTheme {
+				themeIndex = i
+				break
+			}
+		}
+	}
+
+	if themeIndex == -1 {
+		logger.Errorf(nil, "%v", ErrThemeNotFound)
+		return
+	}
+
+	mediaItem := m.mediaTracker.FindMediaByQuestion(themeIndex, question.Price)
+	if mediaItem == nil {
+		logger.Errorf(nil, "%v", ErrMediaItemNotFound)
+		return
+	}
+
+	now := time.Now().UnixMilli()
+	durationMs := int64(question.MediaDurationMs)
+	if durationMs == 0 {
+		durationMs = DefaultMediaDurationMs
+	}
+
+	msg := wsMessage.NewStartMediaMessage(
+		mediaItem.ID,
+		mediaItem.Type,
+		mediaItem.URL,
+		now,
+		durationMs,
+	)
+
+	data, err := msg.ToJSON()
+	if err != nil {
+		logger.Errorf(nil, "%v", ErrSerializeStartMediaMessage(err))
+		return
+	}
+
+	m.hub.Broadcast(m.game.ID, data)
 }
 
 func (m *Manager) handlePressButton(userID uuid.UUID) {

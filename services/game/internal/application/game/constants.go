@@ -3,8 +3,6 @@ package game
 import "time"
 
 const (
-	PercentComplete = 100
-
 	ManagerActionChannelBuffer = 100
 	RoundsOverviewDuration     = 5 * time.Second
 	RoundIntroDuration         = 3 * time.Second
@@ -22,5 +20,6 @@ const (
 	RoundEndDelay                = 5 * time.Second
 	TopWinnersCount              = 3
 	MediaIDSuffix                = "_media"
+	DefaultMediaDurationMs       = 5000
 )
 
