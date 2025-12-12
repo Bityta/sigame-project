@@ -15,6 +15,7 @@ import (
 	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/infrastructure/logger"
 	"sigame/game/internal/port"
+	wsMessage "sigame/game/internal/transport/ws/message"
 )
 
 type Manager struct {
