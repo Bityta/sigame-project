@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	domainGame "sigame/game/internal/domain/game"
 )
 
@@ -10,7 +12,7 @@ func (m *Manager) handleTimeout() {
 
 	switch m.game.Status {
 	case domainGame.StatusRoundsOverview:
-		m.startRound(1)
+		m.startRound(FirstRoundNumber)
 
 	case domainGame.StatusRoundStart:
 		m.transitionToQuestionSelect()
@@ -86,9 +88,9 @@ func (m *Manager) skipQuestion() {
 		winner := m.buttonPress.GetWinner()
 		if winner != nil {
 			m.game.SetActivePlayer(winner.UserID)
-			m.game.UpdateStatus(domainGame.StatusAnswerJudging)
+			m.game.UpdateStatus(domainGame.StatusAnswering)
 			m.BroadcastState()
-			m.timer.Start(AnswerJudgingDuration)
+			m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
 			return
 		}
 	}
@@ -98,6 +100,11 @@ func (m *Manager) skipQuestion() {
 
 func (m *Manager) handleAnswerTimeout() {
 	if m.game.ActivePlayer == nil {
+		return
+	}
+
+	if m.game.Status == domainGame.StatusAnswering {
+		m.transitionToAnswerJudging()
 		return
 	}
 
@@ -142,7 +149,7 @@ func (m *Manager) finishForAllQuestion() {
 		if result.IsCorrect {
 			p.AddScore(result.ScoreDelta)
 		} else {
-			p.SubtractScore(-result.ScoreDelta)
+			p.SubtractScore(result.ScoreDelta)
 		}
 	}
 

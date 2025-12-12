@@ -3,6 +3,7 @@ package game
 import (
 	"sort"
 
+	"sigame/game/internal/core/scoring"
 	"sigame/game/internal/domain/player"
 )
 
@@ -35,7 +36,7 @@ func (m *Manager) calculateFinalScores() []player.Score {
 	})
 
 	for i := range scores {
-		scores[i].Rank = i + 1
+		scores[i].Rank = i + scoring.RankStartIndex
 	}
 
 	return scores

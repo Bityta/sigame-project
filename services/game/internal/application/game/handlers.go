@@ -22,7 +22,7 @@ func (m *Manager) findHost() uuid.UUID {
 
 func (m *Manager) selectActivePlayer() uuid.UUID {
 	var selectedPlayer uuid.UUID
-	minScore := int(^uint(0) >> 1)
+	minScore := MaxIntValue
 
 	for userID, p := range m.game.Players {
 		if p.Role == player.RoleHost {
@@ -114,7 +114,7 @@ func (m *Manager) startNormalQuestion(question *pack.Question) {
 		m.sendStartMedia(question)
 	}
 
-	readTime := 3 * time.Second
+	readTime := QuestionReadDuration
 	if question.MediaDurationMs > 0 {
 		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
 	}
@@ -124,7 +124,7 @@ func (m *Manager) startNormalQuestion(question *pack.Question) {
 func (m *Manager) startSecretQuestion(question *pack.Question) {
 	m.game.UpdateStatus(domainGame.StatusSecretTransfer)
 	m.BroadcastState()
-	m.timer.Start(30 * time.Second)
+	m.timer.Start(SecretTransferDuration)
 }
 
 func (m *Manager) startStakeQuestion(question *pack.Question) {
@@ -148,7 +148,7 @@ func (m *Manager) startStakeQuestion(question *pack.Question) {
 
 	m.game.UpdateStatus(domainGame.StatusStakeBetting)
 	m.BroadcastState()
-	m.timer.Start(20 * time.Second)
+	m.timer.Start(StakeBettingDuration)
 }
 
 func (m *Manager) startForAllQuestion(question *pack.Question) {
@@ -161,7 +161,7 @@ func (m *Manager) startForAllQuestion(question *pack.Question) {
 		m.sendStartMedia(question)
 	}
 
-	readTime := 3 * time.Second
+	readTime := QuestionReadDuration
 	if question.MediaDurationMs > 0 {
 		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
 	}
@@ -255,7 +255,7 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 }
 
 func (m *Manager) finishButtonPressCollection() {
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(ButtonPressCollectionWindow)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -273,9 +273,9 @@ func (m *Manager) finishButtonPressCollection() {
 	m.timer.Stop()
 	m.game.SetActivePlayer(winner.UserID)
 
-	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
+	m.game.UpdateStatus(domainGame.StatusAnswering)
 	m.BroadcastState()
-	m.timer.Start(30 * time.Second)
+	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
 }
 
 func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
@@ -304,7 +304,7 @@ func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
 		p.SubtractScore(questionPrice)
 	}
 
-	m.continueGame()
+	m.transitionToAnswerJudging()
 }
 
 func (m *Manager) handleJudgeAnswer(action *PlayerAction) {
@@ -404,7 +404,7 @@ func (m *Manager) transferSecretToPlayer(fromUserID, toUserID uuid.UUID) {
 		m.sendStartMedia(m.game.CurrentQuestion)
 	}
 
-	readTime := 3 * time.Second
+	readTime := QuestionReadDuration
 	if m.game.CurrentQuestion.MediaDurationMs > 0 {
 		readTime += time.Duration(m.game.CurrentQuestion.MediaDurationMs) * time.Millisecond
 	}
@@ -463,7 +463,7 @@ func (m *Manager) placeStake(userID uuid.UUID, amount int, allIn bool) {
 		m.sendStartMedia(m.game.CurrentQuestion)
 	}
 
-	readTime := 3 * time.Second
+	readTime := QuestionReadDuration
 	if m.game.CurrentQuestion.MediaDurationMs > 0 {
 		readTime += time.Duration(m.game.CurrentQuestion.MediaDurationMs) * time.Millisecond
 	}

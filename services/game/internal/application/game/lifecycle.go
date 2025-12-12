@@ -6,6 +6,7 @@ import (
 
 	"sigame/game/internal/domain/event"
 	domainGame "sigame/game/internal/domain/game"
+	"sigame/game/internal/domain/pack"
 )
 
 func (m *Manager) startGame() {
@@ -66,7 +67,7 @@ func (m *Manager) endRound() {
 	totalRounds := m.pack.TotalRounds()
 
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(RoundEndDelay)
 
 		m.mu.Lock()
 		defer m.mu.Unlock()
@@ -120,7 +121,7 @@ func (m *Manager) transitionToButtonPress() {
 func (m *Manager) transitionToAnswerJudging() {
 	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
 	m.BroadcastState()
-	m.timer.Start(30 * time.Second)
+	m.timer.Start(AnswerJudgingDuration)
 }
 
 func (m *Manager) transitionFromQuestionShow() {
@@ -130,7 +131,7 @@ func (m *Manager) transitionFromQuestionShow() {
 	}
 
 	questionType := m.game.CurrentQuestion.GetType()
-	if questionType == "secret" || questionType == "stake" {
+	if questionType == pack.TypeSecret || questionType == pack.TypeStake {
 		m.transitionToAnswerJudging()
 	} else {
 		m.transitionToButtonPress()

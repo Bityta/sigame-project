@@ -9,7 +9,8 @@ const (
 	AnswerJudgingDuration      = 30 * time.Second
 	TimerUpdateInterval        = 1 * time.Second
 	InitialRoundNumber         = 0
-	MaxIntValue                = int(^uint(0) >> 1)
+	FirstRoundNumber            = InitialRoundNumber + 1
+	MaxIntValue                 = int(^uint(0) >> 1)
 
 	QuestionReadDuration         = 3 * time.Second
 	SecretTransferDuration       = 30 * time.Second
