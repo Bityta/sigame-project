@@ -27,6 +27,7 @@ func (m *Manager) handleTimeout() {
 		m.skipQuestion()
 
 	case domainGame.StatusAnswering:
+		logger.Infof(m.ctx, "[handleTimeout] Answering timeout, transitioning to answer_judging")
 		m.transitionToAnswerJudging()
 
 	case domainGame.StatusAnswerJudging:

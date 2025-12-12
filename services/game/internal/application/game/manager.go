@@ -121,6 +121,7 @@ func (m *Manager) run() {
 						logger.Errorf(m.ctx, "Panic handling timeout: %v", r)
 					}
 				}()
+				logger.Infof(m.ctx, "[Timer] Timer expired, current game status: %s", m.game.Status)
 				m.handleTimeout()
 			}()
 

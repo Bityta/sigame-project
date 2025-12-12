@@ -119,9 +119,11 @@ func (m *Manager) transitionToButtonPress() {
 }
 
 func (m *Manager) transitionToAnswerJudging() {
+	logger.Infof(m.ctx, "[transitionToAnswerJudging] Transitioning from status: %s to answer_judging", m.game.Status)
 	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
 	m.BroadcastState()
 	m.timer.Start(AnswerJudgingDuration)
+	logger.Infof(m.ctx, "[transitionToAnswerJudging] Status changed to: %s, timer started for %v", m.game.Status, AnswerJudgingDuration)
 }
 
 func (m *Manager) transitionFromQuestionShow() {
