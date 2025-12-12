@@ -87,6 +87,7 @@ func (m *Manager) buildGameState() *domainGame.State {
 func (m *Manager) broadcastState(state *domainGame.State) {
 	data := m.serializeState(state)
 	if data != nil {
+		logger.Infof(m.ctx, "[broadcastState] Broadcasting state update: status=%s, timeRemaining=%d", state.Status, state.TimeRemaining)
 		m.hub.Broadcast(m.game.ID, data)
 	}
 }
