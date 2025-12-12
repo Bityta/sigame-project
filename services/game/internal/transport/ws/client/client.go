@@ -79,7 +79,7 @@ func (c *Client) readPump() {
 		}
 
 		logger.Infof(nil, "[Client] Parsed message: type=%s, user_id=%s, game_id=%s, payload=%v", clientMsg.GetType(), clientMsg.UserID, clientMsg.GameID, clientMsg.GetPayload())
-		c.hub.HandleMessage(c, *clientMsg)
+		c.hub.HandleMessage(c, clientMsg)
 	}
 }
 
