@@ -34,10 +34,19 @@ func Auth() gin.HandlerFunc {
 			if len(parts) == 2 && parts[0] == "Bearer" {
 				token := parts[1]
 				validatedUserID, err := extractUserIDFromToken(c.Request.Context(), token)
-				if err == nil && validatedUserID != uuid.Nil {
+				if err != nil {
+					logger.Warnf(c.Request.Context(), "Token validation error: %v", err)
+				} else if validatedUserID != uuid.Nil {
 					userID = validatedUserID
+					logger.Debugf(c.Request.Context(), "Token validated successfully, user_id=%s", userID)
+				} else {
+					logger.Warnf(c.Request.Context(), "Token validation returned nil user_id")
 				}
+			} else {
+				logger.Warnf(c.Request.Context(), "Invalid Authorization header format")
 			}
+		} else {
+			logger.Debugf(c.Request.Context(), "No Authorization header found")
 		}
 
 		if userID == uuid.Nil {
@@ -46,11 +55,14 @@ func Auth() gin.HandlerFunc {
 				userID, err = uuid.Parse(userIDStr)
 				if err != nil {
 					logger.Warnf(c.Request.Context(), "Invalid X-User-ID header: %v", err)
+				} else {
+					logger.Debugf(c.Request.Context(), "Using X-User-ID header, user_id=%s", userID)
 				}
 			}
 		}
 
 		if userID == uuid.Nil {
+			logger.Warnf(c.Request.Context(), "Authentication failed: no valid user ID found")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is required"})
 			c.Abort()
 			return
@@ -63,13 +75,13 @@ func Auth() gin.HandlerFunc {
 
 func extractUserIDFromToken(ctx context.Context, token string) (uuid.UUID, error) {
 	if authClientInstance == nil {
-		logger.Warnf(ctx, "Auth client not initialized, skipping token validation")
+		logger.Warnf(ctx, "Auth client not initialized, cannot validate token")
 		return uuid.Nil, nil
 	}
 
 	resp, err := authClientInstance.ValidateToken(ctx, token)
 	if err != nil {
-		logger.Warnf(ctx, "Token validation failed: %v", err)
+		logger.Errorf(ctx, "Token validation gRPC call failed: %v", err)
 		return uuid.Nil, err
 	}
 

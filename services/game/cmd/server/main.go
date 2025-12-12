@@ -59,9 +59,14 @@ func main() {
 	authClient, err := initAuthClient(cfg)
 	if err != nil {
 		logger.Warnf(nil, "Failed to connect to Auth Service: %v (continuing without token validation)", err)
+		logger.Warnf(nil, "Endpoints requiring authentication will only accept X-User-ID header")
 	} else {
-		defer authClient.Close()
 		logger.Infof(nil, "Connected to Auth Service at %s", cfg.GetAuthServiceAddress())
+		defer func() {
+			if authClient != nil {
+				authClient.Close()
+			}
+		}()
 	}
 
 	hub := initWebSocketHub()
