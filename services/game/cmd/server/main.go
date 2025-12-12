@@ -3,161 +3,174 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	
-	"github.com/sigame/game/internal/config"
-	grpcClient "github.com/sigame/game/internal/grpc"
-	"github.com/sigame/game/internal/metrics"
-	"github.com/sigame/game/internal/repository/postgres"
-	"github.com/sigame/game/internal/repository/redis"
-	"github.com/sigame/game/internal/tracing"
-	"github.com/sigame/game/internal/transport/rest"
-	"github.com/sigame/game/internal/transport/websocket"
+	"github.com/google/uuid"
+	appGame "sigame/game/internal/application/game"
+	grpcClient "sigame/game/internal/adapter/grpc/pack"
+	"sigame/game/internal/infrastructure/config"
+	"sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/infrastructure/tracing"
+	"sigame/game/internal/port"
+	"sigame/game/internal/transport/ws"
 )
 
 func main() {
-	// Load configuration
+	logger.Init(ServiceName)
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Errorf(nil, "Failed to load config: %v", err)
+		os.Exit(1)
 	}
 
-	log.Printf("Starting Game Service...")
-	log.Printf("HTTP Port: %s", cfg.Server.HTTPPort)
-	log.Printf("WS Port: %s", cfg.Server.WSPort)
-	log.Printf("Mode: %s", cfg.Server.Mode)
+	logger.Infof(nil, "Starting Game Service...")
+	logger.Infof(nil, "HTTP Port: %s", cfg.Server.HTTPPort)
+	logger.Infof(nil, "WS Port: %s", cfg.Server.WSPort)
 
-	// Initialize OpenTelemetry tracer
-	tp, err := tracing.InitTracer("game-service")
+	tp, err := initTracer(ServiceName)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize tracer: %v", err)
-	} else {
+		logger.Warnf(nil, "Failed to initialize tracer: %v", err)
+	} else if tp != nil {
 		defer tracing.Shutdown(tp)
 	}
 
-	// Initialize metrics
-	_ = metrics.NewMetrics()
-	log.Printf("✓ Metrics initialized")
+	_ = initMetrics()
+	logger.Infof(nil, "Metrics initialized")
 
-	// Connect to PostgreSQL
-	pgClient, err := postgres.NewClient(
-		cfg.GetPostgresConnectionString(),
-		cfg.Database.MaxConns,
-		cfg.Database.MaxIdle,
-	)
+	pgClient, err := initPostgreSQL(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+		logger.Errorf(nil, "Failed to connect to PostgreSQL: %v", err)
+		os.Exit(1)
 	}
 	defer pgClient.Close()
-	log.Printf("✓ Connected to PostgreSQL")
+	logger.Infof(nil, "Connected to PostgreSQL")
 
-	// Create repositories
-	gameRepo := postgres.NewGameRepository(pgClient.GetDB())
-	eventRepo := postgres.NewEventRepository(pgClient.GetDB())
-
-	// Connect to Redis
-	redisClient, err := redis.NewClient(
-		cfg.GetRedisAddress(),
-		cfg.Redis.Password,
-		cfg.Redis.DB,
-	)
+	redisClient, err := initRedis(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logger.Errorf(nil, "Failed to connect to Redis: %v", err)
+		os.Exit(1)
 	}
 	defer redisClient.Close()
-	log.Printf("✓ Connected to Redis")
+	logger.Infof(nil, "Connected to Redis")
 
-	// Create Redis repositories
-	redisGameRepo := redis.NewGameRepository(redisClient.GetClient())
-	redisCacheRepo := redis.NewCacheRepository(redisClient.GetClient())
+	repos := initRepositories(pgClient, redisClient)
 
-	// Connect to Pack Service (gRPC)
-	packClient, err := grpcClient.NewPackClient(cfg.GetPackServiceAddress())
+	packClient, err := initPackClient(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to Pack Service: %v", err)
+		logger.Errorf(nil, "Failed to connect to Pack Service: %v", err)
+		os.Exit(1)
 	}
 	defer packClient.Close()
-	log.Printf("✓ Connected to Pack Service at %s", cfg.GetPackServiceAddress())
+	logger.Infof(nil, "Connected to Pack Service at %s", cfg.GetPackServiceAddress())
 
-	// Create WebSocket hub
-	hub := websocket.NewHub()
+	hub := initWebSocketHub()
 	go hub.Run()
-	log.Printf("✓ WebSocket hub started")
+	logger.Infof(nil, "WebSocket hub started")
 
-	// Create handlers
-	wsHandler := websocket.NewHandler(hub)
-	restHandler := rest.NewHandler(hub, packClient, gameRepo, eventRepo, redisGameRepo, redisCacheRepo)
+	if err := restoreActiveGames(hub, packClient, repos); err != nil {
+		logger.Warnf(nil, "Failed to restore active games: %v", err)
+	}
 
-	// Setup router
-	router := rest.SetupRouter(restHandler, wsHandler)
-	
-	// Add OpenTelemetry middleware
-	router.Use(otelgin.Middleware("game-service"))
+	handlers := initHandlers(hub, packClient, repos, pgClient, redisClient)
+	wsHandler := initWebSocketHandler(hub)
+	router := initRouter(handlers, wsHandler)
 
-	// Create HTTP server
+	httpServer := createHTTPServer(cfg, router)
+	metricsServer := createMetricsServer()
+
+	go func() {
+		logger.Infof(nil, "Metrics server listening on %s", MetricsPort)
+		if err := startMetricsServer(metricsServer, MetricsPort); err != nil && err != http.ErrServerClosed {
+			logger.Errorf(nil, "Metrics server error: %v", err)
+		}
+	}()
+
+	go func() {
+		httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
+		logger.Infof(nil, "HTTP server listening on %s", httpAddr)
+		if err := startHTTPServer(httpServer, httpAddr); err != nil && err != http.ErrServerClosed {
+			logger.Errorf(nil, "HTTP server error: %v", err)
+			os.Exit(1)
+		}
+	}()
+
 	httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
-	httpServer := &http.Server{
-		Addr:    httpAddr,
-		Handler: router,
-	}
+	logger.Infof(nil, "Game Service is ready!")
+	logger.Infof(nil, "HTTP API: %s", fmt.Sprintf("http://localhost%s", httpAddr))
+	logger.Infof(nil, "Metrics: %s", fmt.Sprintf("http://localhost%s/metrics", MetricsPort))
 
-	// Start metrics server
-	metricsAddr := ":9090"
-	metricsServer := &http.Server{
-		Addr:    metricsAddr,
-		Handler: promhttp.Handler(),
-	}
-
-	go func() {
-		log.Printf("✓ Metrics server listening on %s", metricsAddr)
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("Metrics server error: %v", err)
-		}
-	}()
-
-	// Start HTTP server
-	go func() {
-		log.Printf("✓ HTTP server listening on %s", httpAddr)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server error: %v", err)
-		}
-	}()
-
-	log.Printf("==============================================")
-	log.Printf("Game Service is ready!")
-	log.Printf("HTTP API: http://localhost%s", httpAddr)
-	log.Printf("Metrics: http://localhost%s/metrics", metricsAddr)
-	log.Printf("==============================================")
-
-	// Wait for interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down Game Service...")
+	logger.Infof(nil, "Shutting down Game Service...")
 
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
-	// Shutdown HTTP server
-	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
+	hub.Stop()
+	logger.Infof(nil, "All game managers stopped")
+
+	if err := shutdownServers(ctx, httpServer, metricsServer); err != nil {
+		logger.Errorf(nil, "Shutdown error: %v", err)
 	}
 
-	// Shutdown metrics server
-	if err := metricsServer.Shutdown(ctx); err != nil {
-		log.Printf("Metrics server shutdown error: %v", err)
+	logger.Infof(nil, "Game Service stopped gracefully")
+}
+
+func restoreActiveGames(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories) error {
+	ctx := context.Background()
+	const maxActiveGames = 1000
+
+	gameIDs, err := repos.RedisGameRepo.GetActiveGames(ctx, maxActiveGames)
+	if err != nil {
+		return fmt.Errorf("failed to get active games: %w", err)
 	}
 
-	log.Println("Game Service stopped gracefully")
+	if len(gameIDs) == 0 {
+		logger.Infof(ctx, "No active games to restore")
+		return nil
+	}
+
+	logger.Infof(ctx, "Restoring %d active games", len(gameIDs))
+
+	restored := 0
+	for _, gameID := range gameIDs {
+		if err := restoreGame(ctx, gameID, hub, packClient, repos, repos.EventRepo); err != nil {
+			logger.Errorf(ctx, "Failed to restore game %s: %v", gameID, err)
+			continue
+		}
+		restored++
+	}
+
+	logger.Infof(ctx, "Restored %d/%d active games", restored, len(gameIDs))
+	return nil
+}
+
+func restoreGame(ctx context.Context, gameID uuid.UUID, hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories, eventLogger port.EventLogger) error {
+	game, err := repos.RedisGameRepo.LoadGameState(ctx, gameID)
+	if err != nil {
+		return fmt.Errorf("failed to load game state: %w", err)
+	}
+
+	if !game.Status.IsActive() {
+		return nil
+	}
+
+	pack, err := packClient.GetPackContent(ctx, game.PackID)
+	if err != nil {
+		return fmt.Errorf("failed to load pack: %w", err)
+	}
+
+	manager := appGame.New(game, pack, hub, eventLogger, repos.GameRepo, repos.RedisGameRepo)
+	hub.RegisterGameManager(gameID, manager)
+	manager.Start()
+
+	logger.Infof(ctx, "Restored game %s", gameID)
+	return nil
 }
 
