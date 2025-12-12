@@ -114,6 +114,7 @@ func (m *Manager) selectQuestion(theme *pack.Theme, question *pack.Question) {
 	m.secretTarget = nil
 
 	questionType := question.GetType()
+	logger.Infof(m.ctx, "[selectQuestion] Selected question: id=%s, type=%s, price=%d", question.ID, questionType, question.Price)
 	switch questionType {
 	case pack.TypeSecret:
 		m.startSecretQuestion(question)
