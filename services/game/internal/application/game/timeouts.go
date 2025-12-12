@@ -27,7 +27,7 @@ func (m *Manager) handleTimeout() {
 		m.skipQuestion()
 
 	case domainGame.StatusAnswering:
-		m.handleAnswerTimeout()
+		m.transitionToAnswerJudging()
 
 	case domainGame.StatusAnswerJudging:
 		m.handleAnswerTimeout()
