@@ -183,7 +183,6 @@ func (m *Manager) SetPlayerConnected(userID uuid.UUID, connected bool) {
 	if player, err := m.game.GetPlayer(userID); err == nil {
 		player.SetConnected(connected)
 		logger.Infof(m.ctx, "[SetPlayerConnected] Player %s (%s) connected=%v", userID, player.Username, connected)
-		// Broadcast state after connection status change
 		m.BroadcastState()
 	}
 }
