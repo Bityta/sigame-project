@@ -151,17 +151,20 @@ func TestManager_Start(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil)
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
 	manager.Start()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	assert.NotNil(t, manager.timerTicker)
 	assert.NotNil(t, manager.ctx)
 
 	manager.Stop()
+	time.Sleep(10 * time.Millisecond)
 	mockLogger.AssertExpectations(t)
 	mockHub.AssertExpectations(t)
 }
