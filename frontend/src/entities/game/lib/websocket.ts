@@ -170,7 +170,7 @@ export class GameWebSocket {
   private handleMessage(message: WSMessage): void {
     // Handle PING automatically - respond with PONG for RTT measurement
     if (message.type === 'PING') {
-      this.handlePing(message.payload as PingPayload);
+      this.handlePing(message.payload as PingPayload | undefined);
       return;
     }
 
