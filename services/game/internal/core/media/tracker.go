@@ -105,6 +105,7 @@ func (mt *MediaTracker) UpdateProgress(userID uuid.UUID, loaded, total int, byte
 	status.Total = total
 	status.BytesLoaded = bytesLoaded
 	status.Percent = percent
+	status.Complete = percent >= 100
 	status.UpdatedAt = time.Now()
 }
 

@@ -1,20 +1,6 @@
 package media
 
-import (
-	"github.com/google/uuid"
-)
-
-const (
-	MediaTypeText  = "text"
-	MediaTypeImage = "image"
-	MediaTypeAudio = "audio"
-	MediaTypeVideo = "video"
-
-	MediaSizeImage   = 500_000
-	MediaSizeAudio   = 3_000_000
-	MediaSizeVideo   = 10_000_000
-	MediaSizeDefault = 100_000
-)
+import "github.com/google/uuid"
 
 func buildMediaID(round, themeIndex, price int) string {
 	return uuid.NewString()

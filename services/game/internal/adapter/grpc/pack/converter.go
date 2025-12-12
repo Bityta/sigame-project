@@ -1,15 +1,13 @@
 package pack
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	domainPack "sigame/game/internal/domain/pack"
 )
 
 func convertPackResponse(packResp *PackContentResponse, packID uuid.UUID) (*domainPack.Pack, error) {
 	if packResp.Error != "" {
-		return nil, fmt.Errorf("pack service returned error: %s", packResp.Error)
+		return nil, ErrPackServiceError(packResp.Error)
 	}
 
 	p := &domainPack.Pack{

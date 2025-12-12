@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const RTTCompensationFactor = 2
-
 type PressEntry struct {
 	UserID       uuid.UUID
 	Username     string

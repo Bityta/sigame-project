@@ -22,17 +22,6 @@ type Client struct {
 	rtt    *RTTTracker
 }
 
-const (
-	MaxMessageSize  = 8192
-	PongWait        = 60 * time.Second
-	JSONPingPeriod  = 5 * time.Second
-	WriteWait       = 10 * time.Second
-)
-
-const (
-	ErrorInvalidMessageFormat = "Invalid message format"
-)
-
 func NewClient(hub Hub, conn *websocket.Conn, userID, gameID uuid.UUID) *Client {
 	return &Client{
 		hub:    hub,

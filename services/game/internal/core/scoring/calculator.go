@@ -6,8 +6,6 @@ import (
 	"sigame/game/internal/domain/player"
 )
 
-const RankStartIndex = 1
-
 func CalculateScores(players map[string]*player.Player) []player.Score {
 	scores := make([]player.Score, 0, len(players))
 

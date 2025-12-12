@@ -418,6 +418,28 @@ func TestMediaTracker_GetPendingClients(t *testing.T) {
 		t.Errorf("Expected 0 pending clients, got %d", len(pending))
 	}
 
+	round := &pack.Round{
+		ID:          "round1",
+		RoundNumber: 1,
+		Name:        "Round 1",
+		Themes: []*pack.Theme{
+			{
+				ID:   "theme1",
+				Name: "Theme 1",
+				Questions: []*pack.Question{
+					{
+						ID:        "q1",
+						Price:      100,
+						MediaType:  MediaTypeImage,
+						MediaURL:   "http://example.com/image.jpg",
+					},
+				},
+			},
+		},
+	}
+
+	tracker.BuildManifest(round)
+
 	userID1 := uuid.New()
 	userID2 := uuid.New()
 	userID3 := uuid.New()
@@ -427,8 +449,8 @@ func TestMediaTracker_GetPendingClients(t *testing.T) {
 	tracker.RegisterClient(userID3)
 
 	pending = tracker.GetPendingClients()
-	if len(pending) != 0 {
-		t.Errorf("Expected 0 pending clients, got %d", len(pending))
+	if len(pending) != 3 {
+		t.Errorf("Expected 3 pending clients, got %d", len(pending))
 	}
 
 	tracker.UpdateProgress(userID1, 5, 10, 500000, 50)
@@ -619,7 +641,7 @@ func TestMediaTracker_Reset(t *testing.T) {
 		t.Errorf("Expected empty clients map, got %d clients", len(tracker.clients))
 	}
 
-	if !tracker.HasMedia() {
+	if tracker.HasMedia() {
 		t.Error("HasMedia should return false after reset")
 	}
 }
