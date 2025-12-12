@@ -35,6 +35,9 @@ const (
 
 	keyPackServiceHost = "PACK_SERVICE_HOST"
 	keyPackServicePort = "PACK_SERVICE_PORT"
+
+	keyAuthServiceHost = "AUTH_SERVICE_HOST"
+	keyAuthServicePort = "AUTH_SERVICE_PORT"
 )
 
 type Config struct {
@@ -42,6 +45,7 @@ type Config struct {
 	Database    DatabaseConfig
 	Redis       RedisConfig
 	PackService PackServiceConfig
+	AuthService AuthServiceConfig
 }
 
 type ServerConfig struct {
@@ -69,6 +73,11 @@ type RedisConfig struct {
 }
 
 type PackServiceConfig struct {
+	Host string
+	Port string
+}
+
+type AuthServiceConfig struct {
 	Host string
 	Port string
 }

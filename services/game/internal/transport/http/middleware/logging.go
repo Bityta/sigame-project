@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 func Logging() gin.HandlerFunc {
@@ -17,10 +18,7 @@ func Logging() gin.HandlerFunc {
 		latency := time.Since(start)
 		statusCode := c.Writer.Status()
 
-		_ = latency
-		_ = path
-		_ = method
-		_ = statusCode
+		logger.Infof(c.Request.Context(), "%s %s %d %v", method, path, statusCode, latency)
 	}
 }
 

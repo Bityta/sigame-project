@@ -34,12 +34,34 @@ func NewGameHandler(packService port.PackService, gameRepository port.GameReposi
 func (h *GameHandler) CreateGame(c *gin.Context) {
 	var req CreateGameRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": err.Error()})
+		return
+	}
+
+	if len(req.Players) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": "at least 2 players required"})
+		return
+	}
+
+	if len(req.Players) > 12 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": "maximum 12 players allowed"})
 		return
 	}
 
 	hasHost := false
+	seenUserIDs := make(map[uuid.UUID]bool)
 	for _, playerInfo := range req.Players {
+		if seenUserIDs[playerInfo.UserID] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": ErrorPlayerAlreadyExists})
+			return
+		}
+		seenUserIDs[playerInfo.UserID] = true
+
+		if len(playerInfo.Username) == 0 || len(playerInfo.Username) > 50 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": "username must be 1-50 characters"})
+			return
+		}
+
 		role := player.Role(playerInfo.Role)
 		if role != player.RoleHost && role != player.RolePlayer {
 			c.JSON(http.StatusBadRequest, gin.H{"error": ErrorInvalidRole})

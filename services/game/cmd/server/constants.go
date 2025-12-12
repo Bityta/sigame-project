@@ -7,10 +7,6 @@ const (
 )
 
 const (
-	MetricsPort = ":9090"
-)
-
-const (
 	ShutdownTimeout = 30 * time.Second
 )
 

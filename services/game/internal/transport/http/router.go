@@ -13,7 +13,7 @@ type WSHandler interface {
 func SetupRouter(gameHandler *handler.GameHandler, healthHandler *handler.HealthHandler, wsHandler WSHandler) *gin.Engine {
 	r := gin.New()
 
-	r.Use(gin.Recovery())
+	r.Use(handler.ErrorHandler())
 	r.Use(middleware.Logging())
 	r.Use(middleware.CORS())
 

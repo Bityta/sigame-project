@@ -1,44 +1,69 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	authClient "sigame/game/internal/adapter/grpc/auth"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 const UserIDContextKey = "user_id"
 
+type AuthService interface {
+	ValidateToken(ctx context.Context, token string) (*authClient.ValidateTokenResponse, error)
+}
+
+var authClientInstance AuthService
+
+func SetAuthClient(client AuthService) {
+	authClientInstance = client
+}
+
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var userIDStr string
+		var userID uuid.UUID
+		var err error
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" {
 			parts := strings.Split(authHeader, " ")
 			if len(parts) == 2 && parts[0] == "Bearer" {
 				token := parts[1]
-				userIDFromToken, err := extractUserIDFromToken(token)
-				if err == nil {
-					userIDStr = userIDFromToken
+				validatedUserID, err := extractUserIDFromToken(c.Request.Context(), token)
+				if err != nil {
+					logger.Warnf(c.Request.Context(), "Token validation error: %v", err)
+				} else if validatedUserID != uuid.Nil {
+					userID = validatedUserID
+					logger.Debugf(c.Request.Context(), "Token validated successfully, user_id=%s", userID)
+				} else {
+					logger.Warnf(c.Request.Context(), "Token validation returned nil user_id")
+				}
+			} else {
+				logger.Warnf(c.Request.Context(), "Invalid Authorization header format")
+			}
+		} else {
+			logger.Debugf(c.Request.Context(), "No Authorization header found")
+		}
+
+		if userID == uuid.Nil {
+			userIDStr := c.GetHeader("X-User-ID")
+			if userIDStr != "" {
+				userID, err = uuid.Parse(userIDStr)
+				if err != nil {
+					logger.Warnf(c.Request.Context(), "Invalid X-User-ID header: %v", err)
+				} else {
+					logger.Debugf(c.Request.Context(), "Using X-User-ID header, user_id=%s", userID)
 				}
 			}
 		}
 
-		if userIDStr == "" {
-			userIDStr = c.GetHeader("X-User-ID")
-		}
-
-		if userIDStr == "" {
+		if userID == uuid.Nil {
+			logger.Warnf(c.Request.Context(), "Authentication failed: no valid user ID found")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "user ID is required"})
-			c.Abort()
-			return
-		}
-
-		userID, err := uuid.Parse(userIDStr)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user ID"})
 			c.Abort()
 			return
 		}
@@ -48,7 +73,23 @@ func Auth() gin.HandlerFunc {
 	}
 }
 
-func extractUserIDFromToken(token string) (string, error) {
-	return "", nil
+func extractUserIDFromToken(ctx context.Context, token string) (uuid.UUID, error) {
+	if authClientInstance == nil {
+		logger.Warnf(ctx, "Auth client not initialized, cannot validate token")
+		return uuid.Nil, nil
+	}
+
+	resp, err := authClientInstance.ValidateToken(ctx, token)
+	if err != nil {
+		logger.Errorf(ctx, "Token validation gRPC call failed: %v", err)
+		return uuid.Nil, err
+	}
+
+	if !resp.Valid {
+		logger.Warnf(ctx, "Token is invalid: %s", resp.Error)
+		return uuid.Nil, nil
+	}
+
+	return resp.UserID, nil
 }
 
