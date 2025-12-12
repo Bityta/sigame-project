@@ -150,6 +150,9 @@ export const GamePage = () => {
         return isHost ? 'Выберите вопрос' : 'Ведущий выбирает вопрос...';
       case 'button_press':
         return isHost ? 'Ждём, пока игрок нажмёт кнопку...' : 'Жмите кнопку!';
+      case 'answering':
+        const isActivePlayer = gameState.activePlayer === user?.id;
+        return isHost ? 'Игрок отвечает...' : (isActivePlayer ? 'Говорите ваш ответ!' : 'Ждём ответа игрока...');
       case 'answer_judging':
         return isHost ? 'Оцените ответ игрока' : 'Ждём решения ведущего...';
       case 'secret_transfer':
@@ -328,6 +331,25 @@ export const GamePage = () => {
                   ✗ Неверно
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Answering Panel (for active player) */}
+          {gameState.status === 'answering' && gameState.activePlayer === user?.id && (
+            <div className="game-page__answering">
+              <div className="game-page__answering-icon">🎤</div>
+              <p className="game-page__answering-text">Говорите ваш ответ!</p>
+              {gameState.timeRemaining !== undefined && (
+                <p className="game-page__answering-timer">Осталось: {gameState.timeRemaining}с</p>
+              )}
+            </div>
+          )}
+
+          {/* Waiting for Active Player (for other players) */}
+          {gameState.status === 'answering' && gameState.activePlayer !== user?.id && (
+            <div className="game-page__waiting-player">
+              <div className="game-page__waiting-player-icon">🎤</div>
+              <p>Игрок отвечает...</p>
             </div>
           )}
 
