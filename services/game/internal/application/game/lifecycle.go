@@ -7,6 +7,7 @@ import (
 	"sigame/game/internal/domain/event"
 	domainGame "sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/infrastructure/logger"
 )
 
 func (m *Manager) startGame() {
