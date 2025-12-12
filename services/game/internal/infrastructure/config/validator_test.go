@@ -31,6 +31,10 @@ func TestConfig_Validate(t *testing.T) {
 					Host: "localhost",
 					Port: "50055",
 				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
+				},
 			},
 			wantErr: false,
 		},
@@ -54,6 +58,10 @@ func TestConfig_Validate(t *testing.T) {
 				PackService: PackServiceConfig{
 					Host: "localhost",
 					Port: "50055",
+				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
 				},
 			},
 			wantErr: true,
@@ -79,6 +87,10 @@ func TestConfig_Validate(t *testing.T) {
 					Host: "localhost",
 					Port: "50055",
 				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
+				},
 			},
 			wantErr: true,
 		},
@@ -102,6 +114,10 @@ func TestConfig_Validate(t *testing.T) {
 				PackService: PackServiceConfig{
 					Host: "localhost",
 					Port: "50055",
+				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
 				},
 			},
 			wantErr: true,
@@ -127,6 +143,10 @@ func TestConfig_Validate(t *testing.T) {
 					Host: "localhost",
 					Port: "50055",
 				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
+				},
 			},
 			wantErr: true,
 		},
@@ -150,6 +170,10 @@ func TestConfig_Validate(t *testing.T) {
 				PackService: PackServiceConfig{
 					Host: "localhost",
 					Port: "50055",
+				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
 				},
 			},
 			wantErr: true,
@@ -175,6 +199,10 @@ func TestConfig_Validate(t *testing.T) {
 					Host: "localhost",
 					Port: "50055",
 				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
+				},
 			},
 			wantErr: true,
 		},
@@ -198,6 +226,10 @@ func TestConfig_Validate(t *testing.T) {
 				PackService: PackServiceConfig{
 					Host: "localhost",
 					Port: "50055",
+				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
 				},
 			},
 			wantErr: true,
@@ -223,6 +255,10 @@ func TestConfig_Validate(t *testing.T) {
 					Host: "localhost",
 					Port: "50055",
 				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
+				},
 			},
 			wantErr: true,
 		},
@@ -247,6 +283,10 @@ func TestConfig_Validate(t *testing.T) {
 				PackService: PackServiceConfig{
 					Host: "localhost",
 					Port: "50055",
+				},
+				AuthService: AuthServiceConfig{
+					Host: "localhost",
+					Port: "50051",
 				},
 			},
 			wantErr: true,

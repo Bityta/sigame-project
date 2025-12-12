@@ -49,6 +49,7 @@ func buildConfig() *Config {
 		Database:    buildDatabaseConfig(),
 		Redis:       buildRedisConfig(),
 		PackService: buildPackServiceConfig(),
+		AuthService: buildAuthServiceConfig(),
 	}
 }
 
@@ -89,11 +90,19 @@ func buildPackServiceConfig() PackServiceConfig {
 	}
 }
 
+func buildAuthServiceConfig() AuthServiceConfig {
+	return AuthServiceConfig{
+		Host: viper.GetString(keyAuthServiceHost),
+		Port: viper.GetString(keyAuthServicePort),
+	}
+}
+
 func setDefaults() {
 	setServerDefaults()
 	setDatabaseDefaults()
 	setRedisDefaults()
 	setPackServiceDefaults()
+	setAuthServiceDefaults()
 }
 
 func setServerDefaults() {
@@ -123,5 +132,10 @@ func setRedisDefaults() {
 func setPackServiceDefaults() {
 	viper.SetDefault(keyPackServiceHost, "localhost")
 	viper.SetDefault(keyPackServicePort, "8084")
+}
+
+func setAuthServiceDefaults() {
+	viper.SetDefault(keyAuthServiceHost, "localhost")
+	viper.SetDefault(keyAuthServicePort, "50051")
 }
 

@@ -13,7 +13,6 @@ import (
 	grpcClient "sigame/game/internal/adapter/grpc/pack"
 	"sigame/game/internal/infrastructure/config"
 	"sigame/game/internal/infrastructure/logger"
-	"sigame/game/internal/infrastructure/tracing"
 	"sigame/game/internal/port"
 	"sigame/game/internal/transport/ws"
 )
@@ -30,16 +29,6 @@ func main() {
 	logger.Infof(nil, "Starting Game Service...")
 	logger.Infof(nil, "HTTP Port: %s", cfg.Server.HTTPPort)
 	logger.Infof(nil, "WS Port: %s", cfg.Server.WSPort)
-
-	tp, err := initTracer(ServiceName)
-	if err != nil {
-		logger.Warnf(nil, "Failed to initialize tracer: %v", err)
-	} else if tp != nil {
-		defer tracing.Shutdown(tp)
-	}
-
-	_ = initMetrics()
-	logger.Infof(nil, "Metrics initialized")
 
 	pgClient, err := initPostgreSQL(cfg)
 	if err != nil {
@@ -67,6 +56,14 @@ func main() {
 	defer packClient.Close()
 	logger.Infof(nil, "Connected to Pack Service at %s", cfg.GetPackServiceAddress())
 
+	authClient, err := initAuthClient(cfg)
+	if err != nil {
+		logger.Warnf(nil, "Failed to connect to Auth Service: %v (continuing without token validation)", err)
+	} else {
+		defer authClient.Close()
+		logger.Infof(nil, "Connected to Auth Service at %s", cfg.GetAuthServiceAddress())
+	}
+
 	hub := initWebSocketHub()
 	go hub.Run()
 	logger.Infof(nil, "WebSocket hub started")
@@ -76,18 +73,10 @@ func main() {
 	}
 
 	handlers := initHandlers(hub, packClient, repos, pgClient, redisClient)
-	wsHandler := initWebSocketHandler(hub)
+	wsHandler := initWebSocketHandler(hub, authClient)
 	router := initRouter(handlers, wsHandler)
 
 	httpServer := createHTTPServer(cfg, router)
-	metricsServer := createMetricsServer()
-
-	go func() {
-		logger.Infof(nil, "Metrics server listening on %s", MetricsPort)
-		if err := startMetricsServer(metricsServer, MetricsPort); err != nil && err != http.ErrServerClosed {
-			logger.Errorf(nil, "Metrics server error: %v", err)
-		}
-	}()
 
 	go func() {
 		httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
@@ -101,7 +90,6 @@ func main() {
 	httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
 	logger.Infof(nil, "Game Service is ready!")
 	logger.Infof(nil, "HTTP API: %s", fmt.Sprintf("http://localhost%s", httpAddr))
-	logger.Infof(nil, "Metrics: %s", fmt.Sprintf("http://localhost%s/metrics", MetricsPort))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -112,11 +100,15 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
+	logger.Infof(nil, "Stopping WebSocket hub...")
 	hub.Stop()
 	logger.Infof(nil, "All game managers stopped")
 
-	if err := shutdownServers(ctx, httpServer, metricsServer); err != nil {
-		logger.Errorf(nil, "Shutdown error: %v", err)
+	logger.Infof(nil, "Shutting down HTTP server...")
+	if err := httpServer.Shutdown(ctx); err != nil {
+		logger.Errorf(nil, "HTTP server shutdown error: %v", err)
+	} else {
+		logger.Infof(nil, "HTTP server stopped")
 	}
 
 	logger.Infof(nil, "Game Service stopped gracefully")

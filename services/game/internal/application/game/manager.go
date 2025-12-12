@@ -88,6 +88,7 @@ func (m *Manager) Stop() {
 	if m.timerTicker != nil {
 		m.timerTicker.Stop()
 	}
+	m.saveGameState()
 }
 
 func (m *Manager) run() {

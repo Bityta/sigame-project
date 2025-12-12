@@ -30,8 +30,16 @@ protoc --proto_path="$PROTO_DIR" \
     --go-grpc_out="$OUTPUT_DIR" --go-grpc_opt=paths=source_relative \
     "$PROTO_DIR/pack/pack.proto"
 
+# Generate proto code for auth
+protoc --proto_path="$PROTO_DIR" \
+    --go_out="$OUTPUT_DIR" --go_opt=paths=source_relative \
+    --go-grpc_out="$OUTPUT_DIR" --go-grpc_opt=paths=source_relative \
+    "$PROTO_DIR/auth/auth.proto"
+
 # Move generated files to correct location
 mv "$OUTPUT_DIR/pack/"*.go "$OUTPUT_DIR/" 2>/dev/null || true
 rmdir "$OUTPUT_DIR/pack" 2>/dev/null || true
+mv "$OUTPUT_DIR/auth/"*.go "$OUTPUT_DIR/" 2>/dev/null || true
+rmdir "$OUTPUT_DIR/auth" 2>/dev/null || true
 
 echo "✓ Proto files generated successfully in $OUTPUT_DIR"

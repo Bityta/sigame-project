@@ -22,3 +22,7 @@ func (c *Config) GetPackServiceAddress() string {
 	return fmt.Sprintf("%s:%s", c.PackService.Host, c.PackService.Port)
 }
 
+func (c *Config) GetAuthServiceAddress() string {
+	return fmt.Sprintf("%s:%s", c.AuthService.Host, c.AuthService.Port)
+}
+

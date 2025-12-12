@@ -30,9 +30,9 @@ type Handler struct {
 	wsHandler *handler.Handler
 }
 
-func NewHandler(h *Hub) *Handler {
+func NewHandler(h *Hub, authClient handler.AuthService) *Handler {
 	return &Handler{
-		wsHandler: handler.NewHandler(h),
+		wsHandler: handler.NewHandler(h, authClient),
 	}
 }
 

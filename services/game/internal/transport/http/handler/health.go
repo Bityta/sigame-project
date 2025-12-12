@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"sigame/game/internal/adapter/grpc/pack"
@@ -48,10 +47,9 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	}
 
 	c.JSON(httpStatus, gin.H{
-		"status":    status,
-		"service":   "game",
-		"timestamp": time.Now().UTC(),
-		"checks":    checks,
+		"status":  status,
+		"service": "game-service",
+		"checks":  checks,
 	})
 }
 

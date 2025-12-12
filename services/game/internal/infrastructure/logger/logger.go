@@ -6,16 +6,12 @@ import (
 	"fmt"
 	"log"
 	"time"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 type LogEntry struct {
 	Timestamp string `json:"timestamp"`
 	Level     string `json:"level"`
 	Service   string `json:"service"`
-	TraceID   string `json:"trace_id,omitempty"`
-	SpanID    string `json:"span_id,omitempty"`
 	Message   string `json:"message"`
 }
 
@@ -63,12 +59,6 @@ func logEntry(ctx context.Context, level, message string) {
 		Level:     level,
 		Service:   serviceName,
 		Message:   message,
-	}
-
-	span := trace.SpanFromContext(ctx)
-	if span.SpanContext().IsValid() {
-		entry.TraceID = span.SpanContext().TraceID().String()
-		entry.SpanID = span.SpanContext().SpanID().String()
 	}
 
 	jsonBytes, err := json.Marshal(entry)

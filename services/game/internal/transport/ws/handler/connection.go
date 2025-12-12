@@ -1,21 +1,31 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	authClient "sigame/game/internal/adapter/grpc/auth"
 	"sigame/game/internal/infrastructure/logger"
 	"sigame/game/internal/transport/ws/client"
 	"sigame/game/internal/transport/ws/hub"
 )
 
-type Handler struct {
-	hub *hub.Hub
+type AuthService interface {
+	ValidateToken(ctx context.Context, token string) (*authClient.ValidateTokenResponse, error)
 }
 
-func NewHandler(h *hub.Hub) *Handler {
-	return &Handler{hub: h}
+type Handler struct {
+	hub        *hub.Hub
+	authClient AuthService
+}
+
+func NewHandler(h *hub.Hub, authClient AuthService) *Handler {
+	return &Handler{
+		hub:        h,
+		authClient: authClient,
+	}
 }
 
 func (h *Handler) HandleWebSocket(c *gin.Context) {
@@ -30,18 +40,46 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
-	userIDStr := c.Query(QueryParamUserID)
-	if userIDStr == "" {
-		logger.Errorf(ctx, "[WS] Missing user_id for game %s", gameID)
-		c.JSON(http.StatusBadRequest, gin.H{"error": ErrorUserIDRequired})
-		return
-	}
+	token := c.Query(QueryParamToken)
+	var userID uuid.UUID
 
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		logger.Errorf(ctx, "[WS] Invalid user ID: %s", userIDStr)
-		c.JSON(http.StatusBadRequest, gin.H{"error": ErrorInvalidUserID})
-		return
+	if token != "" {
+		if h.authClient == nil {
+			logger.Warnf(ctx, "[WS] Auth client not initialized, token validation skipped")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": ErrorTokenRequired})
+			return
+		}
+
+		resp, err := h.authClient.ValidateToken(ctx, token)
+		if err != nil {
+			logger.Errorf(ctx, "[WS] Token validation failed: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": ErrorInvalidToken})
+			return
+		}
+
+		if !resp.Valid {
+			logger.Warnf(ctx, "[WS] Invalid token: %s", resp.Error)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": ErrorInvalidToken})
+			return
+		}
+
+		userID = resp.UserID
+		logger.Debugf(ctx, "[WS] Token validated, user_id=%s", userID)
+	} else {
+		userIDStr := c.Query(QueryParamUserID)
+		if userIDStr == "" {
+			logger.Errorf(ctx, "[WS] Missing token or user_id for game %s", gameID)
+			c.JSON(http.StatusBadRequest, gin.H{"error": ErrorTokenRequired})
+			return
+		}
+
+		parsedUserID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			logger.Errorf(ctx, "[WS] Invalid user ID: %s", userIDStr)
+			c.JSON(http.StatusBadRequest, gin.H{"error": ErrorInvalidUserID})
+			return
+		}
+		userID = parsedUserID
 	}
 
 	logger.Debugf(ctx, "[WS] Checking game manager for game=%s, user=%s", gameID, userID)

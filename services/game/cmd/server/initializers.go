@@ -4,22 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"sigame/game/internal/infrastructure/config"
 	grpcClient "sigame/game/internal/adapter/grpc/pack"
-	"sigame/game/internal/infrastructure/metrics"
+	authClient "sigame/game/internal/adapter/grpc/auth"
 	"sigame/game/internal/adapter/repository/postgres"
 	"sigame/game/internal/adapter/repository/redis"
-	"sigame/game/internal/infrastructure/tracing"
 	"sigame/game/internal/transport/http"
+	"sigame/game/internal/transport/http/middleware"
 	"sigame/game/internal/transport/ws"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
-
-func initTracer(serviceName string) (*tracing.TracerProvider, error) {
-	return tracing.InitTracer(serviceName)
-}
-
-func initMetrics() *metrics.Metrics {
-	return metrics.NewMetrics()
-}
 
 func initPostgreSQL(cfg *config.Config) (*postgres.Client, error) {
 	return postgres.NewClient(
@@ -39,6 +30,16 @@ func initRedis(cfg *config.Config) (*redis.Client, error) {
 
 func initPackClient(cfg *config.Config) (*grpcClient.PackClient, error) {
 	return grpcClient.NewPackClient(cfg.GetPackServiceAddress())
+}
+
+func initAuthClient(cfg *config.Config) (*authClient.AuthServiceClient, error) {
+	client, err := authClient.NewAuthClient(cfg.GetAuthServiceAddress())
+	if err != nil {
+		return nil, err
+	}
+	// Set the client in middleware
+	middleware.SetAuthClient(client)
+	return client, nil
 }
 
 type Repositories struct {
@@ -72,14 +73,12 @@ func initHandlers(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Reposit
 	}
 }
 
-func initWebSocketHandler(hub *ws.Hub) *ws.Handler {
-	return ws.NewHandler(hub)
+func initWebSocketHandler(hub *ws.Hub, authClient *authClient.AuthServiceClient) *ws.Handler {
+	return ws.NewHandler(hub, authClient)
 }
 
 func initRouter(handlers *Handlers, wsHandler *ws.Handler) *gin.Engine {
-	router := http.SetupRouter(handlers.HTTPHandler.Game, handlers.HTTPHandler.Health, wsHandler)
-	router.Use(otelgin.Middleware(ServiceName))
-	return router
+	return http.SetupRouter(handlers.HTTPHandler.Game, handlers.HTTPHandler.Health, wsHandler)
 }
 
 

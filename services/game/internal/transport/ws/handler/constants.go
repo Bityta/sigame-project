@@ -8,9 +8,12 @@ import (
 
 const (
 	QueryParamUserID   = "user_id"
+	QueryParamToken   = "token"
 	ErrorInvalidGameID = "Invalid game ID"
 	ErrorUserIDRequired = "user_id is required"
 	ErrorInvalidUserID  = "Invalid user ID"
+	ErrorTokenRequired  = "token is required"
+	ErrorInvalidToken   = "Invalid or expired token"
 	ErrorGameNotFound   = "Game not found or not started"
 )
 

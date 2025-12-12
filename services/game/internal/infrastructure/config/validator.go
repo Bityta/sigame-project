@@ -19,6 +19,10 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("pack service config: %w", err)
 	}
 
+	if err := c.AuthService.Validate(); err != nil {
+		return fmt.Errorf("auth service config: %w", err)
+	}
+
 	return nil
 }
 
@@ -70,6 +74,16 @@ func (p *PackServiceConfig) Validate() error {
 	}
 	if p.Port == "" {
 		return fmt.Errorf("%s is required", keyPackServicePort)
+	}
+	return nil
+}
+
+func (a *AuthServiceConfig) Validate() error {
+	if a.Host == "" {
+		return fmt.Errorf("%s is required", keyAuthServiceHost)
+	}
+	if a.Port == "" {
+		return fmt.Errorf("%s is required", keyAuthServicePort)
 	}
 	return nil
 }
