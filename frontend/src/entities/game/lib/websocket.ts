@@ -60,7 +60,16 @@ export class GameWebSocket {
       try {
         // Формируем WebSocket URL
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = API_CONFIG.GAME_BASE_URL.replace('http://', '').replace('https://', '');
+        let wsHost: string;
+        
+        if (API_CONFIG.GAME_BASE_URL) {
+          // Если указан базовый URL, используем его
+          wsHost = API_CONFIG.GAME_BASE_URL.replace('http://', '').replace('https://', '').replace('ws://', '').replace('wss://', '');
+        } else {
+          // Если базовый URL не указан, используем текущий хост браузера
+          wsHost = window.location.host;
+        }
+        
         const url = `${wsProtocol}//${wsHost}/api/game/${this.gameId}/ws?user_id=${this.userId}`;
         
         console.log('[GameWS] Подключение к:', url);
