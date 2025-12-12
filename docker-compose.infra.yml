@@ -6,7 +6,7 @@ version: '3.9'
 services:
   # PostgreSQL - Auth Database
   postgres-auth:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: sigame-postgres-auth
     environment:
       POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
@@ -33,7 +33,7 @@ services:
 
   # PostgreSQL - Lobby Database
   postgres-lobby:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: sigame-postgres-lobby
     environment:
       POSTGRES_DB: ${LOBBY_DB_NAME:-lobby_db}
@@ -60,7 +60,7 @@ services:
 
   # PostgreSQL - Packs Database
   postgres-packs:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: sigame-postgres-packs
     environment:
       POSTGRES_DB: ${PACKS_DB_NAME:-packs_db}
@@ -87,7 +87,7 @@ services:
 
   # PostgreSQL - Game Database
   postgres-game:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: sigame-postgres-game
     environment:
       POSTGRES_DB: ${GAME_DB_NAME:-game_db}
