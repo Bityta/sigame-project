@@ -15,8 +15,9 @@ func (h *Hub) registerClient(client Client) {
 	h.games[gameID][client] = true
 
 	if manager, exists := h.managers[gameID]; exists {
-		go manager.SendStateToClient(client)
+		// Set connected status BEFORE sending state, so state includes correct connection status
 		manager.SetPlayerConnected(client.GetUserID(), true)
+		go manager.SendStateToClient(client)
 	}
 }
 
