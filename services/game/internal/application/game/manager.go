@@ -138,9 +138,9 @@ func (m *Manager) run() {
 }
 
 func (m *Manager) HandleClientMessage(userID uuid.UUID, msg interface{}) {
-	clientMsg, ok := msg.(wsMessage.ClientMessage)
+	clientMsg, ok := msg.(*wsMessage.ClientMessage)
 	if !ok {
-		logger.Warnf(m.ctx, "[HandleClientMessage] Invalid message type: %T, expected: wsMessage.ClientMessage", msg)
+		logger.Warnf(m.ctx, "[HandleClientMessage] Invalid message type: %T, expected: *wsMessage.ClientMessage", msg)
 		return
 	}
 	logger.Infof(m.ctx, "[HandleClientMessage] Received: type=%s, user_id=%s, payload=%v", clientMsg.GetType(), userID, clientMsg.GetPayload())
