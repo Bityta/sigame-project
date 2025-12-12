@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"sigame/game/internal/infrastructure/logger"
+	"sigame/game/internal/transport/ws"
 	"sigame/game/internal/transport/ws/message"
 )
 
@@ -72,7 +73,14 @@ func (c *Client) readPump() {
 			break
 		}
 
-		c.hub.HandleMessage(c, msgData)
+		// Парсим JSON сообщение в ClientMessage
+		clientMsg, err := ws.NewClientMessage(msgData)
+		if err != nil {
+			logger.Warnf(nil, "Failed to parse client message: %v, data: %s", err, string(msgData))
+			continue
+		}
+
+		c.hub.HandleMessage(c, *clientMsg)
 	}
 }
 
