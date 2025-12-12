@@ -39,24 +39,44 @@ func (m *Manager) selectActivePlayer() uuid.UUID {
 
 func (m *Manager) handleSelectQuestion(action *PlayerAction) {
 	if m.game.Status != domainGame.StatusQuestionSelect {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Invalid game status: %s, expected: %s", m.game.Status, domainGame.StatusQuestionSelect)
 		return
 	}
 
 	p, ok := m.game.Players[action.UserID]
-	if !ok || p.Role != player.RoleHost {
+	if !ok {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Player not found: %s", action.UserID)
+		return
+	}
+	if p.Role != player.RoleHost {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Player is not host: %s, role: %s", action.UserID, p.Role)
 		return
 	}
 
-	payload, ok := action.Message.GetPayload()["theme_id"].(string)
+	payload := action.Message.GetPayload()
+	themeIDRaw, ok := payload["theme_id"]
 	if !ok {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Missing theme_id in payload: %v", payload)
 		return
 	}
-	themeID := payload
+	themeID, ok := themeIDRaw.(string)
+	if !ok {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Invalid theme_id type: %T, value: %v", themeIDRaw, themeIDRaw)
+		return
+	}
 
-	questionID, ok := action.Message.GetPayload()["question_id"].(string)
+	questionIDRaw, ok := payload["question_id"]
 	if !ok {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Missing question_id in payload: %v", payload)
 		return
 	}
+	questionID, ok := questionIDRaw.(string)
+	if !ok {
+		logger.Warnf(m.ctx, "[SELECT_QUESTION] Invalid question_id type: %T, value: %v", questionIDRaw, questionIDRaw)
+		return
+	}
+	
+	logger.Infof(m.ctx, "[SELECT_QUESTION] Processing: theme_id=%s, question_id=%s, user_id=%s", themeID, questionID, action.UserID)
 
 	round := m.pack.GetRound(m.game.CurrentRound)
 	if round == nil {
