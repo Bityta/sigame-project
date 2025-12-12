@@ -142,7 +142,7 @@ func (m *Manager) HandleClientMessage(userID uuid.UUID, msg interface{}) {
 		logger.Warnf(m.ctx, "[HandleClientMessage] Invalid message type: %T", msg)
 		return
 	}
-	logger.Debugf(m.ctx, "[HandleClientMessage] Received: type=%s, user_id=%s, payload=%v", clientMsg.GetType(), userID, clientMsg.GetPayload())
+	logger.Infof(m.ctx, "[HandleClientMessage] Received: type=%s, user_id=%s, payload=%v", clientMsg.GetType(), userID, clientMsg.GetPayload())
 	select {
 	case m.actionChan <- &PlayerAction{UserID: userID, Message: clientMsg}:
 	case <-m.ctx.Done():
