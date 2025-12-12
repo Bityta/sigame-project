@@ -33,7 +33,7 @@ func (h *GameHandler) GetGame(c *gin.Context) {
 	gameIDStr := c.Param("id")
 	gameID, err := uuid.Parse(gameIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": ErrorInvalidGameID})
 		return
 	}
 

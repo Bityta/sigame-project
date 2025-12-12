@@ -5,27 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"sigame/game/internal/infrastructure/logger"
 	"sigame/game/internal/transport/ws/client"
 	"sigame/game/internal/transport/ws/hub"
 )
-
-const (
-	QueryParamUserID         = "user_id"
-	ErrorInvalidGameID       = "Invalid game ID"
-	ErrorUserIDRequired      = "user_id is required"
-	ErrorInvalidUserID       = "Invalid user ID"
-	ErrorGameNotFound        = "Game not found or not started"
-)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
 
 type Handler struct {
 	hub *hub.Hub
@@ -71,7 +54,7 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 
 	logger.Debugf(ctx, "[WS] Game manager found, upgrading connection for game=%s, user=%s", gameID, userID)
 
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		logger.Errorf(ctx, "[WS] Failed to upgrade connection: %v", err)
 		return

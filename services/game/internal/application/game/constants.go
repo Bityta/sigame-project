@@ -3,23 +3,7 @@ package game
 import "time"
 
 const (
-	RTTCompensationFactor = 2
-
-	MediaTypeText  = "text"
-	MediaTypeImage = "image"
-	MediaTypeAudio = "audio"
-	MediaTypeVideo = "video"
-
-	MediaSizeImage   = 500_000
-	MediaSizeAudio   = 3_000_000
-	MediaSizeVideo   = 10_000_000
-	MediaSizeDefault = 100_000
-
 	PercentComplete = 100
-
-	TimerChannelBufferSize = 1
-	TimerInactiveRemaining = 0
-	RankStartIndex = 1
 
 	ManagerActionChannelBuffer = 100
 	RoundsOverviewDuration     = 5 * time.Second

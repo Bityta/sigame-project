@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-const (
-	ChannelBufferSize   = 1
-	InactiveRemaining   = 0
-)
-
 type Timer struct {
 	C         chan time.Time
 	timer     *time.Timer

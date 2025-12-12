@@ -4,6 +4,7 @@ import (
 	domainGame "sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
+	"sigame/game/internal/core/scoring"
 )
 
 func (m *Manager) BroadcastStateUnlocked() {
@@ -38,7 +39,7 @@ func (m *Manager) buildGameState() *domainGame.State {
 				themeNames = append(themeNames, theme.Name)
 			}
 			state.AllRounds = append(state.AllRounds, domainGame.RoundOverview{
-				RoundNumber: i + RankStartIndex,
+				RoundNumber: i + scoring.RankStartIndex,
 				Name:        round.Name,
 				ThemeNames:  themeNames,
 			})

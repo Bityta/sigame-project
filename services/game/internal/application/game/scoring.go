@@ -11,7 +11,7 @@ func (m *Manager) calculateWinners() []player.Score {
 
 	winners := make([]player.Score, 0)
 	for i, score := range scores {
-		if i >= 3 {
+		if i >= TopWinnersCount {
 			break
 		}
 		winners = append(winners, score)

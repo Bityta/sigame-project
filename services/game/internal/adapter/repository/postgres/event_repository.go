@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/google/uuid"
 	"sigame/game/internal/domain/event"
@@ -35,7 +34,7 @@ func (r *EventRepository) LogEvent(ctx context.Context, event *event.Event) erro
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to log event: %w", err)
+		return ErrLogEvent(err)
 	}
 
 	return nil
@@ -48,13 +47,13 @@ func (r *EventRepository) LogEvents(ctx context.Context, events []*event.Event) 
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return ErrBeginTransaction(err)
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(ctx, queryInsertGameEvent)
 	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
+		return ErrPrepareStatement(err)
 	}
 	defer stmt.Close()
 
@@ -75,12 +74,12 @@ func (r *EventRepository) LogEvents(ctx context.Context, events []*event.Event) 
 			event.Timestamp,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to insert event: %w", err)
+			return ErrInsertEvent(err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return ErrCommitTransaction(err)
 	}
 
 	return nil
@@ -89,7 +88,7 @@ func (r *EventRepository) LogEvents(ctx context.Context, events []*event.Event) 
 func (r *EventRepository) GetGameEvents(ctx context.Context, gameID uuid.UUID) ([]*event.Event, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectGameEvents, gameID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get events: %w", err)
+		return nil, ErrGetEvents(err)
 	}
 	defer rows.Close()
 
@@ -108,7 +107,7 @@ func (r *EventRepository) GetGameEvents(ctx context.Context, gameID uuid.UUID) (
 func (r *EventRepository) GetEventsByType(ctx context.Context, gameID uuid.UUID, eventType event.Type) ([]*event.Event, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectEventsByType, gameID, eventType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get events: %w", err)
+		return nil, ErrGetEvents(err)
 	}
 	defer rows.Close()
 
@@ -128,7 +127,7 @@ func (r *EventRepository) GetEventCount(ctx context.Context, gameID uuid.UUID) (
 	var count int
 	err := r.db.QueryRowContext(ctx, queryCountGameEvents, gameID).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get event count: %w", err)
+		return 0, ErrGetEventCount(err)
 	}
 
 	return count, nil

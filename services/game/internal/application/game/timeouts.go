@@ -1,8 +1,6 @@
 package game
 
 import (
-	"time"
-
 	domainGame "sigame/game/internal/domain/game"
 )
 
@@ -90,7 +88,7 @@ func (m *Manager) skipQuestion() {
 			m.game.SetActivePlayer(winner.UserID)
 			m.game.UpdateStatus(domainGame.StatusAnswerJudging)
 			m.BroadcastState()
-			m.timer.Start(30 * time.Second)
+			m.timer.Start(AnswerJudgingDuration)
 			return
 		}
 	}
@@ -150,6 +148,6 @@ func (m *Manager) finishForAllQuestion() {
 
 	m.game.UpdateStatus(domainGame.StatusForAllResults)
 	m.BroadcastState()
-	m.timer.Start(5 * time.Second)
+	m.timer.Start(ForAllResultsDisplayDuration)
 }
 

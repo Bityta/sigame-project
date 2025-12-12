@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,7 +32,7 @@ func (r *GameRepository) CreateGameSession(ctx context.Context, game *domainGame
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to create game session: %w", err)
+		return ErrCreateGameSession(err)
 	}
 
 	for _, player := range game.Players {
@@ -57,7 +56,7 @@ func (r *GameRepository) UpdateGameSession(ctx context.Context, game *domainGame
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to update game session: %w", err)
+		return ErrUpdateGameSession(err)
 	}
 
 	for _, player := range game.Players {
@@ -79,7 +78,7 @@ func (r *GameRepository) GetGameSession(ctx context.Context, gameID uuid.UUID) (
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, fmt.Errorf("failed to get game session: %w", err)
+		return nil, ErrGetGameSession(err)
 	}
 
 	if err := loadGamePlayers(ctx, r.db, gameID, g); err != nil {
@@ -92,14 +91,14 @@ func (r *GameRepository) GetGameSession(ctx context.Context, gameID uuid.UUID) (
 func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domainGame.Game) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return ErrBeginTransaction(err)
 	}
 	defer tx.Rollback()
 
 	now := time.Now()
-	_, err = tx.ExecContext(ctx, queryUpdateGameSessionFinal, domainGame.StatusFinished, now, now, game.ID)
+		_, err = tx.ExecContext(ctx, queryUpdateGameSessionFinal, domainGame.StatusFinished, now, now, game.ID)
 	if err != nil {
-		return fmt.Errorf("failed to update game session: %w", err)
+		return ErrUpdateGameSession(err)
 	}
 
 	for _, player := range game.Players {
@@ -110,12 +109,12 @@ func (r *GameRepository) SaveFinalResults(ctx context.Context, game *domainGame.
 
 		_, err = tx.ExecContext(ctx, queryUpdatePlayerFinal, player.Score, player.IsActive, leftAt, game.ID, player.UserID)
 		if err != nil {
-			return fmt.Errorf("failed to update player score: %w", err)
+			return ErrUpdatePlayerScore(err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return ErrCommitTransaction(err)
 	}
 
 	return nil
@@ -143,7 +142,7 @@ func (r *GameRepository) updatePlayerScore(ctx context.Context, gameID uuid.UUID
 func (r *GameRepository) GetGamesByRoomID(ctx context.Context, roomID uuid.UUID) ([]*domainGame.Game, error) {
 	rows, err := r.db.QueryContext(ctx, querySelectGamesByRoomID, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get games: %w", err)
+		return nil, ErrGetGames(err)
 	}
 	defer rows.Close()
 
@@ -173,7 +172,7 @@ func (r *GameRepository) GetActiveGameForUser(ctx context.Context, userID uuid.U
 		if err == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, fmt.Errorf("failed to get active game for user: %w", err)
+		return nil, ErrGetActiveGameForUser(err)
 	}
 
 	if err := loadGamePlayers(ctx, r.db, g.ID, g); err != nil {

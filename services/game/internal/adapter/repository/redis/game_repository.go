@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -27,12 +26,12 @@ func (r *GameRepository) SaveGameState(ctx context.Context, game *game.Game) err
 
 	data, err := json.Marshal(game)
 	if err != nil {
-		return fmt.Errorf("failed to marshal game state: %w", err)
+		return ErrMarshalGameState(err)
 	}
 
 	ttl := config.GameStateCacheTTL
 	if err := r.client.Set(ctx, key, data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to save game state: %w", err)
+		return ErrSaveGameState(err)
 	}
 
 	return nil
@@ -46,12 +45,12 @@ func (r *GameRepository) LoadGameState(ctx context.Context, gameID uuid.UUID) (*
 		return nil, sql.ErrNoRows
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to load game state: %w", err)
+		return nil, ErrLoadGameState(err)
 	}
 
 	var game game.Game
 	if err := json.Unmarshal(data, &game); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal game state: %w", err)
+		return nil, ErrUnmarshalGameState(err)
 	}
 
 	return &game, nil
@@ -80,14 +79,14 @@ func (r *GameRepository) GetAllScores(ctx context.Context, gameID uuid.UUID) (ma
 	key := gameScoresKey(gameID)
 	scores, err := r.client.HGetAll(ctx, key).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all scores: %w", err)
+		return nil, ErrGetAllScores(err)
 	}
 
 	result := make(map[string]int, len(scores))
 	for userID, scoreStr := range scores {
 		score, err := strconv.Atoi(scoreStr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse score for user %s: %w", userID, err)
+			return nil, ErrParseScore(userID, err)
 		}
 		result[userID] = score
 	}
@@ -109,7 +108,7 @@ func (r *GameRepository) GetActivePlayers(ctx context.Context, gameID uuid.UUID)
 	key := gamePlayersKey(gameID)
 	members, err := r.client.SMembers(ctx, key).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get active players: %w", err)
+		return nil, ErrGetActivePlayers(err)
 	}
 
 	return parseUUIDs(members)
@@ -121,11 +120,11 @@ func (r *GameRepository) SetGameMetadata(ctx context.Context, gameID uuid.UUID, 
 	for field, value := range metadata {
 		strValue, err := convertToString(value)
 		if err != nil {
-			return fmt.Errorf("failed to convert field %s to string: %w", field, err)
+			return ErrConvertFieldToString(field, err)
 		}
 
 		if err := r.client.HSet(ctx, key, field, strValue).Err(); err != nil {
-			return fmt.Errorf("failed to set metadata field %s: %w", field, err)
+			return ErrSetMetadataField(field, err)
 		}
 	}
 
@@ -156,7 +155,7 @@ func (r *GameRepository) GetActiveGames(ctx context.Context, limit int64) ([]uui
 	key := activeGamesKey()
 	members, err := r.client.ZRevRange(ctx, key, 0, limit-1).Result()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get active games: %w", err)
+		return nil, ErrGetActiveGames(err)
 	}
 
 	return parseUUIDs(members)
@@ -167,7 +166,7 @@ func parseUUIDs(strs []string) ([]uuid.UUID, error) {
 	for _, str := range strs {
 		id, err := uuid.Parse(str)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse UUID %s: %w", str, err)
+			return nil, ErrParseUUID(str, err)
 		}
 		result = append(result, id)
 	}
@@ -185,7 +184,7 @@ func convertToString(value interface{}) (string, error) {
 	default:
 		data, err := json.Marshal(v)
 		if err != nil {
-			return "", fmt.Errorf("failed to marshal value: %w", err)
+			return "", ErrMarshalValue(err)
 		}
 		return string(data), nil
 	}

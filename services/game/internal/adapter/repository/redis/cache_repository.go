@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,12 +24,12 @@ func (r *CacheRepository) CachePack(ctx context.Context, pack *pack.Pack) error 
 
 	data, err := json.Marshal(pack)
 	if err != nil {
-		return fmt.Errorf("failed to marshal pack: %w", err)
+		return ErrMarshalPack(err)
 	}
 
 	ttl := config.PackCacheTTL
 	if err := r.client.Set(ctx, key, data, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to cache pack: %w", err)
+		return ErrCachePack(err)
 	}
 
 	return nil
@@ -41,15 +40,15 @@ func (r *CacheRepository) GetCachedPack(ctx context.Context, packID uuid.UUID) (
 
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		return nil, fmt.Errorf("pack not found")
+		return nil, ErrPackNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cached pack: %w", err)
+		return nil, ErrGetCachedPack(err)
 	}
 
 	var pack pack.Pack
 	if err := json.Unmarshal(data, &pack); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal pack: %w", err)
+		return nil, ErrUnmarshalPack(err)
 	}
 
 	return &pack, nil
@@ -63,7 +62,7 @@ func (r *CacheRepository) InvalidatePackCache(ctx context.Context, packID uuid.U
 func (r *CacheRepository) SetWithTTL(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return fmt.Errorf("failed to marshal value: %w", err)
+		return ErrMarshalValue(err)
 	}
 
 	return r.client.Set(ctx, key, data, ttl).Err()
@@ -72,10 +71,10 @@ func (r *CacheRepository) SetWithTTL(ctx context.Context, key string, value inte
 func (r *CacheRepository) Get(ctx context.Context, key string, dest interface{}) error {
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
-		return fmt.Errorf("key not found: %s", key)
+		return ErrKeyNotFound(key)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get value: %w", err)
+		return ErrGetValue(err)
 	}
 
 	return json.Unmarshal(data, dest)
