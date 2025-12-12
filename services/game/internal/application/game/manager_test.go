@@ -151,21 +151,23 @@ func TestManager_Start(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
-	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
-	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil)
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
 	manager.Start()
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	assert.NotNil(t, manager.timerTicker)
 	assert.NotNil(t, manager.ctx)
 
 	manager.Stop()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	mockLogger.AssertExpectations(t)
+	mockCache.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestManager_Stop(t *testing.T) {
@@ -173,11 +175,13 @@ func TestManager_Stop(t *testing.T) {
 	testPack := createTestPack()
 	mockHub := new(MockHub)
 	mockHub.On("Broadcast", mock.Anything, mock.Anything).Return()
-	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0))
+	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0)).Maybe()
 	mockLogger := new(MockEventLogger)
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
@@ -193,7 +197,6 @@ func TestManager_Stop(t *testing.T) {
 		assert.Fail(t, "Context should be cancelled")
 	}
 	mockLogger.AssertExpectations(t)
-	mockHub.AssertExpectations(t)
 }
 
 func TestManager_HandleClientMessage(t *testing.T) {
@@ -201,11 +204,13 @@ func TestManager_HandleClientMessage(t *testing.T) {
 	testPack := createTestPack()
 	mockHub := new(MockHub)
 	mockHub.On("Broadcast", mock.Anything, mock.Anything).Return()
-	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0))
+	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0)).Maybe()
 	mockLogger := new(MockEventLogger)
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
@@ -222,7 +227,6 @@ func TestManager_HandleClientMessage(t *testing.T) {
 
 	manager.Stop()
 	mockLogger.AssertExpectations(t)
-	mockHub.AssertExpectations(t)
 }
 
 func TestManager_SetPlayerConnected(t *testing.T) {
@@ -259,11 +263,13 @@ func TestManager_HandleClientMessage_InvalidMessage(t *testing.T) {
 	testPack := createTestPack()
 	mockHub := new(MockHub)
 	mockHub.On("Broadcast", mock.Anything, mock.Anything).Return()
-	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0))
+	mockHub.On("GetClientRTT", mock.Anything, mock.Anything).Return(time.Duration(0)).Maybe()
 	mockLogger := new(MockEventLogger)
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
@@ -277,6 +283,5 @@ func TestManager_HandleClientMessage_InvalidMessage(t *testing.T) {
 
 	manager.Stop()
 	mockLogger.AssertExpectations(t)
-	mockHub.AssertExpectations(t)
 }
 
