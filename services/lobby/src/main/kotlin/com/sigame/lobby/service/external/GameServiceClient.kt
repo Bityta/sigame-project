@@ -26,7 +26,7 @@ class GameServiceClient(
         settings: GameSettings
     ): GameSessionResponse = withContext(Dispatchers.IO) {
         try {
-            val createGameUrl = "${gameServiceConfig.baseUrl}/api/game/create"
+            val createGameUrl = "${gameServiceConfig.baseUrl}/api/game"
             logger.info { "Creating game session at $createGameUrl for room $roomId" }
             
             val playerData = players.map { player ->
