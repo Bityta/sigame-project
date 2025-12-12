@@ -72,12 +72,13 @@ func (c *Client) readPump() {
 			break
 		}
 
-		clientMsg, err := ws.NewClientMessage(msgData)
+		clientMsg, err := message.NewClientMessage(msgData)
 		if err != nil {
 			logger.Warnf(nil, "Failed to parse client message: %v, data: %s", err, string(msgData))
 			continue
 		}
 
+		logger.Infof(nil, "[Client] Parsed message: type=%s, user_id=%s, game_id=%s, payload=%v", clientMsg.GetType(), clientMsg.UserID, clientMsg.GameID, clientMsg.GetPayload())
 		c.hub.HandleMessage(c, *clientMsg)
 	}
 }
