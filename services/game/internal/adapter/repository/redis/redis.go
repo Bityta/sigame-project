@@ -33,3 +33,7 @@ func (c *Client) Close() error {
 func (c *Client) GetClient() *redis.Client {
 	return c.rdb
 }
+
+func (c *Client) Ping(ctx context.Context) error {
+	return c.rdb.Ping(ctx).Err()
+}

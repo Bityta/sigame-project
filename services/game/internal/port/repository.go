@@ -18,5 +18,6 @@ type GameCache interface {
 	SaveGameState(ctx context.Context, g *game.Game) error
 	LoadGameState(ctx context.Context, gameID uuid.UUID) (*game.Game, error)
 	DeleteGameState(ctx context.Context, gameID uuid.UUID) error
+	GetActiveGames(ctx context.Context, limit int64) ([]uuid.UUID, error)
 }
 

@@ -8,9 +8,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
+	appGame "sigame/game/internal/application/game"
+	grpcClient "sigame/game/internal/adapter/grpc/pack"
 	"sigame/game/internal/infrastructure/config"
 	"sigame/game/internal/infrastructure/logger"
 	"sigame/game/internal/infrastructure/tracing"
+	"sigame/game/internal/port"
+	"sigame/game/internal/transport/ws"
 )
 
 func main() {
@@ -66,7 +71,11 @@ func main() {
 	go hub.Run()
 	logger.Infof(nil, "WebSocket hub started")
 
-	handlers := initHandlers(hub, packClient, repos)
+	if err := restoreActiveGames(hub, packClient, repos); err != nil {
+		logger.Warnf(nil, "Failed to restore active games: %v", err)
+	}
+
+	handlers := initHandlers(hub, packClient, repos, pgClient, redisClient)
 	wsHandler := initWebSocketHandler(hub)
 	router := initRouter(handlers, wsHandler)
 
@@ -103,10 +112,65 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
+	hub.Stop()
+	logger.Infof(nil, "All game managers stopped")
+
 	if err := shutdownServers(ctx, httpServer, metricsServer); err != nil {
 		logger.Errorf(nil, "Shutdown error: %v", err)
 	}
 
 	logger.Infof(nil, "Game Service stopped gracefully")
+}
+
+func restoreActiveGames(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories) error {
+	ctx := context.Background()
+	const maxActiveGames = 1000
+
+	gameIDs, err := repos.RedisGameRepo.GetActiveGames(ctx, maxActiveGames)
+	if err != nil {
+		return fmt.Errorf("failed to get active games: %w", err)
+	}
+
+	if len(gameIDs) == 0 {
+		logger.Infof(ctx, "No active games to restore")
+		return nil
+	}
+
+	logger.Infof(ctx, "Restoring %d active games", len(gameIDs))
+
+	restored := 0
+	for _, gameID := range gameIDs {
+		if err := restoreGame(ctx, gameID, hub, packClient, repos, repos.EventRepo); err != nil {
+			logger.Errorf(ctx, "Failed to restore game %s: %v", gameID, err)
+			continue
+		}
+		restored++
+	}
+
+	logger.Infof(ctx, "Restored %d/%d active games", restored, len(gameIDs))
+	return nil
+}
+
+func restoreGame(ctx context.Context, gameID uuid.UUID, hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories, eventLogger port.EventLogger) error {
+	game, err := repos.RedisGameRepo.LoadGameState(ctx, gameID)
+	if err != nil {
+		return fmt.Errorf("failed to load game state: %w", err)
+	}
+
+	if !game.Status.IsActive() {
+		return nil
+	}
+
+	pack, err := packClient.GetPackContent(ctx, game.PackID)
+	if err != nil {
+		return fmt.Errorf("failed to load pack: %w", err)
+	}
+
+	manager := appGame.New(game, pack, hub, eventLogger, repos.GameRepo, repos.RedisGameRepo)
+	hub.RegisterGameManager(gameID, manager)
+	manager.Start()
+
+	logger.Infof(ctx, "Restored game %s", gameID)
+	return nil
 }
 

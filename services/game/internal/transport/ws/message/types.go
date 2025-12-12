@@ -42,6 +42,14 @@ type ClientMessage struct {
 	Payload map[string]interface{} `json:"payload,omitempty"`
 }
 
+func (m *ClientMessage) GetType() string {
+	return string(m.Type)
+}
+
+func (m *ClientMessage) GetPayload() map[string]interface{} {
+	return m.Payload
+}
+
 type ServerMessage struct {
 	Type    MessageType `json:"type"`
 	Payload interface{} `json:"payload,omitempty"`

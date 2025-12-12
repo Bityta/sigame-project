@@ -22,5 +22,7 @@ const (
 	TopWinnersCount              = 3
 	MediaIDSuffix                = "_media"
 	DefaultMediaDurationMs       = 5000
+	MaxSaveRetries               = 3
+	SaveRetryDelay               = 500 * time.Millisecond
 )
 

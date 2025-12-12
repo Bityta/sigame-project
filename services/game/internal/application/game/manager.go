@@ -13,6 +13,7 @@ import (
 	"sigame/game/internal/domain/event"
 	domainGame "sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
+	"sigame/game/internal/infrastructure/logger"
 	"sigame/game/internal/port"
 )
 
@@ -24,7 +25,7 @@ type Manager struct {
 	cancel          context.CancelFunc
 	actionChan      chan *PlayerAction
 	timer           *timer.Timer
-	timerTicker     *time.Ticker
+	timerTicker      *time.Ticker
 	buttonPress     *button.Press
 	mediaTracker    *media.MediaTracker
 	forAllCollector *answer.ForAllCollector
@@ -32,6 +33,8 @@ type Manager struct {
 	secretTarget    *uuid.UUID
 	mu              sync.RWMutex
 	eventLogger     port.EventLogger
+	gameRepository  port.GameRepository
+	gameCache       port.GameCache
 }
 
 type PlayerAction struct {
@@ -49,7 +52,7 @@ type Hub interface {
 	GetClientRTT(gameID, userID uuid.UUID) time.Duration
 }
 
-func New(game *domainGame.Game, pack *pack.Pack, hub Hub, eventLogger port.EventLogger) *Manager {
+func New(game *domainGame.Game, pack *pack.Pack, hub Hub, eventLogger port.EventLogger, gameRepository port.GameRepository, gameCache port.GameCache) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Manager{
@@ -64,6 +67,8 @@ func New(game *domainGame.Game, pack *pack.Pack, hub Hub, eventLogger port.Event
 		mediaTracker:    media.NewMediaTracker(InitialRoundNumber),
 		forAllCollector: answer.NewForAllCollector(),
 		eventLogger:     eventLogger,
+		gameRepository:  gameRepository,
+		gameCache:       gameCache,
 	}
 }
 
@@ -86,26 +91,57 @@ func (m *Manager) Stop() {
 }
 
 func (m *Manager) run() {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf(m.ctx, "Panic in game manager run loop: %v", r)
+		}
+	}()
+
 	for {
 		select {
 		case <-m.ctx.Done():
 			return
 
 		case action := <-m.actionChan:
-			m.handlePlayerAction(action)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Errorf(m.ctx, "Panic handling player action: %v", r)
+					}
+				}()
+				m.handlePlayerAction(action)
+			}()
 
 		case <-m.timer.C:
-			m.handleTimeout()
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Errorf(m.ctx, "Panic handling timeout: %v", r)
+					}
+				}()
+				m.handleTimeout()
+			}()
 
 		case <-m.timerTicker.C:
-			m.handleTimerTick()
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.Errorf(m.ctx, "Panic handling timer tick: %v", r)
+					}
+				}()
+				m.handleTimerTick()
+			}()
 		}
 	}
 }
 
-func (m *Manager) HandleClientMessage(userID uuid.UUID, msg ClientMessage) {
+func (m *Manager) HandleClientMessage(userID uuid.UUID, msg interface{}) {
+	clientMsg, ok := msg.(ClientMessage)
+	if !ok {
+		return
+	}
 	select {
-	case m.actionChan <- &PlayerAction{UserID: userID, Message: msg}:
+	case m.actionChan <- &PlayerAction{UserID: userID, Message: clientMsg}:
 	case <-m.ctx.Done():
 	}
 }
@@ -157,5 +193,43 @@ func (m *Manager) logEvent(eventType event.Type) *event.Event {
 	evt := event.New(m.game.ID, eventType)
 	m.eventLogger.LogEvent(context.Background(), evt)
 	return evt
+}
+
+func (m *Manager) saveGameState() {
+	ctx := context.Background()
+
+	m.mu.Lock()
+	m.game.UpdatedAt = time.Now()
+	m.mu.Unlock()
+
+	go func() {
+		m.saveGameStateWithRetry(ctx, MaxSaveRetries, SaveRetryDelay)
+	}()
+}
+
+func (m *Manager) saveGameStateWithRetry(ctx context.Context, maxRetries int, retryDelay time.Duration) {
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(retryDelay)
+		}
+
+		if err := m.gameCache.SaveGameState(ctx, m.game); err != nil {
+			logger.Errorf(ctx, "Failed to save game state to cache (attempt %d/%d): %v", attempt+1, maxRetries, err)
+			if attempt == maxRetries-1 {
+				logger.Errorf(ctx, "Failed to save game state to cache after %d attempts", maxRetries)
+			}
+			continue
+		}
+
+		if err := m.gameRepository.UpdateGameSession(ctx, m.game); err != nil {
+			logger.Errorf(ctx, "Failed to update game session (attempt %d/%d): %v", attempt+1, maxRetries, err)
+			if attempt == maxRetries-1 {
+				logger.Errorf(ctx, "Failed to update game session after %d attempts", maxRetries)
+			}
+			continue
+		}
+
+		return
+	}
 }
 

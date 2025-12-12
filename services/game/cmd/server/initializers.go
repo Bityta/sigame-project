@@ -66,9 +66,9 @@ type Handlers struct {
 	HTTPHandler *http.Handler
 }
 
-func initHandlers(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories) *Handlers {
+func initHandlers(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories, pgClient *postgres.Client, redisClient *redis.Client) *Handlers {
 	return &Handlers{
-		HTTPHandler: http.NewHandler(),
+		HTTPHandler: http.NewHandler(packClient, repos.GameRepo, repos.RedisGameRepo, hub, repos.EventRepo, pgClient, redisClient, packClient),
 	}
 }
 

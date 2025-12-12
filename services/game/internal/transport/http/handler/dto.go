@@ -30,10 +30,23 @@ type CreateGameResponse struct {
 }
 
 type GetGameResponse struct {
-	GameID       uuid.UUID `json:"game_id"`
-	RoomID       uuid.UUID `json:"room_id"`
-	PackID       uuid.UUID `json:"pack_id"`
-	Status       string    `json:"status"`
-	CurrentRound int       `json:"current_round"`
+	GameID       uuid.UUID      `json:"game_id"`
+	RoomID       uuid.UUID      `json:"room_id"`
+	PackID       uuid.UUID      `json:"pack_id"`
+	Status       string         `json:"status"`
+	CurrentRound int            `json:"current_round"`
+	Players      []PlayerState  `json:"players"`
+	Settings     GameSettings   `json:"settings"`
+}
+
+type PlayerState struct {
+	UserID      uuid.UUID `json:"user_id"`
+	Username    string    `json:"username"`
+	AvatarURL   string    `json:"avatar_url,omitempty"`
+	Role        string    `json:"role"`
+	Score       int       `json:"score"`
+	IsActive    bool      `json:"is_active"`
+	IsReady     bool      `json:"is_ready"`
+	IsConnected bool      `json:"is_connected"`
 }
 

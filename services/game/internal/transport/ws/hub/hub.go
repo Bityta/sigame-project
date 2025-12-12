@@ -11,6 +11,7 @@ type GameManager interface {
 	HandleClientMessage(userID uuid.UUID, message interface{})
 	SendStateToClient(client interface{})
 	SetPlayerConnected(userID uuid.UUID, connected bool)
+	Stop()
 }
 
 type Client interface {
@@ -52,19 +53,48 @@ func New() *Hub {
 }
 
 func (h *Hub) Run() {
+	defer func() {
+		if r := recover(); r != nil {
+		}
+	}()
+
 	for {
 		select {
 		case client := <-h.register:
-			h.registerClient(client)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+					}
+				}()
+				h.registerClient(client)
+			}()
 
 		case client := <-h.unregister:
-			h.unregisterClient(client)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+					}
+				}()
+				h.unregisterClient(client)
+			}()
 
 		case wrapper := <-h.clientMessage:
-			h.handleClientMessage(wrapper)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+					}
+				}()
+				h.handleClientMessage(wrapper)
+			}()
 
 		case msg := <-h.broadcast:
-			h.broadcastToGame(msg.GameID, msg.Message)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+					}
+				}()
+				h.broadcastToGame(msg.GameID, msg.Message)
+			}()
 		}
 	}
 }
@@ -141,4 +171,15 @@ func (h *Hub) GetGameManager(gameID uuid.UUID) (GameManager, bool) {
 	defer h.mu.RUnlock()
 	manager, exists := h.managers[gameID]
 	return manager, exists
+}
+
+func (h *Hub) Stop() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for _, manager := range h.managers {
+		manager.Stop()
+	}
+
+	h.managers = make(map[uuid.UUID]GameManager)
 }

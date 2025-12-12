@@ -35,3 +35,7 @@ func (c *Client) GetDB() *sql.DB {
 	return c.db
 }
 
+func (c *Client) Ping() error {
+	return c.db.Ping()
+}
+

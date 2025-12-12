@@ -17,6 +17,7 @@ func (m *Manager) BroadcastStateUnlocked() {
 func (m *Manager) BroadcastState() {
 	state := m.buildGameState()
 	m.broadcastState(state)
+	m.saveGameState()
 }
 
 func (m *Manager) buildGameState() *domainGame.State {
