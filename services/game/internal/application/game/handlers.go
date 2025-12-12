@@ -288,27 +288,34 @@ func (m *Manager) handlePressButton(userID uuid.UUID) {
 }
 
 func (m *Manager) finishButtonPressCollection() {
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Starting, waiting %v", ButtonPressCollectionWindow)
 	time.Sleep(ButtonPressCollectionWindow)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	logger.Infof(m.ctx, "[finishButtonPressCollection] After sleep, game status: %s", m.game.Status)
 	if m.game.Status != domainGame.StatusButtonPress {
+		logger.Warnf(m.ctx, "[finishButtonPressCollection] Game status changed, aborting: %s", m.game.Status)
 		return
 	}
 
 	m.buttonPress.Close()
 	winner := m.buttonPress.GetWinner()
 	if winner == nil {
+		logger.Warnf(m.ctx, "[finishButtonPressCollection] No winner found")
 		return
 	}
 
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Winner: %s (%s), setting active player and changing status to answering", winner.UserID, winner.Username)
 	m.timer.Stop()
 	m.game.SetActivePlayer(winner.UserID)
 
 	m.game.UpdateStatus(domainGame.StatusAnswering)
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Status changed to: %s, broadcasting state", m.game.Status)
 	m.BroadcastState()
 	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Timer started for %d seconds", m.game.Settings.TimeForAnswer)
 }
 
 func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
