@@ -188,9 +188,12 @@ export class GameWebSocket {
   /**
    * Handle PING message - respond with PONG for RTT measurement
    */
-  private handlePing(payload: PingPayload): void {
+  private handlePing(payload: PingPayload | undefined): void {
+    // Если payload отсутствует или не содержит server_time, используем текущее время
+    const serverTime = payload?.server_time ?? Date.now();
+    
     const pongPayload = {
-      server_time: payload.server_time,
+      server_time: serverTime,
       client_time: Date.now(),
     };
 
