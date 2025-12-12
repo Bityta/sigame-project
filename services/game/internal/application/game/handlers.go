@@ -142,12 +142,15 @@ func (m *Manager) startNormalQuestion(question *pack.Question) {
 }
 
 func (m *Manager) startSecretQuestion(question *pack.Question) {
+	logger.Infof(m.ctx, "[startSecretQuestion] Starting secret question, price: %d", question.Price)
 	m.game.UpdateStatus(domainGame.StatusSecretTransfer)
 	m.BroadcastState()
 	m.timer.Start(SecretTransferDuration)
+	logger.Infof(m.ctx, "[startSecretQuestion] Status changed to: %s, timer started for %v", m.game.Status, SecretTransferDuration)
 }
 
 func (m *Manager) startStakeQuestion(question *pack.Question) {
+	logger.Infof(m.ctx, "[startStakeQuestion] Starting stake question, price: %d", question.Price)
 	activePlayerID := m.selectActivePlayer()
 	m.game.SetActivePlayer(activePlayerID)
 
@@ -166,12 +169,15 @@ func (m *Manager) startStakeQuestion(question *pack.Question) {
 		IsAllIn:    false,
 	}
 
+	logger.Infof(m.ctx, "[startStakeQuestion] Active player: %s, minBet: %d, maxBet: %d", activePlayerID, minBet, maxBet)
 	m.game.UpdateStatus(domainGame.StatusStakeBetting)
 	m.BroadcastState()
 	m.timer.Start(StakeBettingDuration)
+	logger.Infof(m.ctx, "[startStakeQuestion] Status changed to: %s, timer started for %v", m.game.Status, StakeBettingDuration)
 }
 
 func (m *Manager) startForAllQuestion(question *pack.Question) {
+	logger.Infof(m.ctx, "[startForAllQuestion] Starting forAll question, price: %d", question.Price)
 	m.forAllCollector.Start(question.Answer, question.Price)
 
 	m.game.UpdateStatus(domainGame.StatusQuestionShow)
@@ -186,6 +192,7 @@ func (m *Manager) startForAllQuestion(question *pack.Question) {
 		readTime += time.Duration(question.MediaDurationMs) * time.Millisecond
 	}
 
+	logger.Infof(m.ctx, "[startForAllQuestion] Status changed to: %s, readTime: %v", m.game.Status, readTime)
 	go func() {
 		time.Sleep(readTime)
 		m.mu.Lock()
@@ -193,9 +200,11 @@ func (m *Manager) startForAllQuestion(question *pack.Question) {
 
 		if m.game.Status == domainGame.StatusQuestionShow && m.game.CurrentQuestion != nil &&
 			m.game.CurrentQuestion.GetType() == pack.TypeForAll {
+			logger.Infof(m.ctx, "[startForAllQuestion] Transitioning to forAllAnswering after readTime")
 			m.game.UpdateStatus(domainGame.StatusForAllAnswering)
 			m.BroadcastState()
 			m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
+			logger.Infof(m.ctx, "[startForAllQuestion] Status changed to: %s, timer started", m.game.Status)
 		}
 	}()
 }
@@ -405,12 +414,15 @@ func (m *Manager) handleMediaLoadComplete(action *PlayerAction) {
 }
 
 func (m *Manager) handleTransferSecret(action *PlayerAction) {
+	logger.Infof(m.ctx, "[TRANSFER_SECRET] Received from user: %s, game status: %s", action.UserID, m.game.Status)
 	if m.game.Status != domainGame.StatusSecretTransfer {
+		logger.Warnf(m.ctx, "[TRANSFER_SECRET] Invalid game status: %s, expected: %s", m.game.Status, domainGame.StatusSecretTransfer)
 		return
 	}
 
 	hostPlayer := m.game.Players[action.UserID]
 	if hostPlayer.Role != player.RoleHost {
+		logger.Warnf(m.ctx, "[TRANSFER_SECRET] User is not host: %s, role: %s", action.UserID, hostPlayer.Role)
 		return
 	}
 
@@ -452,11 +464,14 @@ func (m *Manager) transferSecretToPlayer(fromUserID, toUserID uuid.UUID) {
 }
 
 func (m *Manager) handlePlaceStake(action *PlayerAction) {
+	logger.Infof(m.ctx, "[PLACE_STAKE] Received from user: %s, game status: %s", action.UserID, m.game.Status)
 	if m.game.Status != domainGame.StatusStakeBetting {
+		logger.Warnf(m.ctx, "[PLACE_STAKE] Invalid game status: %s, expected: %s", m.game.Status, domainGame.StatusStakeBetting)
 		return
 	}
 
 	if m.game.ActivePlayer == nil || *m.game.ActivePlayer != action.UserID {
+		logger.Warnf(m.ctx, "[PLACE_STAKE] User is not active player: %s, active: %v", action.UserID, m.game.ActivePlayer)
 		return
 	}
 
