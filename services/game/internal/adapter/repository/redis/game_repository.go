@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/sigame/game/internal/config"
+	"github.com/sigame/game/internal/infrastructure/config"
 	"github.com/sigame/game/internal/domain/game"
 	"github.com/sigame/game/internal/domain/pack"
 	"github.com/sigame/game/internal/domain/player"

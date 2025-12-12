@@ -8,7 +8,7 @@ import (
 	"github.com/sigame/game/internal/domain/game"
 	"github.com/sigame/game/internal/domain/pack"
 	"github.com/sigame/game/internal/domain/player"
-	"github.com/sigame/game/internal/transport/websocket"
+	"github.com/sigame/game/internal/transport/ws/message"
 )
 
 type MediaLoadStatus struct {
