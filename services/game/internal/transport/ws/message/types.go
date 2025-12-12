@@ -2,7 +2,8 @@ package message
 
 import (
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain"
+	domainGame "github.com/sigame/game/internal/domain/game"
+	"github.com/sigame/game/internal/domain/player"
 )
 
 type MessageType string
@@ -92,14 +93,14 @@ type AnswerResultPayload struct {
 }
 
 type RoundCompletePayload struct {
-	RoundNumber int                  `json:"round_number"`
-	Scores      []domain.PlayerScore `json:"scores"`
-	NextRound   *int                 `json:"next_round,omitempty"`
+	RoundNumber int            `json:"round_number"`
+	Scores      []player.Score `json:"scores"`
+	NextRound   *int           `json:"next_round,omitempty"`
 }
 
 type GameCompletePayload struct {
-	Winners []domain.PlayerScore `json:"winners"`
-	Scores  []domain.PlayerScore `json:"scores"`
+	Winners []player.Score `json:"winners"`
+	Scores  []player.Score `json:"scores"`
 }
 
 type ErrorPayload struct {
@@ -175,7 +176,7 @@ type StakePlacedPayload struct {
 }
 
 type ForAllResultsPayload struct {
-	CorrectAnswer string                      `json:"correct_answer"`
-	Results       []domain.ForAllAnswerResult `json:"results"`
+	CorrectAnswer string                   `json:"correct_answer"`
+	Results       []domainGame.ForAllResult `json:"results"`
 }
 

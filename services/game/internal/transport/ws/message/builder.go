@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/sigame/game/internal/domain"
+	domainGame "github.com/sigame/game/internal/domain/game"
 )
 
 func NewClientMessage(data []byte) (*ClientMessage, error) {
@@ -26,7 +26,7 @@ func (m *ServerMessage) ToJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-func NewStateUpdateMessage(state *domain.GameState) *ServerMessage {
+func NewStateUpdateMessage(state *domainGame.State) *ServerMessage {
 	return NewServerMessage(MessageTypeStateUpdate, state)
 }
 
@@ -100,7 +100,7 @@ func NewStakePlacedMessage(userID uuid.UUID, username string, amount int, allIn 
 	})
 }
 
-func NewForAllResultsMessage(correctAnswer string, results []domain.ForAllAnswerResult) *ServerMessage {
+func NewForAllResultsMessage(correctAnswer string, results []domainGame.ForAllResult) *ServerMessage {
 	return NewServerMessage(MessageTypeForAllResults, ForAllResultsPayload{
 		CorrectAnswer: correctAnswer,
 		Results:       results,

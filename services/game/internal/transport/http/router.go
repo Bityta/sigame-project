@@ -6,15 +6,16 @@ import (
 	"github.com/sigame/game/internal/transport/http/middleware"
 )
 
-func SetupRouter() *gin.Engine {
+type WSHandler interface {
+	HandleWebSocket(c *gin.Context)
+}
+
+func SetupRouter(gameHandler *handler.GameHandler, healthHandler *handler.HealthHandler, wsHandler WSHandler) *gin.Engine {
 	r := gin.New()
 
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logging())
 	r.Use(middleware.CORS())
-
-	healthHandler := handler.NewHealthHandler()
-	gameHandler := handler.NewGameHandler()
 
 	r.GET("/health", healthHandler.Health)
 	r.HEAD("/health", healthHandler.Health)
@@ -24,6 +25,7 @@ func SetupRouter() *gin.Engine {
 		api.POST("", gameHandler.CreateGame)
 		api.GET("/my-active", middleware.Auth(), gameHandler.GetMyActiveGame)
 		api.GET("/:id", gameHandler.GetGame)
+		api.GET("/:id/ws", wsHandler.HandleWebSocket)
 	}
 
 	return r

@@ -11,7 +11,7 @@ import (
 	"github.com/sigame/game/internal/domain/pack"
 	"github.com/sigame/game/internal/domain/player"
 	"github.com/sigame/game/internal/domain/event"
-	"github.com/sigame/game/internal/logger"
+	"github.com/sigame/game/internal/infrastructure/logger"
 )
 
 type PackServiceClient interface {

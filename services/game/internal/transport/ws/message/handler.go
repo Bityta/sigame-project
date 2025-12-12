@@ -3,7 +3,7 @@ package message
 import (
 	"time"
 
-	"github.com/sigame/game/internal/logger"
+	"github.com/sigame/game/internal/infrastructure/logger"
 )
 
 func (h *Hub) handleClientMessage(wrapper *ClientMessageWrapper) {

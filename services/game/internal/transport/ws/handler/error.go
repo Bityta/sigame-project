@@ -1,6 +1,6 @@
 package handler
 
-import "github.com/sigame/game/internal/logger"
+import "github.com/sigame/game/internal/infrastructure/logger"
 
 func sendErrorMessage(client *Client, message, code string) {
 	errorMsg := NewErrorMessage(message, code)

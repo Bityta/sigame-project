@@ -67,7 +67,8 @@ func main() {
 	logger.Infof(nil, "WebSocket hub started")
 
 	handlers := initHandlers(hub, packClient, repos)
-	router := initRouter(handlers.RESTHandler, handlers.WSHandler)
+	wsHandler := initWebSocketHandler(hub)
+	router := initRouter(handlers, wsHandler)
 
 	httpServer := createHTTPServer(cfg, router)
 	metricsServer := createMetricsServer()

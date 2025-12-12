@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sigame/game/internal/logger"
+	"github.com/sigame/game/internal/infrastructure/logger"
 )
 
 type RTTTracker struct {

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/sigame/game/internal/logger"
+	"github.com/sigame/game/internal/infrastructure/logger"
 )
 
 var upgrader = websocket.Upgrader{

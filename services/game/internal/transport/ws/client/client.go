@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/sigame/game/internal/logger"
+	"github.com/sigame/game/internal/infrastructure/logger"
 )
 
 type Client struct {

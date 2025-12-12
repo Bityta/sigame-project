@@ -58,31 +58,28 @@ func initRepositories(pgClient *postgres.Client, redisClient *redis.Client) *Rep
 }
 
 func initWebSocketHub() *ws.Hub {
-	return ws.NewHub()
+	hub := ws.NewHub()
+	return hub
 }
 
 type Handlers struct {
-	WSHandler   *ws.Handler
-	RESTHandler *http.Handler
+	HTTPHandler *http.Handler
 }
 
 func initHandlers(hub *ws.Hub, packClient *grpcClient.PackClient, repos *Repositories) *Handlers {
 	return &Handlers{
-		WSHandler: ws.NewHandler(hub),
-		RESTHandler: http.NewHandler(
-			hub,
-			packClient,
-			repos.GameRepo,
-			repos.EventRepo,
-			repos.RedisGameRepo,
-			repos.RedisCacheRepo,
-		),
+		HTTPHandler: http.NewHandler(),
 	}
 }
 
-func initRouter(restHandler *http.Handler, wsHandler *ws.Handler) *gin.Engine {
-	router := http.SetupRouter(restHandler, wsHandler)
+func initWebSocketHandler(hub *ws.Hub) *ws.Handler {
+	return ws.NewHandler(hub)
+}
+
+func initRouter(handlers *Handlers, wsHandler *ws.Handler) *gin.Engine {
+	router := http.SetupRouter(handlers.HTTPHandler.Game, handlers.HTTPHandler.Health, wsHandler)
 	router.Use(otelgin.Middleware(ServiceName))
 	return router
 }
+
 
