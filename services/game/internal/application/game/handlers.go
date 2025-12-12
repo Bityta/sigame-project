@@ -256,14 +256,27 @@ func (m *Manager) sendStartMedia(question *pack.Question) {
 }
 
 func (m *Manager) handlePressButton(userID uuid.UUID) {
+	logger.Infof(m.ctx, "[PRESS_BUTTON] Received from user: %s, game status: %s", userID, m.game.Status)
 	if m.game.Status != domainGame.StatusButtonPress {
+		logger.Warnf(m.ctx, "[PRESS_BUTTON] Invalid game status: %s, expected: %s", m.game.Status, domainGame.StatusButtonPress)
 		return
 	}
 
 	p, ok := m.game.Players[userID]
-	if !ok || !p.IsActive || p.Role == player.RoleHost {
+	if !ok {
+		logger.Warnf(m.ctx, "[PRESS_BUTTON] Player not found: %s", userID)
 		return
 	}
+	if !p.IsActive {
+		logger.Warnf(m.ctx, "[PRESS_BUTTON] Player is not active: %s", userID)
+		return
+	}
+	if p.Role == player.RoleHost {
+		logger.Warnf(m.ctx, "[PRESS_BUTTON] Host cannot press button: %s, role: %s", userID, p.Role)
+		return
+	}
+	
+	logger.Infof(m.ctx, "[PRESS_BUTTON] Processing button press: user=%s, username=%s", userID, p.Username)
 
 	rtt := m.hub.GetClientRTT(m.game.ID, userID)
 
