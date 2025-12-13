@@ -113,12 +113,14 @@ export const GamePage = () => {
       hasGameState: !!gameState,
       gameStateStatus: gameState?.status,
       gameId: gameId,
-      userId: user?.id
+      userId: user?.id,
+      gameStateKeys: gameState ? Object.keys(gameState) : []
     });
   }, [isConnected, gameState, gameId, user?.id]);
 
-  if (!isConnected || !gameState) {
-    console.log('[GamePage] Showing connecting screen:', { isConnected, hasGameState: !!gameState });
+  // Проверяем состояние перед рендерингом
+  if (!isConnected) {
+    console.log('[GamePage] Not connected, showing connecting screen');
     return (
       <div className="game-page">
         <div className="game-page__connecting">
@@ -128,6 +130,20 @@ export const GamePage = () => {
       </div>
     );
   }
+
+  if (!gameState) {
+    console.log('[GamePage] Connected but no gameState, showing connecting screen');
+    return (
+      <div className="game-page">
+        <div className="game-page__connecting">
+          <Spinner size="large" center />
+          <p>Ожидание состояния игры...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('[GamePage] Rendering game page with state:', { status: gameState.status });
 
   const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
   const isHost = currentPlayer?.role === 'host';
