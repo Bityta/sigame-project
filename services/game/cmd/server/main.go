@@ -94,7 +94,7 @@ func main() {
 
 	httpAddr := fmt.Sprintf(":%s", cfg.Server.HTTPPort)
 	logger.Infof(nil, "Game Service is ready!")
-	logger.Infof(nil, "HTTP API: %s", fmt.Sprintf("http://localhost%s", httpAddr))
+	logger.Infof(nil, "HTTP server listening on %s", httpAddr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

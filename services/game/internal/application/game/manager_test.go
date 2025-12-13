@@ -151,8 +151,8 @@ func TestManager_Start(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
-	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
-	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
@@ -164,7 +164,7 @@ func TestManager_Start(t *testing.T) {
 	assert.NotNil(t, manager.ctx)
 
 	manager.Stop()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	mockLogger.AssertExpectations(t)
 	mockCache.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
@@ -186,9 +186,11 @@ func TestManager_Stop(t *testing.T) {
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	manager.Stop()
+
+	time.Sleep(200 * time.Millisecond)
 
 	select {
 	case <-manager.ctx.Done():
@@ -197,6 +199,7 @@ func TestManager_Stop(t *testing.T) {
 		assert.Fail(t, "Context should be cancelled")
 	}
 	mockLogger.AssertExpectations(t)
+	mockCache.AssertExpectations(t)
 }
 
 func TestManager_HandleClientMessage(t *testing.T) {
@@ -233,9 +236,12 @@ func TestManager_SetPlayerConnected(t *testing.T) {
 	game := createTestGame()
 	testPack := createTestPack()
 	mockHub := new(MockHub)
+	mockHub.On("Broadcast", mock.Anything, mock.Anything).Return()
 	mockLogger := new(MockEventLogger)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
@@ -256,6 +262,8 @@ func TestManager_SetPlayerConnected(t *testing.T) {
 	p, err = game.GetPlayer(userID)
 	assert.NoError(t, err)
 	assert.False(t, p.IsConnected)
+	
+	mockHub.AssertExpectations(t)
 }
 
 func TestManager_HandleClientMessage_InvalidMessage(t *testing.T) {

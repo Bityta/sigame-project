@@ -72,8 +72,45 @@ export const useGameWebSocket = ({
     // Подписываемся на обновления состояния
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
       stateReceivedRef.current = true;
-      setGameState(state);
-      onStateUpdateRef.current?.(state);
+      
+      console.log('[useGameWebSocket] STATE_UPDATE received:', {
+        status: state.status,
+        hasThemes: !!state.themes,
+        themesLength: state.themes?.length || 0,
+        activePlayer: state.activePlayer,
+        userId: userId,
+        stateKeys: Object.keys(state)
+      });
+      
+      // Debug logging for answer_judging state
+      if (state.status === 'answer_judging') {
+        console.log('[useGameWebSocket] STATE_UPDATE answer_judging:', {
+          status: state.status,
+          activePlayer: state.activePlayer,
+          activePlayerType: typeof state.activePlayer,
+          userId: userId
+        });
+      }
+      
+      // Debug logging for question_select state
+      if (state.status === 'question_select') {
+        console.log('[useGameWebSocket] STATE_UPDATE question_select:', {
+          status: state.status,
+          hasThemes: !!state.themes,
+          themesLength: state.themes?.length || 0,
+          themes: state.themes
+        });
+      }
+      
+      try {
+        console.log('[useGameWebSocket] Calling setGameState with:', { status: state.status });
+        setGameState(state);
+        console.log('[useGameWebSocket] setGameState called successfully');
+        onStateUpdateRef.current?.(state);
+      } catch (error) {
+        console.error('[useGameWebSocket] Error setting game state:', error);
+        console.error('[useGameWebSocket] Error stack:', (error as Error).stack);
+      }
       
       // Clear startMedia when question changes or game state changes
       if (state.status !== 'question_show' && state.status !== 'button_press') {
