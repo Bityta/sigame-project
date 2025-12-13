@@ -148,11 +148,10 @@ export const GamePage = () => {
     hasThemes: !!gameState.themes,
     themesLength: gameState.themes?.length || 0,
     hasAllRounds: !!gameState.allRounds,
-    allRoundsLength: gameState.allRounds?.length || 0
+    allRoundsLength: gameState.allRounds?.length || 0,
+    hasPlayers: !!gameState.players,
+    playersLength: gameState.players?.length || 0
   });
-  
-  // Обработка ошибок рендеринга
-  try {
 
   const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
   const isHost = currentPlayer?.role === 'host';
