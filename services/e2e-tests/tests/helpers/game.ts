@@ -10,6 +10,10 @@ export async function selectQuestion(
   themeName?: string,
   price?: number
 ): Promise<void> {
+  // Ждем, пока страница загрузится и WebSocket подключится
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000); // Даем время на установку WebSocket соединения
+  
   // Ждем перехода в question_select - проверяем текст индикатора или статус
   try {
     await page.waitForFunction(
@@ -30,7 +34,7 @@ export async function selectQuestion(
   }
   
   // Ждем появления игрового поля или сообщения о загрузке
-  await page.waitForSelector('.game-board, .game-board-empty', { timeout: 30000 });
+  await page.waitForSelector('.game-board, .game-board-empty', { timeout: 60000 });
   
   // Проверяем, что игровое поле загружено (не показывается "Загрузка игрового поля...")
   const loadingMessage = page.locator('.game-board-empty');
