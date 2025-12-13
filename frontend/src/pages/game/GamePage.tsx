@@ -272,11 +272,19 @@ export const GamePage = () => {
 
         {/* Game Board */}
         {gameState.status === 'question_select' && (
-          <GameBoard
-            themes={gameState.themes}
-            onQuestionSelect={handleQuestionSelect}
-            canSelectQuestion={canSelectQuestion}
-          />
+          <>
+            {console.log('[GamePage] Rendering GameBoard:', {
+              status: gameState.status,
+              themesLength: gameState.themes?.length || 0,
+              themes: gameState.themes,
+              canSelectQuestion
+            })}
+            <GameBoard
+              themes={gameState.themes}
+              onQuestionSelect={handleQuestionSelect}
+              canSelectQuestion={canSelectQuestion}
+            />
+          </>
         )}
 
         {/* Secret Transfer Panel */}
