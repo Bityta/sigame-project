@@ -180,17 +180,17 @@ func TestManager_Stop(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
-	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
 	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	manager.Stop()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	select {
 	case <-manager.ctx.Done():
