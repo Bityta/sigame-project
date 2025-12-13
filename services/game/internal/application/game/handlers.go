@@ -317,15 +317,17 @@ func (m *Manager) finishButtonPressCollection() {
 		return
 	}
 
-	logger.Infof(m.ctx, "[finishButtonPressCollection] Winner: %s (%s), setting active player and changing status to answering", winner.UserID, winner.Username)
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Winner: %s (%s), setting active player and transitioning to answer_judging immediately", winner.UserID, winner.Username)
 	m.timer.Stop()
 	m.game.SetActivePlayer(winner.UserID)
 
-	m.game.UpdateStatus(domainGame.StatusAnswering)
+	// Переходим сразу в answer_judging, чтобы кнопки судейства появились сразу
+	// Таймер все равно работает для отсчета времени ответа
+	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
 	logger.Infof(m.ctx, "[finishButtonPressCollection] Status changed to: %s, activePlayer: %v, broadcasting state", m.game.Status, m.game.ActivePlayer)
 	m.BroadcastState()
 	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
-	logger.Infof(m.ctx, "[finishButtonPressCollection] Timer started for %d seconds", m.game.Settings.TimeForAnswer)
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Timer started for %d seconds (for answer timeout)", m.game.Settings.TimeForAnswer)
 }
 
 func (m *Manager) handleSubmitAnswer(action *PlayerAction) {
