@@ -10,8 +10,25 @@ export async function selectQuestion(
   themeName?: string,
   price?: number
 ): Promise<void> {
-  // Ждем перехода в question_select и появления игрового поля
-  await page.waitForSelector('.game-board', { timeout: 30000 });
+  // Ждем перехода в question_select
+  await page.waitForFunction(
+    () => {
+      const url = window.location.href;
+      return url.includes('/game/');
+    },
+    { timeout: 30000 }
+  );
+  
+  // Ждем появления игрового поля или сообщения о загрузке
+  await page.waitForSelector('.game-board, .game-board-empty', { timeout: 30000 });
+  
+  // Проверяем, что игровое поле загружено (не показывается "Загрузка игрового поля...")
+  const loadingMessage = page.locator('.game-board-empty');
+  const isVisible = await loadingMessage.isVisible().catch(() => false);
+  if (isVisible) {
+    // Ждем, пока загрузка завершится
+    await page.waitForSelector('.game-board', { timeout: 30000 });
+  }
   
   if (themeName && price) {
     const theme = page.locator('.game-board__theme').filter({ hasText: themeName }).first();

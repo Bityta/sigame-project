@@ -145,6 +145,19 @@ export const GamePage = () => {
     }
   }, [gameState.status, gameState.activePlayer, isHost, canJudgeAnswer, user?.id]);
 
+  // Debug logging for question_select state
+  useEffect(() => {
+    if (gameState.status === 'question_select') {
+      console.log('[GamePage] question_select state:', {
+        status: gameState.status,
+        isHost,
+        themes: gameState.themes?.length || 0,
+        hasThemes: !!gameState.themes,
+        canSelectQuestion
+      });
+    }
+  }, [gameState.status, gameState.themes, isHost, canSelectQuestion]);
+
   const handleQuestionSelect = (themeId: string, questionId: string) => {
     selectQuestion(themeId, questionId);
   };
