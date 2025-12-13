@@ -14,6 +14,21 @@ export async function selectQuestion(
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000); // Даем время на установку WebSocket соединения
   
+  // Проверяем WebSocket соединение и состояние игры через консоль браузера
+  const gameState = await page.evaluate(() => {
+    // Пытаемся получить состояние игры из window или из DOM
+    const stateElement = document.querySelector('[data-game-state]');
+    if (stateElement) {
+      return JSON.parse(stateElement.getAttribute('data-game-state') || '{}');
+    }
+    // Проверяем консольные логи
+    return { status: 'unknown', hasWebSocket: typeof WebSocket !== 'undefined' };
+  });
+  console.log('[selectQuestion] Game state from page:', gameState);
+  
+  // Делаем скриншот для отладки
+  await page.screenshot({ path: 'test-results/debug-before-wait.png', fullPage: true });
+  
   // Ждем перехода в question_select - проверяем текст индикатора или статус
   try {
     await page.waitForFunction(
@@ -29,8 +44,21 @@ export async function selectQuestion(
       { timeout: 60000 }
     );
   } catch (error) {
-    // Если не удалось дождаться по индикатору, просто ждем игровое поле
-    console.log('Не удалось дождаться question_select по индикатору, ждем игровое поле напрямую');
+    // Если не удалось дождаться по индикатору, делаем скриншот и проверяем что есть на странице
+    console.log('Не удалось дождаться question_select по индикатору');
+    await page.screenshot({ path: 'test-results/debug-timeout.png', fullPage: true });
+    
+    // Проверяем что есть на странице
+    const pageContent = await page.evaluate(() => {
+      return {
+        turnIndicator: document.querySelector('.game-page__turn-indicator-text')?.textContent,
+        hasGameBoard: !!document.querySelector('.game-board'),
+        hasGameBoardEmpty: !!document.querySelector('.game-board-empty'),
+        status: document.querySelector('.game-page')?.getAttribute('data-status'),
+        allElements: Array.from(document.querySelectorAll('*')).map(el => el.className).filter(Boolean).slice(0, 20)
+      };
+    });
+    console.log('[selectQuestion] Page content on timeout:', pageContent);
   }
   
   // Ждем появления игрового поля или сообщения о загрузке

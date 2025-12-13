@@ -24,6 +24,21 @@ test.describe('Кнопки судейства', () => {
     await waitForGameStart(page);
     await waitForGameStart(playerPage);
     
+    // Проверяем консольные логи браузера
+    page.on('console', msg => {
+      if (msg.text().includes('[GamePage]') || msg.text().includes('[useGameWebSocket]')) {
+        console.log(`[Browser Console] ${msg.text()}`);
+      }
+    });
+    playerPage.on('console', msg => {
+      if (msg.text().includes('[GamePage]') || msg.text().includes('[useGameWebSocket]')) {
+        console.log(`[Player Browser Console] ${msg.text()}`);
+      }
+    });
+    
+    // Делаем скриншот перед выбором вопроса
+    await page.screenshot({ path: 'test-results/before-select-question.png', fullPage: true });
+    
     await selectQuestion(page);
     
     await pressButton(playerPage);
