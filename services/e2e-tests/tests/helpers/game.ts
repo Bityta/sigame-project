@@ -21,14 +21,41 @@ export async function selectQuestion(
   } catch (error) {
     console.log('[selectQuestion] ERROR: .game-page not found!');
     await page.screenshot({ path: 'test-results/debug-no-game-page.png', fullPage: true });
-    const pageInfo = await page.evaluate(() => ({
-      url: window.location.href,
-      title: document.title,
-      bodyHTML: document.body?.innerHTML?.substring(0, 500) || '',
-      hasRoot: !!document.querySelector('#root')
-    }));
-    console.log('[selectQuestion] Page info:', pageInfo);
-    throw new Error('Game page not loaded');
+    
+    // Собираем всю информацию о странице
+    const pageInfo = await page.evaluate(() => {
+      const errors: string[] = [];
+      const consoleErrors: string[] = [];
+      
+      // Перехватываем ошибки консоли
+      if ((window as any).__consoleErrors) {
+        consoleErrors.push(...(window as any).__consoleErrors);
+      }
+      
+      return {
+        url: window.location.href,
+        title: document.title,
+        hasRoot: !!document.querySelector('#root'),
+        rootContent: document.querySelector('#root')?.innerHTML?.substring(0, 1000) || '',
+        bodyText: document.body?.textContent?.substring(0, 500) || '',
+        allSelectors: Array.from(document.querySelectorAll('*')).map(el => ({
+          tag: el.tagName,
+          id: el.id,
+          classes: el.className,
+          text: el.textContent?.substring(0, 50)
+        })).slice(0, 20),
+        consoleErrors
+      };
+    });
+    console.log('[selectQuestion] Page info:', JSON.stringify(pageInfo, null, 2));
+    
+    // Проверяем ошибки в консоли браузера
+    const consoleMessages = await page.evaluate(() => {
+      return (window as any).__consoleLogs || [];
+    });
+    console.log('[selectQuestion] Console messages:', consoleMessages);
+    
+    throw new Error(`Game page not loaded. URL: ${pageInfo.url}`);
   }
   
   // Проверяем что есть на странице
