@@ -78,7 +78,8 @@ export const useGameWebSocket = ({
         hasThemes: !!state.themes,
         themesLength: state.themes?.length || 0,
         activePlayer: state.activePlayer,
-        userId: userId
+        userId: userId,
+        stateKeys: Object.keys(state)
       });
       
       // Debug logging for answer_judging state
@@ -91,11 +92,24 @@ export const useGameWebSocket = ({
         });
       }
       
+      // Debug logging for question_select state
+      if (state.status === 'question_select') {
+        console.log('[useGameWebSocket] STATE_UPDATE question_select:', {
+          status: state.status,
+          hasThemes: !!state.themes,
+          themesLength: state.themes?.length || 0,
+          themes: state.themes
+        });
+      }
+      
       try {
+        console.log('[useGameWebSocket] Calling setGameState with:', { status: state.status });
         setGameState(state);
+        console.log('[useGameWebSocket] setGameState called successfully');
         onStateUpdateRef.current?.(state);
       } catch (error) {
         console.error('[useGameWebSocket] Error setting game state:', error);
+        console.error('[useGameWebSocket] Error stack:', (error as Error).stack);
       }
       
       // Clear startMedia when question changes or game state changes
