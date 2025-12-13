@@ -180,15 +180,17 @@ func TestManager_Stop(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
-	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
 	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 	manager.Start()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	manager.Stop()
+
+	time.Sleep(100 * time.Millisecond)
 
 	select {
 	case <-manager.ctx.Done():
@@ -197,6 +199,7 @@ func TestManager_Stop(t *testing.T) {
 		assert.Fail(t, "Context should be cancelled")
 	}
 	mockLogger.AssertExpectations(t)
+	mockCache.AssertExpectations(t)
 }
 
 func TestManager_HandleClientMessage(t *testing.T) {
