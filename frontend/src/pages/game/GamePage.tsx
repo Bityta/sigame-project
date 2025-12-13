@@ -106,7 +106,19 @@ export const GamePage = () => {
     lastStatusRef.current = currentStatus;
   }, [gameState?.status, gameState?.timeRemaining]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[GamePage] Render check:', {
+      isConnected,
+      hasGameState: !!gameState,
+      gameStateStatus: gameState?.status,
+      gameId: gameId,
+      userId: user?.id
+    });
+  }, [isConnected, gameState, gameId, user?.id]);
+
   if (!isConnected || !gameState) {
+    console.log('[GamePage] Showing connecting screen:', { isConnected, hasGameState: !!gameState });
     return (
       <div className="game-page">
         <div className="game-page__connecting">

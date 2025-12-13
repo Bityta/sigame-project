@@ -73,6 +73,14 @@ export const useGameWebSocket = ({
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
       stateReceivedRef.current = true;
       
+      console.log('[useGameWebSocket] STATE_UPDATE received:', {
+        status: state.status,
+        hasThemes: !!state.themes,
+        themesLength: state.themes?.length || 0,
+        activePlayer: state.activePlayer,
+        userId: userId
+      });
+      
       // Debug logging for answer_judging state
       if (state.status === 'answer_judging') {
         console.log('[useGameWebSocket] STATE_UPDATE answer_judging:', {
@@ -83,8 +91,12 @@ export const useGameWebSocket = ({
         });
       }
       
-      setGameState(state);
-      onStateUpdateRef.current?.(state);
+      try {
+        setGameState(state);
+        onStateUpdateRef.current?.(state);
+      } catch (error) {
+        console.error('[useGameWebSocket] Error setting game state:', error);
+      }
       
       // Clear startMedia when question changes or game state changes
       if (state.status !== 'question_show' && state.status !== 'button_press') {
