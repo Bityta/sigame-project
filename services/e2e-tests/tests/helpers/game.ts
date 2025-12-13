@@ -14,17 +14,37 @@ export async function selectQuestion(
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000); // Даем время на установку WebSocket соединения
   
-  // Проверяем WebSocket соединение и состояние игры через консоль браузера
-  const gameState = await page.evaluate(() => {
-    // Пытаемся получить состояние игры из window или из DOM
-    const stateElement = document.querySelector('[data-game-state]');
-    if (stateElement) {
-      return JSON.parse(stateElement.getAttribute('data-game-state') || '{}');
-    }
-    // Проверяем консольные логи
-    return { status: 'unknown', hasWebSocket: typeof WebSocket !== 'undefined' };
+  // Сначала проверяем что страница игры загрузилась
+  try {
+    await page.waitForSelector('.game-page', { timeout: 30000 });
+    console.log('[selectQuestion] .game-page found');
+  } catch (error) {
+    console.log('[selectQuestion] ERROR: .game-page not found!');
+    await page.screenshot({ path: 'test-results/debug-no-game-page.png', fullPage: true });
+    const pageInfo = await page.evaluate(() => ({
+      url: window.location.href,
+      title: document.title,
+      bodyHTML: document.body?.innerHTML?.substring(0, 500) || '',
+      hasRoot: !!document.querySelector('#root')
+    }));
+    console.log('[selectQuestion] Page info:', pageInfo);
+    throw new Error('Game page not loaded');
+  }
+  
+  // Проверяем что есть на странице
+  const pageInfo = await page.evaluate(() => {
+    return {
+      url: window.location.href,
+      title: document.title,
+      hasGamePage: !!document.querySelector('.game-page'),
+      hasTurnIndicator: !!document.querySelector('.game-page__turn-indicator-text'),
+      turnIndicatorText: document.querySelector('.game-page__turn-indicator-text')?.textContent,
+      hasGameBoard: !!document.querySelector('.game-board'),
+      hasGameBoardEmpty: !!document.querySelector('.game-board-empty'),
+      allClasses: Array.from(document.querySelectorAll('.game-page *')).map(el => el.className).filter(Boolean).slice(0, 30)
+    };
   });
-  console.log('[selectQuestion] Game state from page:', gameState);
+  console.log('[selectQuestion] Page info:', JSON.stringify(pageInfo, null, 2));
   
   // Делаем скриншот для отладки
   await page.screenshot({ path: 'test-results/debug-before-wait.png', fullPage: true });
