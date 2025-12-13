@@ -322,7 +322,7 @@ func (m *Manager) finishButtonPressCollection() {
 	m.game.SetActivePlayer(winner.UserID)
 
 	m.game.UpdateStatus(domainGame.StatusAnswering)
-	logger.Infof(m.ctx, "[finishButtonPressCollection] Status changed to: %s, broadcasting state", m.game.Status)
+	logger.Infof(m.ctx, "[finishButtonPressCollection] Status changed to: %s, activePlayer: %v, broadcasting state", m.game.Status, m.game.ActivePlayer)
 	m.BroadcastState()
 	m.timer.Start(time.Duration(m.game.Settings.TimeForAnswer) * time.Second)
 	logger.Infof(m.ctx, "[finishButtonPressCollection] Timer started for %d seconds", m.game.Settings.TimeForAnswer)

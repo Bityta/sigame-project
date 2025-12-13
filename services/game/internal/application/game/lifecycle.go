@@ -120,9 +120,9 @@ func (m *Manager) transitionToButtonPress() {
 }
 
 func (m *Manager) transitionToAnswerJudging() {
-	logger.Infof(m.ctx, "[transitionToAnswerJudging] Transitioning from status: %s to answer_judging", m.game.Status)
+	logger.Infof(m.ctx, "[transitionToAnswerJudging] Transitioning from status: %s to answer_judging, activePlayer: %v", m.game.Status, m.game.ActivePlayer)
 	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
-	m.BroadcastStateUnlocked()
+	m.BroadcastState()
 	m.timer.Start(AnswerJudgingDuration)
 	logger.Infof(m.ctx, "[transitionToAnswerJudging] Status changed to: %s, timer started for %v", m.game.Status, AnswerJudgingDuration)
 }

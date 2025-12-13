@@ -29,6 +29,11 @@ func (m *Manager) handleTimeout() {
 
 	case domainGame.StatusAnswering:
 		logger.Infof(m.ctx, "[handleTimeout] Answering timeout detected, current status: %s, transitioning to answer_judging", m.game.Status)
+		if m.game.ActivePlayer == nil {
+			logger.Warnf(m.ctx, "[handleTimeout] ActivePlayer is nil, cannot transition to answer_judging")
+			m.continueGame()
+			return
+		}
 		m.transitionToAnswerJudging()
 		logger.Infof(m.ctx, "[handleTimeout] After transition, status: %s", m.game.Status)
 

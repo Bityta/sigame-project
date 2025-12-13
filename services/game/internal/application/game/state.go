@@ -1,6 +1,8 @@
 package game
 
 import (
+	"encoding/json"
+	
 	domainGame "sigame/game/internal/domain/game"
 	"sigame/game/internal/domain/pack"
 	"sigame/game/internal/domain/player"
@@ -87,7 +89,11 @@ func (m *Manager) buildGameState() *domainGame.State {
 func (m *Manager) broadcastState(state *domainGame.State) {
 	data := m.serializeState(state)
 	if data != nil {
-		logger.Infof(m.ctx, "[broadcastState] Broadcasting state update: status=%s, timeRemaining=%d", state.Status, state.TimeRemaining)
+		activePlayerStr := "nil"
+		if state.ActivePlayer != nil {
+			activePlayerStr = state.ActivePlayer.String()
+		}
+		logger.Infof(m.ctx, "[broadcastState] Broadcasting state update: status=%s, timeRemaining=%d, activePlayer=%s", state.Status, state.TimeRemaining, activePlayerStr)
 		m.hub.Broadcast(m.game.ID, data)
 	}
 }
@@ -99,6 +105,17 @@ func (m *Manager) serializeState(state *domainGame.State) []byte {
 		logger.Errorf(nil, "%v", ErrSerializeState(err))
 		return nil
 	}
+	
+	if state.Status == domainGame.StatusAnswerJudging {
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal(data, &jsonData); err == nil {
+			if payload, ok := jsonData["payload"].(map[string]interface{}); ok {
+				activePlayerVal := payload["activePlayer"]
+				logger.Infof(m.ctx, "[serializeState] answer_judging serialized: activePlayer=%v (type=%T)", activePlayerVal, activePlayerVal)
+			}
+		}
+	}
+	
 	return data
 }
 

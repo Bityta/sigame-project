@@ -72,6 +72,17 @@ export const useGameWebSocket = ({
     // Подписываемся на обновления состояния
     const unsubStateUpdate = ws.on<GameState>('STATE_UPDATE', (state) => {
       stateReceivedRef.current = true;
+      
+      // Debug logging for answer_judging state
+      if (state.status === 'answer_judging') {
+        console.log('[useGameWebSocket] STATE_UPDATE answer_judging:', {
+          status: state.status,
+          activePlayer: state.activePlayer,
+          activePlayerType: typeof state.activePlayer,
+          userId: userId
+        });
+      }
+      
       setGameState(state);
       onStateUpdateRef.current?.(state);
       

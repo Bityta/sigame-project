@@ -128,6 +128,22 @@ export const GamePage = () => {
   
   // Host judges answers
   const canJudgeAnswer = gameState.status === 'answer_judging' && isHost;
+  
+  // Debug logging for answer_judging state
+  useEffect(() => {
+    if (gameState.status === 'answer_judging') {
+      console.log('[GamePage] answer_judging state:', {
+        status: gameState.status,
+        isHost,
+        activePlayer: gameState.activePlayer,
+        activePlayerType: typeof gameState.activePlayer,
+        activePlayerTruthy: !!gameState.activePlayer,
+        canJudgeAnswer,
+        user: user?.id,
+        condition: canJudgeAnswer && gameState.activePlayer
+      });
+    }
+  }, [gameState.status, gameState.activePlayer, isHost, canJudgeAnswer, user?.id]);
 
   const handleQuestionSelect = (themeId: string, questionId: string) => {
     selectQuestion(themeId, questionId);
