@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 4,
+  workers: process.env.CI ? 4 : 4,
   reporter: [
     ['html'],
     ['json', { outputFile: 'test-results/results.json' }],
@@ -18,7 +18,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: {
-      mode: 'on',
+      mode: 'retain-on-failure',
       size: { width: 1920, height: 1080 }
     },
     actionTimeout: 15000,
