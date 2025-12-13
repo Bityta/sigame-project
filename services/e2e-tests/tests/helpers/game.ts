@@ -10,7 +10,8 @@ export async function selectQuestion(
   themeName?: string,
   price?: number
 ): Promise<void> {
-  await page.waitForSelector('.game-board', { timeout: 10000 });
+  // Ждем перехода в question_select и появления игрового поля
+  await page.waitForSelector('.game-board', { timeout: 30000 });
   
   if (themeName && price) {
     const theme = page.locator('.game-board__theme').filter({ hasText: themeName }).first();
