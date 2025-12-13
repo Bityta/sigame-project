@@ -3,8 +3,6 @@ package client
 import (
 	"sync"
 	"time"
-
-	"sigame/game/internal/infrastructure/logger"
 )
 
 const MaxRTTSamples = 10
