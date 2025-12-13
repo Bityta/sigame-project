@@ -16,9 +16,9 @@ export async function registerUser(
     throw new Error(`Invalid username length: ${username.length}. Username: ${username}`);
   }
   
-  await usernameInput.fill(username);
+  await usernameInput.fill(username, { delay: 50 });
   
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(800);
   
   const filledUsername = await usernameInput.inputValue();
   if (filledUsername !== username) {
@@ -32,10 +32,12 @@ export async function registerUser(
   await page.waitForTimeout(2000);
   
   const passwordInput = page.getByPlaceholder(/минимум 6 символов/i);
-  await passwordInput.fill(password);
+  await passwordInput.fill(password, { delay: 50 });
+  await page.waitForTimeout(300);
   
   const confirmPasswordInput = page.getByPlaceholder(/повторите пароль/i);
-  await confirmPasswordInput.fill(password);
+  await confirmPasswordInput.fill(password, { delay: 50 });
+  await page.waitForTimeout(300);
   
   const submitButton = page.getByRole('button', { name: /зарегистрироваться/i });
   await submitButton.waitFor({ state: 'visible' });
@@ -70,9 +72,10 @@ export async function registerUser(
     { timeout: 30000 }
   ).catch(() => null);
   
-  await submitButton.click();
+  await page.waitForTimeout(500);
+  await submitButton.click({ delay: 100 });
   
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1500);
   
   const response = await responsePromise;
   

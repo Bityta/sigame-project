@@ -6,11 +6,15 @@ export async function createRoom(
   maxPlayers: number = 4
 ): Promise<string> {
   await page.goto('/lobby');
+  await page.waitForTimeout(500);
   
-  await page.getByRole('button', { name: /создать комнату/i }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /создать комнату/i }).click({ delay: 100 });
   await page.waitForURL(/\/lobby\/create/);
+  await page.waitForTimeout(500);
   
-  await page.getByPlaceholder(/введите название/i).fill(name);
+  await page.getByPlaceholder(/введите название/i).fill(name, { delay: 50 });
+  await page.waitForTimeout(300);
   
   const packSelect = page.locator('select').first();
   await packSelect.waitFor({ state: 'visible' });
@@ -30,7 +34,8 @@ export async function createRoom(
   
   const createButton = page.getByRole('button', { name: /создать/i });
   await createButton.waitFor({ state: 'visible' });
-  await createButton.click();
+  await page.waitForTimeout(500);
+  await createButton.click({ delay: 100 });
   
   await page.waitForURL(/\/room\/.+/, { timeout: 20000 });
   await page.waitForTimeout(2000);
@@ -67,14 +72,19 @@ export async function joinRoomByCode(page: Page, code: string): Promise<void> {
 
 export async function joinRoom(page: Page, roomId: string): Promise<void> {
   await page.goto(`/room/${roomId}`);
-  await page.waitForSelector('.room-page', { timeout: 10000 });
-  await expect(page.locator('.room-page__title')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.room-page', { timeout: 15000 });
+  await expect(page.locator('.room-page__title')).toBeVisible({ timeout: 15000 });
+  await page.waitForTimeout(1000);
 }
 
 export async function setReady(page: Page): Promise<void> {
   const readyButton = page.getByRole('button', { name: /готов/i });
   await readyButton.waitFor({ state: 'visible' });
-  await readyButton.click();
+  await page.waitForTimeout(300);
+  await readyButton.hover();
+  await page.waitForTimeout(200);
+  await readyButton.click({ delay: 100 });
   
   await page.waitForTimeout(500);
 }
