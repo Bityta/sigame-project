@@ -21,6 +21,8 @@ test.describe('Комната ожидания', () => {
     await registerUser(page, username, password);
     await createRoom(page);
     
+    await expect(page).toHaveURL(/\/room\/.+/);
+    await expect(page.locator('.room-page__title')).toBeVisible();
     await page.waitForTimeout(500);
     
     const codeElement = page.locator('.room-page__code');
@@ -45,7 +47,7 @@ test.describe('Комната ожидания', () => {
     await page.waitForTimeout(500);
   });
 
-  test('готовность игрока', async ({ page, context }) => {
+  test('готовность игрока', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -55,12 +57,8 @@ test.describe('Комната ожидания', () => {
     
     await page.waitForTimeout(500);
     
-    const playerPage = await context.newPage();
-    await playerPage.context().clearCookies();
-    await playerPage.goto('/register');
-    await playerPage.waitForLoadState('networkidle');
-    await playerPage.waitForTimeout(1000);
-    await expect(playerPage).toHaveURL(/\/register/);
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -73,10 +71,10 @@ test.describe('Комната ожидания', () => {
     await expect(page.getByText(/вы готовы/i)).toBeVisible();
     
     await page.waitForTimeout(500);
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('автоматический запуск игры когда все готовы', async ({ page, context }) => {
+  test('автоматический запуск игры когда все готовы', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -84,12 +82,8 @@ test.describe('Комната ожидания', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
-    await playerPage.context().clearCookies();
-    await playerPage.goto('/register');
-    await playerPage.waitForLoadState('networkidle');
-    await playerPage.waitForTimeout(2000);
-    await expect(playerPage).toHaveURL(/\/register/);
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -99,7 +93,7 @@ test.describe('Комната ожидания', () => {
     await page.waitForURL(/\/game\/.+/, { timeout: 30000 });
     await expect(page).toHaveURL(/\/game\/.+/);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('настройки комнаты для хоста', async ({ page }) => {

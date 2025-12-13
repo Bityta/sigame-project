@@ -11,11 +11,22 @@ test.describe('Настройки комнаты - детальные тесты
     await createRoom(page);
     
     const slider = page.locator('.room-settings__slider').first();
-    await slider.fill('45');
+    await slider.waitFor({ state: 'visible' });
+    await slider.hover();
+    await page.waitForTimeout(200);
+    await slider.fill('45', { delay: 100 });
+    await page.waitForTimeout(300);
     
-    await page.getByRole('button', { name: /сохранить настройки/i }).click();
+    const saveButton = page.getByRole('button', { name: /сохранить настройки/i });
+    await saveButton.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => {
+      const btn = document.querySelector('button[class*="room-settings"]');
+      return btn && !btn.hasAttribute('disabled');
+    }, { timeout: 5000 }).catch(() => {});
     
-    await expect(page.getByText(/45/i)).toBeVisible({ timeout: 5000 });
+    await saveButton.click();
+    
+    await expect(page.getByText(/45 сек/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('изменение времени на выбор вопроса', async ({ page }) => {
@@ -27,11 +38,15 @@ test.describe('Настройки комнаты - детальные тесты
     
     const sliders = page.locator('.room-settings__slider');
     const secondSlider = sliders.nth(1);
-    await secondSlider.fill('90');
+    await secondSlider.waitFor({ state: 'visible' });
+    await secondSlider.hover();
+    await page.waitForTimeout(200);
+    await secondSlider.fill('25', { delay: 100 });
+    await page.waitForTimeout(300);
     
     await page.getByRole('button', { name: /сохранить настройки/i }).click();
     
-    await expect(page.getByText(/90/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/25/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('валидация диапазона слайдера времени на ответ', async ({ page }) => {
@@ -65,7 +80,7 @@ test.describe('Настройки комнаты - детальные тесты
     expect(max).toBe('30');
   });
 
-  test('отображение настроек для не-хоста', async ({ page, context }) => {
+  test('отображение настроек для не-хоста', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -73,14 +88,15 @@ test.describe('Настройки комнаты - детальные тесты
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
     await expect(playerPage.locator('.room-settings__view')).toBeVisible();
     await expect(playerPage.locator('.room-settings__form')).not.toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

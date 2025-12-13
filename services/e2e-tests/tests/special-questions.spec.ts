@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, transferSecret, placeStake, submitForAllAnswer, waitForStatus } from './helpers/game';
 
 test.describe('Специальные вопросы', () => {
-  test('Кот в мешке (Secret) работает корректно', async ({ page, context }) => {
+  test('Кот в мешке (Secret) работает корректно', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Специальные вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -37,10 +38,10 @@ test.describe('Специальные вопросы', () => {
       await waitForStatus(playerPage, 'question_show', 10000);
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('Вопрос со ставкой (Stake) работает корректно', async ({ page, context }) => {
+  test('Вопрос со ставкой (Stake) работает корректно', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -48,7 +49,8 @@ test.describe('Специальные вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -72,10 +74,10 @@ test.describe('Специальные вопросы', () => {
       await waitForStatus(playerPage, 'question_show', 10000);
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('Вопрос для всех (ForAll) работает корректно', async ({ page, context }) => {
+  test('Вопрос для всех (ForAll) работает корректно', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -83,7 +85,8 @@ test.describe('Специальные вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -107,6 +110,6 @@ test.describe('Специальные вопросы', () => {
       await expect(playerPage.getByText(/ответ отправлен/i)).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });

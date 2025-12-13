@@ -4,15 +4,24 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart } from './helpers/game';
 
 test.describe('WebSocket соединение', () => {
-  test('установка WebSocket соединения', async ({ page, context }) => {
+  test('установка WebSocket соединения', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
 
+    const wsMessages: string[] = [];
+    
+    page.on('websocket', ws => {
+      ws.on('framereceived', event => {
+        wsMessages.push(event.payload.toString());
+      });
+    });
+    
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -22,22 +31,14 @@ test.describe('WebSocket соединение', () => {
     await waitForGameStart(page);
     await waitForGameStart(playerPage);
     
-    const wsMessages: string[] = [];
-    
-    page.on('websocket', ws => {
-      ws.on('framereceived', event => {
-        wsMessages.push(event.payload.toString());
-      });
-    });
-    
     await page.waitForTimeout(2000);
     
     expect(wsMessages.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('получение STATE_UPDATE при подключении', async ({ page, context }) => {
+  test('получение STATE_UPDATE при подключении', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -45,7 +46,8 @@ test.describe('WebSocket соединение', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -56,9 +58,9 @@ test.describe('WebSocket соединение', () => {
     
     await page.waitForTimeout(1000);
     
-    await expect(page.locator('.game-board, .player-list, [class*="game"]')).toBeVisible();
+    await expect(page.locator('.game-page')).toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

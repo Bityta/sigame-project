@@ -39,12 +39,18 @@ export const RoomPage = () => {
           },
           onError: (error: any) => {
             console.error('Failed to join room:', error);
-            // Если ошибка "уже в комнате" (409) - просто обновляем данные
+            const errorMessage = error?.response?.data?.message || '';
             if (error?.response?.status === 409) {
-              refetch();
-              return;
+              if (errorMessage.includes('full')) {
+                alert('Комната заполнена');
+                navigate(ROUTES.LOBBY);
+                return;
+              }
+              if (errorMessage.includes('already in room')) {
+                refetch();
+                return;
+              }
             }
-            // Иначе возвращаемся в лобби
             navigate(ROUTES.LOBBY);
           },
         }

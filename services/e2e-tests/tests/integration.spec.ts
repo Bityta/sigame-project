@@ -49,7 +49,7 @@ test.describe('Интеграционные тесты', () => {
 
     await registerUser(page, username, password);
     
-    const token = await page.evaluate(() => localStorage.getItem('access_token'));
+    const token = await page.evaluate(() => localStorage.getItem('sigame_access_token'));
     
     const packsResponse = await page.request.get('/api/packs', {
       headers: {
@@ -64,7 +64,8 @@ test.describe('Интеграционные тесты', () => {
       
       const response = await page.request.post('/api/lobby/rooms', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         data: {
           name: 'Test Room',
@@ -92,7 +93,7 @@ test.describe('Интеграционные тесты', () => {
     expect(Array.isArray(body.rooms)).toBe(true);
   });
 
-  test('Game Service - создание игры через API', async ({ page, context }) => {
+  test('Game Service - создание игры через API', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -100,7 +101,8 @@ test.describe('Интеграционные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -122,7 +124,7 @@ test.describe('Интеграционные тесты', () => {
       expect(game).toHaveProperty('status');
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('Pack Service - получение списка паков через API', async ({ page }) => {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { registerUser, generateUsername } from './helpers/auth';
-import { createRoom } from './helpers/room';
+import { createRoom, joinRoom, setReady } from './helpers/room';
 
 test.describe('Производительность', () => {
   test('время загрузки страницы входа < 1.5 сек', async ({ page }) => {
@@ -48,10 +48,10 @@ test.describe('Производительность', () => {
     
     const startTime = Date.now();
     
-    await page.getByLabel(/имя пользователя/i).fill(username);
+    await page.getByPlaceholder(/от 3 до 20 символов/i).fill(username);
     await page.waitForTimeout(600);
-    await page.getByLabel(/^пароль$/i).fill(password);
-    await page.getByLabel(/подтвердите пароль/i).fill(password);
+    await page.getByPlaceholder(/минимум 6 символов/i).fill(password);
+    await page.getByPlaceholder(/повторите пароль/i).fill(password);
     await page.getByRole('button', { name: /зарегистрироваться/i }).click();
     
     await page.waitForURL(/\/lobby/, { timeout: 10000 });
@@ -61,7 +61,7 @@ test.describe('Производительность', () => {
     expect(responseTime).toBeLessThan(2000);
   });
 
-  test('плавная анимация таймера', async ({ page, context }) => {
+  test('плавная анимация таймера', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -69,12 +69,15 @@ test.describe('Производительность', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
-    await page.getByRole('button', { name: /готов/i }).click();
-    await playerPage.getByRole('button', { name: /готов/i }).click();
+    await page.waitForTimeout(2000);
+    
+    await setReady(page);
+    await setReady(playerPage);
     
     await page.waitForURL(/\/game\/.+/, { timeout: 30000 });
     
@@ -88,10 +91,10 @@ test.describe('Производительность', () => {
       expect(hasAnimation).toBe(true);
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('плавная загрузка медиа', async ({ page, context }) => {
+  test('плавная загрузка медиа', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -99,12 +102,15 @@ test.describe('Производительность', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
-    await page.getByRole('button', { name: /готов/i }).click();
-    await playerPage.getByRole('button', { name: /готов/i }).click();
+    await page.waitForTimeout(2000);
+    
+    await setReady(page);
+    await setReady(playerPage);
     
     await page.waitForURL(/\/game\/.+/, { timeout: 30000 });
     
@@ -123,7 +129,7 @@ test.describe('Производительность', () => {
       }
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

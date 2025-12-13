@@ -16,6 +16,13 @@ export async function createRoom(
   await page.getByPlaceholder(/введите название/i).fill(name, { delay: 50 });
   await page.waitForTimeout(300);
   
+  if (maxPlayers !== 4) {
+    const slider = page.locator('input[type="range"]').first();
+    await slider.waitFor({ state: 'visible' });
+    await slider.fill(maxPlayers.toString());
+    await page.waitForTimeout(300);
+  }
+  
   const packSelect = page.locator('select').first();
   await packSelect.waitFor({ state: 'visible' });
   await page.waitForTimeout(1000);
@@ -72,7 +79,6 @@ export async function joinRoomByCode(page: Page, code: string): Promise<void> {
 
 export async function joinRoom(page: Page, roomId: string): Promise<void> {
   await page.goto(`/room/${roomId}`);
-  await page.waitForLoadState('networkidle');
   await page.waitForSelector('.room-page', { timeout: 15000 });
   await expect(page.locator('.room-page__title')).toBeVisible({ timeout: 15000 });
   await page.waitForTimeout(1000);

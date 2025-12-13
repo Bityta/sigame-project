@@ -32,7 +32,7 @@ test.describe('Профиль', () => {
     await expect(page.getByText(/в разработке/i)).toBeVisible();
     
     await page.getByRole('button', { name: /настройки/i }).click();
-    await expect(page.getByText(/уведомления/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /уведомления/i })).toBeVisible();
   });
 
   test('выход из профиля', async ({ page }) => {

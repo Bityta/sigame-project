@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, pressButton, judgeAnswer, waitForStatus } from './helpers/game';
 
 test.describe('Полный цикл игры - детально', () => {
-  test('регистрация -> создание комнаты -> присоединение -> настройка -> игра -> завершение', async ({ page, context }) => {
+  test('регистрация -> создание комнаты -> присоединение -> настройка -> игра -> завершение', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -17,7 +17,8 @@ test.describe('Полный цикл игры - детально', () => {
     await slider.fill('45');
     await page.getByRole('button', { name: /сохранить настройки/i }).click();
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -40,10 +41,10 @@ test.describe('Полный цикл игры - детально', () => {
     
     await waitForStatus(page, 'question_select', 10000);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('завершение игры и возврат в лобби', async ({ page, context }) => {
+  test('завершение игры и возврат в лобби', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -51,7 +52,8 @@ test.describe('Полный цикл игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -64,7 +66,7 @@ test.describe('Полный цикл игры - детально', () => {
     
     await expect(page).toHaveURL(/\/lobby/);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, waitForStatus, selectQuestion, pressButton } from './helpers/game';
 
 test.describe('Статусы игры', () => {
-  test('переход через все статусы игры', async ({ page, context }) => {
+  test('переход через все статусы игры', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -37,10 +38,10 @@ test.describe('Статусы игры', () => {
     await waitForStatus(page, 'answer_judging', 35000);
     await expect(page.locator('.game-page__judging')).toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение игрового поля', async ({ page, context }) => {
+  test('отображение игрового поля', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -48,7 +49,8 @@ test.describe('Статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -63,10 +65,10 @@ test.describe('Статусы игры', () => {
     await expect(page.locator('.game-board')).toBeVisible();
     await expect(page.locator('.game-board__theme')).toHaveCount(5);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение списка игроков', async ({ page, context }) => {
+  test('отображение списка игроков', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -74,7 +76,8 @@ test.describe('Статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -86,7 +89,7 @@ test.describe('Статусы игры', () => {
     
     await expect(page.locator('.player-list, [class*="player"]')).toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

@@ -3,7 +3,7 @@ import { registerUser, generateUsername } from './helpers/auth';
 import { createRoom, joinRoom, setReady } from './helpers/room';
 
 test.describe('Комната - детальные тесты', () => {
-  test('отображение списка игроков с ролями', async ({ page, context }) => {
+  test('отображение списка игроков с ролями', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -11,18 +11,21 @@ test.describe('Комната - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
+    
+    await page.waitForTimeout(2000);
     
     await expect(page.getByText(hostUsername)).toBeVisible();
-    await expect(page.getByText(playerUsername)).toBeVisible();
-    await expect(page.getByText(/👑/)).toBeVisible();
+    await expect(page.getByText(playerUsername)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(new RegExp(`${hostUsername}.*👑`))).toBeVisible({ timeout: 5000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('счетчик готовых игроков', async ({ page, context }) => {
+  test('счетчик готовых игроков', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -30,17 +33,18 @@ test.describe('Комната - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
-    await expect(page.getByText(/0 \/ 2/i).or(page.getByText(/готовы/i))).toBeVisible();
+    await expect(page.locator('.room-page__ready-count')).toHaveText(/0 \/ 2/, { timeout: 5000 });
     
     await setReady(page);
     
-    await expect(page.getByText(/1 \/ 2/i).or(page.getByText(/готовы/i))).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('.room-page__ready-count')).toHaveText(/1 \/ 2/, { timeout: 3000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('повторное нажатие отменяет готовность', async ({ page }) => {
@@ -60,7 +64,7 @@ test.describe('Комната - детальные тесты', () => {
     await expect(page.getByText(/вы готовы/i)).not.toBeVisible({ timeout: 3000 });
   });
 
-  test('кнопка готовности неактивна когда комната не в статусе waiting', async ({ page, context }) => {
+  test('кнопка готовности неактивна когда комната не в статусе waiting', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -68,7 +72,8 @@ test.describe('Комната - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -85,7 +90,7 @@ test.describe('Комната - детальные тесты', () => {
       await expect(readyButton).toBeDisabled({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('сообщение о минимальном количестве игроков', async ({ page }) => {
@@ -98,7 +103,7 @@ test.describe('Комната - детальные тесты', () => {
     await expect(page.getByText(/минимум.*игрок/i).or(page.getByText(/2.*игрок/i))).toBeVisible();
   });
 
-  test('сообщение о готовности всех игроков', async ({ page, context }) => {
+  test('сообщение о готовности всех игроков', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -106,16 +111,18 @@ test.describe('Комната - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
     await setReady(page);
     await setReady(playerPage);
     
-    await expect(page.getByText(/все готовы/i).or(page.getByText(/игра начинается/i))).toBeVisible({ timeout: 5000 });
+    await page.waitForURL(/\/game\/.+/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/game\/.+/);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('выход из комнаты', async ({ page }) => {
@@ -130,7 +137,7 @@ test.describe('Комната - детальные тесты', () => {
     await expect(page).toHaveURL(/\/lobby/, { timeout: 10000 });
   });
 
-  test('настройки комнаты только для просмотра у не-хоста', async ({ page, context }) => {
+  test('настройки комнаты только для просмотра у не-хоста', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -138,14 +145,15 @@ test.describe('Комната - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
     await expect(playerPage.locator('.room-settings__slider')).not.toBeVisible();
     await expect(playerPage.getByRole('button', { name: /сохранить настройки/i })).not.toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('кнопка сохранения настроек неактивна без изменений', async ({ page }) => {
