@@ -28,8 +28,6 @@ func (m *Manager) handleTimeout() {
 		m.skipQuestion()
 
 	case domainGame.StatusAnswering:
-		// Эта фаза больше не используется - переход в answer_judging происходит сразу после нажатия кнопки
-		// Но оставляем обработку на случай, если где-то еще используется этот статус
 		logger.Infof(m.ctx, "[handleTimeout] Answering timeout detected, current status: %s, transitioning to answer_judging", m.game.Status)
 		if m.game.ActivePlayer == nil {
 			logger.Warnf(m.ctx, "[handleTimeout] ActivePlayer is nil, cannot transition to answer_judging")

@@ -233,6 +233,7 @@ func TestManager_SetPlayerConnected(t *testing.T) {
 	game := createTestGame()
 	testPack := createTestPack()
 	mockHub := new(MockHub)
+	mockHub.On("Broadcast", mock.Anything, mock.Anything).Return()
 	mockLogger := new(MockEventLogger)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
@@ -256,6 +257,8 @@ func TestManager_SetPlayerConnected(t *testing.T) {
 	p, err = game.GetPlayer(userID)
 	assert.NoError(t, err)
 	assert.False(t, p.IsConnected)
+	
+	mockHub.AssertExpectations(t)
 }
 
 func TestManager_HandleClientMessage_InvalidMessage(t *testing.T) {

@@ -321,8 +321,6 @@ func (m *Manager) finishButtonPressCollection() {
 	m.timer.Stop()
 	m.game.SetActivePlayer(winner.UserID)
 
-	// Переходим сразу в answer_judging, чтобы кнопки судейства появились сразу
-	// Таймер все равно работает для отсчета времени ответа
 	m.game.UpdateStatus(domainGame.StatusAnswerJudging)
 	logger.Infof(m.ctx, "[finishButtonPressCollection] Status changed to: %s, activePlayer: %v, broadcasting state", m.game.Status, m.game.ActivePlayer)
 	m.BroadcastState()
