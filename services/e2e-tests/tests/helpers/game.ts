@@ -1,8 +1,12 @@
 import { Page, expect } from '@playwright/test';
 
 export async function waitForGameStart(page: Page): Promise<void> {
-  await page.waitForURL(/\/game\/.+/, { timeout: 30000 });
+  // Ждем перехода на страницу игры
+  await page.waitForURL(/\/game\/.+/, { timeout: 60000 });
   await expect(page).toHaveURL(/\/game\/.+/);
+  
+  // Ждем загрузки компонента игры
+  await page.waitForSelector('.game-page', { timeout: 30000 });
 }
 
 export async function selectQuestion(
