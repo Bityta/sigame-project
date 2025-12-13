@@ -10,13 +10,18 @@ export async function selectQuestion(
   themeName?: string,
   price?: number
 ): Promise<void> {
-  // Ждем перехода в question_select
+  // Ждем перехода в question_select - проверяем текст индикатора или статус
   await page.waitForFunction(
     () => {
-      const url = window.location.href;
-      return url.includes('/game/');
+      const turnIndicator = document.querySelector('.game-page__turn-indicator-text');
+      const indicatorText = turnIndicator?.textContent || '';
+      // Проверяем, что игра в состоянии выбора вопроса
+      return indicatorText.includes('Выберите вопрос') || 
+             indicatorText.includes('выбирает вопрос') ||
+             document.querySelector('.game-board') !== null ||
+             document.querySelector('.game-board-empty') !== null;
     },
-    { timeout: 30000 }
+    { timeout: 60000 }
   );
   
   // Ждем появления игрового поля или сообщения о загрузке
