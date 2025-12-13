@@ -11,18 +11,23 @@ export async function selectQuestion(
   price?: number
 ): Promise<void> {
   // Ждем перехода в question_select - проверяем текст индикатора или статус
-  await page.waitForFunction(
-    () => {
-      const turnIndicator = document.querySelector('.game-page__turn-indicator-text');
-      const indicatorText = turnIndicator?.textContent || '';
-      // Проверяем, что игра в состоянии выбора вопроса
-      return indicatorText.includes('Выберите вопрос') || 
-             indicatorText.includes('выбирает вопрос') ||
-             document.querySelector('.game-board') !== null ||
-             document.querySelector('.game-board-empty') !== null;
-    },
-    { timeout: 60000 }
-  );
+  try {
+    await page.waitForFunction(
+      () => {
+        const turnIndicator = document.querySelector('.game-page__turn-indicator-text');
+        const indicatorText = turnIndicator?.textContent || '';
+        // Проверяем, что игра в состоянии выбора вопроса
+        return indicatorText.includes('Выберите вопрос') || 
+               indicatorText.includes('выбирает вопрос') ||
+               document.querySelector('.game-board') !== null ||
+               document.querySelector('.game-board-empty') !== null;
+      },
+      { timeout: 60000 }
+    );
+  } catch (error) {
+    // Если не удалось дождаться по индикатору, просто ждем игровое поле
+    console.log('Не удалось дождаться question_select по индикатору, ждем игровое поле напрямую');
+  }
   
   // Ждем появления игрового поля или сообщения о загрузке
   await page.waitForSelector('.game-board, .game-board-empty', { timeout: 30000 });
