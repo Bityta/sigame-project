@@ -106,7 +106,15 @@ export const GamePage = () => {
     lastStatusRef.current = currentStatus;
   }, [gameState?.status, gameState?.timeRemaining]);
 
-  // Debug logging
+  // ВСЕ хуки должны быть вызваны ДО условных возвратов!
+  // Вычисляем переменные безопасно
+  const currentPlayer = gameState?.players?.find((p) => p.userId === user?.id);
+  const isHost = currentPlayer?.role === 'host';
+  const canSelectQuestion = gameState?.status === 'question_select' && isHost;
+  const canPressButton = gameState?.status === 'button_press' && !isHost;
+  const canJudgeAnswer = gameState?.status === 'answer_judging' && isHost;
+
+  // Debug logging - ВСЕ хуки ДО условных возвратов
   useEffect(() => {
     console.log('[GamePage] Render check:', {
       isConnected,
@@ -118,7 +126,36 @@ export const GamePage = () => {
     });
   }, [isConnected, gameState, gameId, user?.id]);
 
-  // Проверяем состояние перед рендерингом
+  // Debug logging for answer_judging state
+  useEffect(() => {
+    if (gameState?.status === 'answer_judging') {
+      console.log('[GamePage] answer_judging state:', {
+        status: gameState.status,
+        isHost,
+        activePlayer: gameState.activePlayer,
+        activePlayerType: typeof gameState.activePlayer,
+        activePlayerTruthy: !!gameState.activePlayer,
+        canJudgeAnswer,
+        user: user?.id,
+        condition: canJudgeAnswer && gameState.activePlayer
+      });
+    }
+  }, [gameState?.status, gameState?.activePlayer, isHost, canJudgeAnswer, user?.id]);
+
+  // Debug logging for question_select state
+  useEffect(() => {
+    if (gameState?.status === 'question_select') {
+      console.log('[GamePage] question_select state:', {
+        status: gameState.status,
+        isHost,
+        themes: gameState.themes?.length || 0,
+        hasThemes: !!gameState.themes,
+        canSelectQuestion
+      });
+    }
+  }, [gameState?.status, gameState?.themes, isHost, canSelectQuestion]);
+
+  // Проверяем состояние перед рендерингом - ПОСЛЕ всех хуков
   if (!isConnected) {
     console.log('[GamePage] Not connected, showing connecting screen');
     return (
@@ -152,47 +189,6 @@ export const GamePage = () => {
     hasPlayers: !!gameState.players,
     playersLength: gameState.players?.length || 0
   });
-
-  const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
-  const isHost = currentPlayer?.role === 'host';
-  
-  // Only host can select questions
-  const canSelectQuestion = gameState.status === 'question_select' && isHost;
-  
-  // Only players (not host) can press button
-  const canPressButton = gameState.status === 'button_press' && !isHost;
-  
-  // Host judges answers
-  const canJudgeAnswer = gameState.status === 'answer_judging' && isHost;
-  
-  // Debug logging for answer_judging state
-  useEffect(() => {
-    if (gameState.status === 'answer_judging') {
-      console.log('[GamePage] answer_judging state:', {
-        status: gameState.status,
-        isHost,
-        activePlayer: gameState.activePlayer,
-        activePlayerType: typeof gameState.activePlayer,
-        activePlayerTruthy: !!gameState.activePlayer,
-        canJudgeAnswer,
-        user: user?.id,
-        condition: canJudgeAnswer && gameState.activePlayer
-      });
-    }
-  }, [gameState.status, gameState.activePlayer, isHost, canJudgeAnswer, user?.id]);
-
-  // Debug logging for question_select state
-  useEffect(() => {
-    if (gameState.status === 'question_select') {
-      console.log('[GamePage] question_select state:', {
-        status: gameState.status,
-        isHost,
-        themes: gameState.themes?.length || 0,
-        hasThemes: !!gameState.themes,
-        canSelectQuestion
-      });
-    }
-  }, [gameState.status, gameState.themes, isHost, canSelectQuestion]);
 
   const handleQuestionSelect = (themeId: string, questionId: string) => {
     selectQuestion(themeId, questionId);
