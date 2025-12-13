@@ -93,7 +93,11 @@ func (m *Manager) broadcastState(state *domainGame.State) {
 		if state.ActivePlayer != nil {
 			activePlayerStr = state.ActivePlayer.String()
 		}
-		logger.Infof(m.ctx, "[broadcastState] Broadcasting state update: status=%s, timeRemaining=%d, activePlayer=%s", state.Status, state.TimeRemaining, activePlayerStr)
+		themesCount := 0
+		if state.Themes != nil {
+			themesCount = len(state.Themes)
+		}
+		logger.Infof(m.ctx, "[broadcastState] Broadcasting state update: status=%s, timeRemaining=%d, activePlayer=%s, themesCount=%d", state.Status, state.TimeRemaining, activePlayerStr, themesCount)
 		m.hub.Broadcast(m.game.ID, data)
 	}
 }
