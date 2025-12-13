@@ -143,7 +143,16 @@ export const GamePage = () => {
     );
   }
 
-  console.log('[GamePage] Rendering game page with state:', { status: gameState.status });
+  console.log('[GamePage] Rendering game page with state:', { 
+    status: gameState.status,
+    hasThemes: !!gameState.themes,
+    themesLength: gameState.themes?.length || 0,
+    hasAllRounds: !!gameState.allRounds,
+    allRoundsLength: gameState.allRounds?.length || 0
+  });
+  
+  // Обработка ошибок рендеринга
+  try {
 
   const currentPlayer = gameState.players.find((p) => p.userId === user?.id);
   const isHost = currentPlayer?.role === 'host';
