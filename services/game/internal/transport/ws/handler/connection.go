@@ -30,7 +30,6 @@ func NewHandler(h *hub.Hub, authClient AuthService) *Handler {
 
 func (h *Handler) HandleWebSocket(c *gin.Context) {
 	ctx := c.Request.Context()
-	logger.Debugf(ctx, "[WS] HandleWebSocket called, path=%s", c.Request.URL.Path)
 
 	gameIDStr := c.Param("id")
 	gameID, err := uuid.Parse(gameIDStr)
@@ -64,7 +63,6 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 		}
 
 		userID = resp.UserID
-		logger.Debugf(ctx, "[WS] Token validated, user_id=%s", userID)
 	} else {
 		userIDStr := c.Query(QueryParamUserID)
 		if userIDStr == "" {
@@ -82,23 +80,17 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 		userID = parsedUserID
 	}
 
-	logger.Debugf(ctx, "[WS] Checking game manager for game=%s, user=%s", gameID, userID)
-
 	if _, exists := h.hub.GetGameManager(gameID); !exists {
 		logger.Errorf(ctx, "[WS] Game manager not found for game %s", gameID)
 		c.JSON(http.StatusNotFound, gin.H{"error": ErrorGameNotFound})
 		return
 	}
 
-	logger.Debugf(ctx, "[WS] Game manager found, upgrading connection for game=%s, user=%s", gameID, userID)
-
 	conn, err := Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		logger.Errorf(ctx, "[WS] Failed to upgrade connection: %v", err)
 		return
 	}
-
-	logger.Debugf(ctx, "[WS] Connection upgraded, creating client for game=%s, user=%s", gameID, userID)
 
 	cl := client.NewClient(h.hub, conn, userID, gameID)
 	h.hub.Register(cl)

@@ -38,15 +38,12 @@ func Auth() gin.HandlerFunc {
 					logger.Warnf(c.Request.Context(), "Token validation error: %v", err)
 				} else if validatedUserID != uuid.Nil {
 					userID = validatedUserID
-					logger.Debugf(c.Request.Context(), "Token validated successfully, user_id=%s", userID)
 				} else {
 					logger.Warnf(c.Request.Context(), "Token validation returned nil user_id")
 				}
 			} else {
 				logger.Warnf(c.Request.Context(), "Invalid Authorization header format")
 			}
-		} else {
-			logger.Debugf(c.Request.Context(), "No Authorization header found")
 		}
 
 		if userID == uuid.Nil {
@@ -55,8 +52,6 @@ func Auth() gin.HandlerFunc {
 				userID, err = uuid.Parse(userIDStr)
 				if err != nil {
 					logger.Warnf(c.Request.Context(), "Invalid X-User-ID header: %v", err)
-				} else {
-					logger.Debugf(c.Request.Context(), "Using X-User-ID header, user_id=%s", userID)
 				}
 			}
 		}

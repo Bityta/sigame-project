@@ -37,9 +37,6 @@ func (r *RTTTracker) UpdateRTT(rtt time.Duration, userID interface{}) {
 		total += sample
 	}
 	r.avgRTT = total / time.Duration(len(r.samples))
-
-	logger.Debugf(nil, "[RTT] User %v: new sample=%v, avg=%v (samples=%d)",
-		userID, rtt, r.avgRTT, len(r.samples))
 }
 
 func (r *RTTTracker) GetRTT() time.Duration {

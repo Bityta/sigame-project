@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"sigame/game/internal/domain/pack"
-	"sigame/game/internal/infrastructure/logger"
 )
 
 type PackServiceClient interface {
@@ -69,8 +68,6 @@ type QuestionJSON struct {
 func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*pack.Pack, error) {
 	url := buildURL(c.baseURL, PathPackContent, packID.String())
 
-	logger.Debugf(ctx, "Fetching pack content from: %s", url)
-
 	body, statusCode, err := doGetRequest(ctx, c.httpClient, url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch pack content: %w", err)
@@ -85,14 +82,10 @@ func (c *PackClient) GetPackContent(ctx context.Context, packID uuid.UUID) (*pac
 		return nil, fmt.Errorf("failed to parse pack content: %w", err)
 	}
 
-	logger.Debugf(ctx, "Got pack: %s with %d rounds", packResp.Name, len(packResp.Rounds))
-
 	pack, err := convertPackResponse(&packResp, packID)
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Debugf(ctx, "Converted pack with %d rounds", len(pack.Rounds))
 
 	return pack, nil
 }
