@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, waitForStatus } from './helpers/game';
 
 test.describe('Все статусы игры', () => {
-  test('rounds_overview - отображение обзора раундов', async ({ page, context }) => {
+  test('rounds_overview - отображение обзора раундов', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Все статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -28,10 +29,10 @@ test.describe('Все статусы игры', () => {
       await expect(roundsOverview).toBeVisible();
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('round_start - отображение интро раунда', async ({ page, context }) => {
+  test('round_start - отображение интро раунда', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -39,7 +40,8 @@ test.describe('Все статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -55,10 +57,10 @@ test.describe('Все статусы игры', () => {
       await expect(roundIntro).toBeVisible();
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('question_show - отображение вопроса', async ({ page, context }) => {
+  test('question_show - отображение вопроса', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -66,7 +68,8 @@ test.describe('Все статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -84,10 +87,10 @@ test.describe('Все статусы игры', () => {
     const questionView = page.locator('.question-view, [class*="question"]');
     await expect(questionView).toBeVisible({ timeout: 10000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('game_end - отображение финальных результатов', async ({ page, context }) => {
+  test('game_end - отображение финальных результатов', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -95,7 +98,8 @@ test.describe('Все статусы игры', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -112,7 +116,7 @@ test.describe('Все статусы игры', () => {
       await expect(page.getByText(/победитель/i).or(page.getByText(/результаты/i))).toBeVisible();
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

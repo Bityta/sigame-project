@@ -3,7 +3,7 @@ import { registerUser, generateUsername } from './helpers/auth';
 import { createRoom, joinRoom } from './helpers/room';
 
 test.describe('Функции хоста', () => {
-  test('отображение кнопок управления только для хоста', async ({ page, context }) => {
+  test('отображение кнопок управления только для хоста', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -11,17 +11,18 @@ test.describe('Функции хоста', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
-    await expect(page.locator('.room-page__player-action')).toBeVisible();
-    await expect(playerPage.locator('.room-page__player-action')).not.toBeVisible();
+    await expect(page.locator('.room-page__player-action').first()).toBeVisible();
+    await expect(playerPage.locator('.room-page__player-action')).toHaveCount(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('передача роли хоста', async ({ page, context }) => {
+  test('передача роли хоста', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -29,7 +30,8 @@ test.describe('Функции хоста', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -45,10 +47,10 @@ test.describe('Функции хоста', () => {
       await expect(page.getByText(/👑/)).not.toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('выгон игрока из комнаты', async ({ page, context }) => {
+  test('выгон игрока из комнаты', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -56,7 +58,8 @@ test.describe('Функции хоста', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -70,10 +73,10 @@ test.describe('Функции хоста', () => {
       await expect(page.getByText(playerUsername)).not.toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('кнопки управления неактивны когда комната не в статусе waiting', async ({ page, context }) => {
+  test('кнопки управления неактивны когда комната не в статусе waiting', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -81,7 +84,8 @@ test.describe('Функции хоста', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -98,7 +102,7 @@ test.describe('Функции хоста', () => {
       await expect(transferButton).toBeDisabled({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

@@ -82,7 +82,7 @@ test.describe('Список комнат - детальные тесты', () =>
     }
   });
 
-  test('обновление списка комнат автоматически', async ({ page, context }) => {
+  test('обновление списка комнат автоматически', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -90,7 +90,8 @@ test.describe('Список комнат - детальные тесты', () =>
     await registerUser(page, hostUsername, password);
     await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     
     await playerPage.goto('/lobby');
@@ -102,7 +103,7 @@ test.describe('Список комнат - детальные тесты', () =>
       await expect(playerPage.getByText(hostUsername)).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

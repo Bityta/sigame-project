@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, waitForStatus } from './helpers/game';
 
 test.describe('Медиа вопросы', () => {
-  test('предзагрузка медиа раунда', async ({ page, context }) => {
+  test('предзагрузка медиа раунда', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -29,10 +30,10 @@ test.describe('Медиа вопросы', () => {
       await expect(mediaProgress).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение медиа в вопросах - изображение', async ({ page, context }) => {
+  test('отображение медиа в вопросах - изображение', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -40,7 +41,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -60,10 +62,10 @@ test.describe('Медиа вопросы', () => {
       await expect(image).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение медиа в вопросах - видео', async ({ page, context }) => {
+  test('отображение медиа в вопросах - видео', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -71,7 +73,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -91,10 +94,10 @@ test.describe('Медиа вопросы', () => {
       await expect(video).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('синхронизация медиа между игроками', async ({ page, context }) => {
+  test('синхронизация медиа между игроками', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -102,7 +105,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -124,10 +128,10 @@ test.describe('Медиа вопросы', () => {
       await expect(playerMedia).toBeVisible({ timeout: 10000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('обработка ошибок загрузки медиа', async ({ page, context }) => {
+  test('обработка ошибок загрузки медиа', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -135,7 +139,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -157,10 +162,10 @@ test.describe('Медиа вопросы', () => {
       await expect(fallback).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('кеширование медиа на клиенте', async ({ page, context }) => {
+  test('кеширование медиа на клиенте', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -168,7 +173,8 @@ test.describe('Медиа вопросы', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -188,7 +194,7 @@ test.describe('Медиа вопросы', () => {
     
     expect(cachedMedia).toBeDefined();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

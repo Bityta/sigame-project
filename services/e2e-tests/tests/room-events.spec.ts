@@ -3,7 +3,7 @@ import { registerUser, generateUsername } from './helpers/auth';
 import { createRoom, joinRoom, setReady } from './helpers/room';
 
 test.describe('SSE события комнаты', () => {
-  test('обновление при присоединении нового игрока', async ({ page, context }) => {
+  test('обновление при присоединении нового игрока', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -13,7 +13,8 @@ test.describe('SSE события комнаты', () => {
     
     await expect(page.getByText(hostUsername)).toBeVisible();
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -21,10 +22,10 @@ test.describe('SSE события комнаты', () => {
     
     await expect(page.getByText(playerUsername)).toBeVisible({ timeout: 5000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('обновление при готовности игрока', async ({ page, context }) => {
+  test('обновление при готовности игрока', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -32,7 +33,8 @@ test.describe('SSE события комнаты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -40,12 +42,12 @@ test.describe('SSE события комнаты', () => {
     
     await page.waitForTimeout(2000);
     
-    await expect(page.getByText(/1 \/ 2/i).or(page.getByText(/готовы/i))).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.room-page__ready-count')).toHaveText(/1 \/ 2/, { timeout: 5000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('редирект при запуске игры через SSE', async ({ page, context }) => {
+  test('редирект при запуске игры через SSE', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -53,7 +55,8 @@ test.describe('SSE события комнаты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -66,10 +69,10 @@ test.describe('SSE события комнаты', () => {
     await expect(page).toHaveURL(/\/game\/.+/);
     await expect(playerPage).toHaveURL(/\/game\/.+/);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('редирект при закрытии комнаты', async ({ page, context }) => {
+  test('передача хоста при уходе хоста из комнаты', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -77,17 +80,25 @@ test.describe('SSE события комнаты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
+    await playerPage.waitForTimeout(1000);
+    
+    await expect(playerPage.getByText(hostUsername)).toBeVisible();
+    
     await page.getByRole('button', { name: /покинуть комнату/i }).click();
     
-    await playerPage.waitForTimeout(2000);
+    await playerPage.waitForTimeout(3000);
     
-    await expect(playerPage).toHaveURL(/\/lobby/, { timeout: 10000 });
+    await expect(playerPage).toHaveURL(/\/room\/.+/);
     
-    await playerPage.close();
+    await expect(playerPage.getByText(playerUsername)).toBeVisible();
+    await expect(playerPage.getByText('👑')).toBeVisible();
+    
+    await playerContext.close();
   });
 });
 

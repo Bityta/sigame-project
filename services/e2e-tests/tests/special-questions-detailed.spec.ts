@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, transferSecret, placeStake, submitForAllAnswer, waitForStatus, pressButton, judgeAnswer } from './helpers/game';
 
 test.describe('Специальные вопросы - детально', () => {
-  test('Secret - только получатель может отвечать', async ({ page, context }) => {
+  test('Secret - только получатель может отвечать', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Специальные вопросы - детально', () => 
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -49,10 +50,10 @@ test.describe('Специальные вопросы - детально', () => 
       }
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('Stake - правильное начисление/списание очков', async ({ page, context }) => {
+  test('Stake - правильное начисление/списание очков', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -60,7 +61,8 @@ test.describe('Специальные вопросы - детально', () => 
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -102,10 +104,10 @@ test.describe('Специальные вопросы - детально', () => 
       expect(final).toBeGreaterThan(initial);
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('ForAll - правильное начисление очков всем правильно ответившим', async ({ page, context }) => {
+  test('ForAll - правильное начисление очков всем правильно ответившим', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const player1Username = generateUsername();
     const player2Username = generateUsername();
@@ -114,11 +116,13 @@ test.describe('Специальные вопросы - детально', () => 
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page, 'ForAll Room', 4);
     
-    const player1Page = await context.newPage();
+    const player1Context = await browser.newContext();
+    const player1Page = await player1Context.newPage();
     await registerUser(player1Page, player1Username, password);
     await joinRoom(player1Page, roomId);
     
-    const player2Page = await context.newPage();
+    const player2Context = await browser.newContext();
+    const player2Page = await player2Context.newPage();
     await registerUser(player2Page, player2Username, password);
     await joinRoom(player2Page, roomId);
     
@@ -150,8 +154,8 @@ test.describe('Специальные вопросы - детально', () => 
       await expect(page.locator('.for-all-results')).toBeVisible({ timeout: 10000 });
     }
     
-    await player1Page.close();
-    await player2Page.close();
+    await player1Context.close();
+    await player2Context.close();
   });
 });
 

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { generateUsername } from './helpers/auth';
 
 test.describe('Валидация форм', () => {
   test('валидация формы входа - все поля', async ({ page }) => {
@@ -8,41 +9,54 @@ test.describe('Валидация форм', () => {
     
     await page.waitForTimeout(500);
     
-    const usernameField = page.getByLabel(/имя пользователя/i);
-    const passwordField = page.getByLabel(/пароль/i);
+    const usernameField = page.getByPlaceholder(/введите имя пользователя/i);
     
     await expect(usernameField).toBeFocused().catch(() => {
-      expect(page.getByText(/имя пользователя/i)).toBeVisible();
+      expect(page.getByText(/должно быть/i).or(page.getByText(/обязательно/i))).toBeVisible();
     });
   });
 
   test('валидация формы регистрации - все поля', async ({ page }) => {
     await page.goto('/register');
     
-    await page.getByRole('button', { name: /зарегистрироваться/i }).click();
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        const event = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(event);
+      }
+    });
     
     await page.waitForTimeout(500);
     
-    await expect(page.getByText(/имя пользователя/i).or(page.getByText(/пароль/i))).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText(/должно быть/i).or(page.getByText(/обязательно/i)).or(page.getByText(/не менее/i))).toBeVisible({ timeout: 3000 });
   });
 
   test('валидация формы создания комнаты - все поля', async ({ page }) => {
-    const username = `testuser_${Date.now()}`;
+    const username = generateUsername();
     const password = 'testpass123';
 
     await page.goto('/register');
-    await page.getByLabel(/имя пользователя/i).fill(username);
+    await page.getByPlaceholder(/от 3 до 20 символов/i).fill(username);
     await page.waitForTimeout(600);
-    await page.getByLabel(/^пароль$/i).fill(password);
-    await page.getByLabel(/подтвердите пароль/i).fill(password);
+    await page.getByPlaceholder(/минимум 6 символов/i).fill(password);
+    await page.getByPlaceholder(/повторите пароль/i).fill(password);
     await page.getByRole('button', { name: /зарегистрироваться/i }).click();
     await page.waitForURL(/\/lobby/, { timeout: 10000 });
     
     await page.getByRole('button', { name: /создать комнату/i }).click();
     
-    await page.getByRole('button', { name: /создать/i }).click();
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        const event = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(event);
+      }
+    });
     
-    await expect(page.getByText(/название/i).or(page.getByText(/пак/i))).toBeVisible({ timeout: 3000 });
+    await page.waitForTimeout(500);
+    
+    await expect(page.locator('.create-room-form__error, .input-error').first()).toBeVisible({ timeout: 3000 });
   });
 });
 

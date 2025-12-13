@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, pressButton, judgeAnswer, waitForStatus } from './helpers/game';
 
 test.describe('WebSocket - детальные тесты', () => {
-  test('отправка SELECT_QUESTION через WebSocket', async ({ page, context }) => {
+  test('отправка SELECT_QUESTION через WebSocket', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -37,10 +38,10 @@ test.describe('WebSocket - детальные тесты', () => {
     
     expect(wsMessages.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отправка PRESS_BUTTON через WebSocket', async ({ page, context }) => {
+  test('отправка PRESS_BUTTON через WebSocket', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -48,7 +49,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -75,10 +77,10 @@ test.describe('WebSocket - детальные тесты', () => {
     
     expect(wsMessages.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отправка JUDGE_ANSWER через WebSocket', async ({ page, context }) => {
+  test('отправка JUDGE_ANSWER через WebSocket', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -86,7 +88,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -116,10 +119,10 @@ test.describe('WebSocket - детальные тесты', () => {
     
     expect(wsMessages.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('получение PING и отправка PONG', async ({ page, context }) => {
+  test('получение PING и отправка PONG', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -127,7 +130,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -157,10 +161,10 @@ test.describe('WebSocket - детальные тесты', () => {
     expect(pingReceived.length).toBeGreaterThan(0);
     expect(pongSent.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('получение STATE_UPDATE при подключении', async ({ page, context }) => {
+  test('получение STATE_UPDATE при подключении', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -168,7 +172,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -190,10 +195,10 @@ test.describe('WebSocket - детальные тесты', () => {
     
     expect(stateUpdates.length).toBeGreaterThan(0);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('обработка ошибок WebSocket', async ({ page, context }) => {
+  test('обработка ошибок WebSocket', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -201,7 +206,8 @@ test.describe('WebSocket - детальные тесты', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -226,7 +232,7 @@ test.describe('WebSocket - детальные тесты', () => {
     
     await expect(page.locator('.game-board, [class*="game"]')).toBeVisible({ timeout: 10000 });
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

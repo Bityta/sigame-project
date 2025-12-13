@@ -23,7 +23,7 @@ test.describe('Профиль - детальные тесты', () => {
     await registerUser(page, username, password);
     await page.getByText(username).click();
     
-    await expect(page.locator('.profile-card__avatar, [class*="avatar"]')).toBeVisible();
+    await expect(page.locator('.profile-card__avatar').first()).toBeVisible();
   });
 
   test('отображение даты регистрации', async ({ page }) => {
@@ -98,9 +98,13 @@ test.describe('Профиль - детальные тесты', () => {
     await page.getByRole('button', { name: /настройки/i }).click();
     
     const notificationCheckbox = page.getByLabel(/уведомления/i).first();
-    await notificationCheckbox.click();
+    const initialState = await notificationCheckbox.isChecked();
+    await notificationCheckbox.click({ force: true });
     
-    await expect(notificationCheckbox).not.toBeChecked().or(notificationCheckbox).toBeChecked();
+    await page.waitForTimeout(500);
+    
+    const newState = await notificationCheckbox.isChecked();
+    expect(newState).not.toBe(initialState);
   });
 
   test('настройки - кнопка удаления аккаунта disabled', async ({ page }) => {

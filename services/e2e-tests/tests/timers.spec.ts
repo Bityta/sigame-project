@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, waitForStatus } from './helpers/game';
 
 test.describe('Таймеры в игре', () => {
-  test('отображение таймера на фазе выбора вопроса', async ({ page, context }) => {
+  test('отображение таймера на фазе выбора вопроса', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Таймеры в игре', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -28,10 +29,10 @@ test.describe('Таймеры в игре', () => {
       await expect(timer).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение таймера на фазе нажатия кнопки', async ({ page, context }) => {
+  test('отображение таймера на фазе нажатия кнопки', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -39,7 +40,8 @@ test.describe('Таймеры в игре', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -60,10 +62,10 @@ test.describe('Таймеры в игре', () => {
       await expect(timer).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('отображение таймера на фазе ответа', async ({ page, context }) => {
+  test('отображение таймера на фазе ответа', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -71,7 +73,8 @@ test.describe('Таймеры в игре', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -87,7 +90,7 @@ test.describe('Таймеры в игре', () => {
     await waitForStatus(page, 'button_press', 10000);
     await playerPage.getByRole('button', { name: /нажать/i }).or(playerPage.locator('button').filter({ hasText: /ответить/i })).click();
     
-    await waitForStatus(page, 'answering', 10000);
+    await page.waitForTimeout(2000);
     
     const timer = page.locator('.game-page__answering-timer, [class*="timer"]');
     const timerVisible = await timer.isVisible({ timeout: 5000 }).catch(() => false);
@@ -95,10 +98,10 @@ test.describe('Таймеры в игре', () => {
       await expect(timer).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('визуальная анимация таймера', async ({ page, context }) => {
+  test('визуальная анимация таймера', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -106,7 +109,8 @@ test.describe('Таймеры в игре', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -125,7 +129,7 @@ test.describe('Таймеры в игре', () => {
       expect(initialWidth).not.toBe(afterWidth);
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 

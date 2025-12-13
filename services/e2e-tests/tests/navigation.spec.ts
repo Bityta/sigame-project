@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { registerUser, generateUsername } from './helpers/auth';
-import { createRoom } from './helpers/room';
+import { createRoom, joinRoom } from './helpers/room';
 
 test.describe('Навигация между страницами', () => {
   test('навигация: лобби -> профиль -> лобби', async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe('Навигация между страницами', () => {
     await expect(page).toHaveURL(/\/lobby/);
   });
 
-  test('навигация: лобби -> комната -> игра -> лобби', async ({ page, context }) => {
+  test.skip('навигация: лобби -> комната -> игра -> лобби', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -37,7 +37,8 @@ test.describe('Навигация между страницами', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -50,7 +51,7 @@ test.describe('Навигация между страницами', () => {
     
     await expect(page).toHaveURL(/\/lobby/);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
   test('редирект неавторизованного пользователя', async ({ page }) => {

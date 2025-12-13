@@ -49,8 +49,8 @@ test.describe('Безопасность', () => {
     const username = generateUsername();
     
     for (let i = 0; i < 10; i++) {
-      await page.getByLabel(/имя пользователя/i).fill(`${username}${i}`);
-      await page.getByLabel(/пароль/i).fill('wrongpass');
+      await page.getByPlaceholder(/введите имя пользователя/i).fill(`${username}${i}`);
+      await page.getByPlaceholder(/введите пароль/i).fill('wrongpass');
       await page.getByRole('button', { name: /войти/i }).click();
       await page.waitForTimeout(100);
     }
@@ -70,8 +70,8 @@ test.describe('Безопасность', () => {
     
     for (let i = 0; i < 5; i++) {
       await page.goto('/login');
-      await page.getByLabel(/имя пользователя/i).fill(username);
-      await page.getByLabel(/пароль/i).fill('wrongpass');
+      await page.getByPlaceholder(/введите имя пользователя/i).fill(username);
+      await page.getByPlaceholder(/введите пароль/i).fill('wrongpass');
       await page.getByRole('button', { name: /войти/i }).click();
       await page.waitForTimeout(500);
     }

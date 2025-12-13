@@ -4,7 +4,7 @@ import { createRoom, joinRoom, setReady } from './helpers/room';
 import { waitForGameStart, selectQuestion, pressButton, waitForStatus } from './helpers/game';
 
 test.describe('Статусы игры - детально', () => {
-  test('waiting - отображение сообщения ожидания', async ({ page, context }) => {
+  test('waiting - отображение сообщения ожидания', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -12,7 +12,8 @@ test.describe('Статусы игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -25,10 +26,10 @@ test.describe('Статусы игры - детально', () => {
     
     await expect(page.locator('.player-list, [class*="player"]')).toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('question_select - таймер автоматического выбора', async ({ page, context }) => {
+  test('question_select - таймер автоматического выбора', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -36,7 +37,8 @@ test.describe('Статусы игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -53,10 +55,10 @@ test.describe('Статусы игры - детально', () => {
     expect(elapsedTime).toBeGreaterThan(30000);
     expect(elapsedTime).toBeLessThan(45000);
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('button_press - отображение таймера', async ({ page, context }) => {
+  test('button_press - отображение таймера', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -64,7 +66,8 @@ test.describe('Статусы игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -83,10 +86,10 @@ test.describe('Статусы игры - детально', () => {
       await expect(timer).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('answering - визуальная индикация активного игрока', async ({ page, context }) => {
+  test('answering - визуальная индикация активного игрока', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -94,7 +97,8 @@ test.describe('Статусы игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -112,10 +116,10 @@ test.describe('Статусы игры - детально', () => {
     await expect(page.locator('.game-page__answering')).toBeVisible();
     await expect(page.getByText(/отвечает/i).or(page.getByText(/ваш черёд/i))).toBeVisible();
     
-    await playerPage.close();
+    await playerContext.close();
   });
 
-  test('answer_judging - отображение результата судейства', async ({ page, context }) => {
+  test('answer_judging - отображение результата судейства', async ({ page, browser }) => {
     const hostUsername = generateUsername();
     const playerUsername = generateUsername();
     const password = 'testpass123';
@@ -123,7 +127,8 @@ test.describe('Статусы игры - детально', () => {
     await registerUser(page, hostUsername, password);
     const roomId = await createRoom(page);
     
-    const playerPage = await context.newPage();
+    const playerContext = await browser.newContext();
+    const playerPage = await playerContext.newPage();
     await registerUser(playerPage, playerUsername, password);
     await joinRoom(playerPage, roomId);
     
@@ -147,7 +152,7 @@ test.describe('Статусы игры - детально', () => {
       await expect(page.getByText(/верно/i).or(page.locator('[class*="result"]'))).toBeVisible({ timeout: 5000 });
     }
     
-    await playerPage.close();
+    await playerContext.close();
   });
 });
 
