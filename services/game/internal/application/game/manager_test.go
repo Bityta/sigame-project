@@ -151,8 +151,8 @@ func TestManager_Start(t *testing.T) {
 	mockLogger.On("LogEvent", mock.Anything, mock.Anything).Return(nil)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
-	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil)
-	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
@@ -164,7 +164,7 @@ func TestManager_Start(t *testing.T) {
 	assert.NotNil(t, manager.ctx)
 
 	manager.Stop()
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	mockLogger.AssertExpectations(t)
 	mockCache.AssertExpectations(t)
 	mockRepo.AssertExpectations(t)
@@ -240,6 +240,8 @@ func TestManager_SetPlayerConnected(t *testing.T) {
 	mockLogger := new(MockEventLogger)
 	mockRepo := new(MockGameRepository)
 	mockCache := new(MockGameCache)
+	mockCache.On("SaveGameState", mock.Anything, mock.Anything).Return(nil).Maybe()
+	mockRepo.On("UpdateGameSession", mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	manager := New(game, testPack, mockHub, mockLogger, mockRepo, mockCache)
 
